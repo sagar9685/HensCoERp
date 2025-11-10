@@ -3,6 +3,9 @@ import { FaTimes, FaPlus, FaCalendarAlt, FaPaperPlane } from 'react-icons/fa';
 import styles from './AddOrderModal.module.css';
 import { useDispatch, useSelector } from "react-redux";
 import { searchCustomers  } from '../features/cutomerSlice';
+import { fetchWeightByType, clearWeight, fetchProductTypes, fetchRateByProductType } from "../features/productTypeSlice";
+import { useEffect } from "react";
+
 
 const AddOrderModal = ({ isOpen, onClose, onAddOrder }) => {
   const [formData, setFormData] = useState({
@@ -13,7 +16,7 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder }) => {
     contactNo: '',
     productType: '',
     weight: '',
-    quantity: '',
+    quantity: 1,
     rate: '',
     deliveryCharge: '',
     orderDate: ''
@@ -22,41 +25,91 @@ const AddOrderModal = ({ isOpen, onClose, onAddOrder }) => {
   const [errors, setErrors] = useState({});
 const customerSuggestions = useSelector((state) => state.customer.customerSuggestions);
 
-
 const dispatch = useDispatch();
+const productTypes = useSelector((state) => state.product.types || []);
 
-  const productTypes = [
-    'Fresh Produce',
-    'Organic',
-    'Free Range',
-    'Conventional',
-    'Specialty'
-  ];
+console.log('fetch product',productTypes)
 
-  const weightOptions = [
-    '250 gms',
-    '500 gms',
-    '1 kg',
-    '2 kg',
-    '5 kg',
-    '10 kg'
-  ];
+const weightOptions = useSelector((state) => state.product.weight || []);
+console.log(weightOptions,"weight")
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
+const productWeight = useSelector((state) => state.product.weight);
+const productLoading = useSelector((state) => state.product.loading);
+const productError = useSelector((state) => state.product.error);
+ 
+
+
+
+const handleProductTypeChange = (e) => {
+  const { value } = e.target;
+  setFormData((prev) => ({
+    ...prev,
+    productType: value,
+  }));
+
+  try{
+  if (value) {
+    dispatch(fetchWeightByType(value));
+    dispatch(fetchRateByProductType(value)) // ✅ fetch weight automatically
+  } else {
+    dispatch(clearWeight());
+  }}
+  catch(e) {
+    console.log('getting error in productType',e)
+  }
+};
+
+useEffect(() => {
+  if (productWeight) {
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      weight: productWeight,
     }));
-    
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
+  }
+}, [productWeight]);
+
+ useEffect(() => {
+  dispatch(fetchProductTypes());
+}, [dispatch]);
+
+
+const baseRate = useSelector((state) => state.product.rate || 0);
+
+console.log(baseRate,"rate")
+
+useEffect(() => {
+  if (baseRate) {
+    setFormData((prev) => ({
+      ...prev,
+      rate: baseRate,
+    }));
+  }
+}, [baseRate]);
+
+
+ 
+
+const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  setFormData(prev => {
+    let updated = { ...prev, [name]: value };
+
+    // 👇 Auto update rate if quantity changes and baseRate exists
+    if (name === "quantity" && baseRate) {
+      updated.rate = (Number(baseRate) * Number(value || 0)).toFixed(2);
     }
-  };
+
+    return updated;
+  });
+
+  if (errors[name]) {
+    setErrors(prev => ({
+      ...prev,
+      [name]: ''
+    }));
+  }
+};
 
   const handleCustomerNameChange = (e) => {
   const name = e.target.value;
@@ -187,53 +240,62 @@ console.log("customerSuggestions from Redux:", customerSuggestions);
               </div>
 
               {/* Customer Name */}
-              <div className={styles.inputGroup}>
-  <label className={styles.inputLabel}>
-    Customer Name <span className={styles.required}>*</span>
-  </label>
+                      <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>
+                        Customer Name <span className={styles.required}>*</span>
+                      </label>
 
-  <input
-    type="text"
-    name="customerName"
-    value={formData.customerName}
-    onChange={(e) => {
-      handleChange(e);             // update local form state
-      handleCustomerNameChange(e); // auto fetch from backend
-    }}
-    placeholder="Enter customer name"
-    className={styles.inputField}
-  />
+                      <input
+                        type="text"
+                        name="customerName"
+                        value={formData.customerName}
+                        onChange={(e) => {
+                          handleChange(e);             // update local form state
+                          handleCustomerNameChange(e); // auto fetch from backend
+                        }}
+                        placeholder="Enter customer name"
+                        className={styles.inputField}
+                      />
 
-  {/* ✅ Suggestions list just below input */}
- {customerSuggestions && customerSuggestions.length > 0 && (
-  <ul className={styles.suggestionList}>
-    {customerSuggestions.map((cust) => (
-      <li
-        key={cust.CustomerId}
-        onClick={() => {
-          setFormData({
-            ...formData,
-            customerName: cust.CustomerName,
-            contactNo: cust.Contact_No,
-            address: cust.Address,
-            area: cust.Area,
-            pincode: cust.Pincode || '',
-            alternatePhone: cust.Alternate_Phone || ''
-          });
-        }}
-      >
-        {cust.CustomerName}
-      </li>
-    ))}
-  </ul>
-)}
- 
+                      {/* ✅ Suggestions list just below input */}
+                    {customerSuggestions && customerSuggestions.length > 0 && (
+                      <>
+                        <p>Matching Records -: {customerSuggestions.length}</p>
+                      <ul className={styles.suggestionList}>
+                        {customerSuggestions.map((cust) => (
+                          <li
+                            key={cust.CustomerId}
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                customerName: cust.CustomerName,
+                                contactNo: cust.Contact_No,
+                                address: cust.Address,
+                                area: cust.Area,
+                                pincode: cust.Pincode || '',
+                                alternatePhone: cust.Alternate_Phone || ''
+                              });
+                            }}
+                          >
+                             
+                            <span className={styles.customerName}>Name-:{cust.CustomerName}</span>
+                            <span className={styles.customerDetails}>
+                            Address-: {cust.Address},Areas-:{cust.Area}
+                            </span>
 
+                          
+                          </li>
+                        ))}
+                      </ul>
+                      </>
+                    )}
+                    
+                    
 
-  {errors.customerName && (
-    <span className={styles.error}>{errors.customerName}</span>
-  )}
-</div>
+                      {errors.customerName && (
+                        <span className={styles.error}>{errors.customerName}</span>
+                      )}
+                    </div>
 
               {/* Address */}
               <div className={styles.inputGroup}>
@@ -289,16 +351,22 @@ console.log("customerSuggestions from Redux:", customerSuggestions);
                   Product Type <span className={styles.required}>*</span>
                 </label>
                 <select
-                  name="productType"
-                  value={formData.productType}
-                  onChange={handleChange}
-                  className={styles.selectField}
-                >
-                  <option value="">Select product type</option>
-                  {productTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
+                      name="productType"
+                    value={formData.productType}
+                    onChange={handleProductTypeChange}
+                    className={styles.selectField}
+                      >
+                    <option value="">Select product type</option>
+                    {productTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+
+              {productLoading && <p>Loading weight...</p>}
+              {productError && <p style={{ color: "red" }}>{productError}</p>}
+
                 {errors.productType && <span className={styles.error}>{errors.productType}</span>}
               </div>
 
@@ -370,6 +438,7 @@ console.log("customerSuggestions from Redux:", customerSuggestions);
                   min="0"
                   step="0.01"
                   className={styles.inputField}
+                   
                 />
                 {errors.deliveryCharge && <span className={styles.error}>{errors.deliveryCharge}</span>}
               </div>

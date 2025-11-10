@@ -209,6 +209,270 @@
   box-shadow: none;
 }
 
+/* Suggestion List Container */
+.suggestionList {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 16px;
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.1),
+    0 2px 10px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 8px;
+  padding: 8px;
+  backdrop-filter: blur(10px);
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Suggestion Item */
+.suggestionItem {
+  padding: 16px 20px;
+  margin-bottom: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.suggestionItem:last-child {
+  margin-bottom: 0;
+}
+
+.suggestionItem:hover {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  transform: translateY(-2px);
+  border-color: rgba(102, 126, 234, 0.3);
+  box-shadow: 
+    0 8px 25px rgba(102, 126, 234, 0.15),
+    0 4px 12px rgba(102, 126, 234, 0.1);
+}
+
+.suggestionItem:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+.suggestionItem:active {
+  transform: translateY(0) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Customer Name */
+.customerName {
+  display: block;
+  font-weight: 700;
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-left: 20px;
+}
+
+.customerName::before {
+  content: '👤';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+.suggestionItem:hover .customerName {
+  color: white;
+  transform: translateX(5px);
+}
+
+.suggestionItem:hover .customerName::before {
+  opacity: 1;
+  transform: translateY(-50%) scale(1.1);
+}
+
+/* Customer Details */
+.customerDetails {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-left: 20px;
+}
+
+.customerDetails::before {
+  content: '📍';
+  position: absolute;
+  left: 0;
+  top: 2px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.suggestionItem:hover .customerDetails {
+  color: rgba(255, 255, 255, 0.9);
+  transform: translateX(5px);
+}
+
+.suggestionItem:hover .customerDetails::before {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Animations */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+/* Scrollbar Styling */
+.suggestionList::-webkit-scrollbar {
+  width: 6px;
+}
+
+.suggestionList::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 10px;
+  margin: 8px 0;
+}
+
+.suggestionList::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #cbd5e1 0%, #94a3b8 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.suggestionList::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* Loading State */
+.suggestionList:empty::before {
+  content: "🔍 Searching customers...";
+  display: block;
+  padding: 30px 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 14px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .suggestionList {
+    border-radius: 12px;
+    margin-top: 6px;
+    padding: 6px;
+    max-height: 280px;
+  }
+  
+  .suggestionItem {
+    padding: 14px 16px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+  }
+  
+  .customerName {
+    font-size: 14px;
+    padding-left: 18px;
+  }
+  
+  .customerDetails {
+    font-size: 12px;
+    padding-left: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .suggestionList {
+    border-radius: 10px;
+    margin-top: 4px;
+    padding: 4px;
+  }
+  
+  .suggestionItem {
+    padding: 12px 14px;
+    margin-bottom: 4px;
+    border-radius: 8px;
+  }
+  
+  .customerName {
+    font-size: 13px;
+    padding-left: 16px;
+  }
+  
+  .customerDetails {
+    font-size: 11px;
+    padding-left: 16px;
+  }
+}
+
+/* Focus states for accessibility */
+.suggestionItem:focus {
+  outline: none;
+  box-shadow: 
+    0 0 0 3px rgba(102, 126, 234, 0.1),
+    0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .suggestionList {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .suggestionItem {
+    background: rgba(30, 41, 59, 0.7);
+  }
+  
+  .customerName {
+    color: #f1f5f9;
+  }
+  
+  .customerDetails {
+    color: #94a3b8;
+  }
+}
+
+
+
 /* Animation */
 @keyframes modalSlideIn {
   from {
@@ -274,3 +538,4 @@
     font-size: 1.3rem;
   }
 }
+
