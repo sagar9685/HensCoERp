@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const customerRoutes = require('./routes/customerRoutes')
 const orderRoutes = require('./routes/orderRoutes')
 const productRoutes = require('./routes/productRoutes')
+const rateRoutes = require('./routes/rateRoutes')
 
 dotenv.config();
 const app = express();
@@ -20,6 +21,7 @@ const allowedOrigins = [
 app.use('/api/customers',customerRoutes)
 app.use('/api/orders', orderRoutes);
 app.use('/api/products', productRoutes);
+app.use("/api/rates", rateRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
