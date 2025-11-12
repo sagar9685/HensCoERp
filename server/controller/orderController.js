@@ -1,6 +1,7 @@
 const { sql, poolPromise } = require('../utils/db');
 
 exports.addOrder = async (req, res) => {
+  console.log('add order',req.body)
   try {
     const {
       ProductName,
@@ -63,3 +64,23 @@ exports.addOrder = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+exports.getAllorder = async(req,res) => {
+
+  try{
+    const pool = await poolPromise;
+    if(!pool) {
+      return res.status(500).json({message: "DataBase connection failed"});
+    }
+
+    const result = await pool.request().query("select * from orders order by OrderID desc");
+    res.status(200).json(result.recordset);
+
+  }
+  catch(error){
+    console.log(error,"error getting on all order");
+    res.status(500).json({message : "Internal server error",error: error.message})
+
+  }
+
+}
