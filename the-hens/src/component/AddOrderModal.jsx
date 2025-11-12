@@ -5,9 +5,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { searchCustomers  } from '../features/cutomerSlice';
 import { fetchWeightByType, clearWeight, fetchProductTypes, fetchRateByProductType } from "../features/productTypeSlice";
 import { useEffect } from "react";
+import { addOrder } from '../features/orderSlice';
+import { toast } from 'react-toastify';
 
 
-const AddOrderModal = ({ isOpen, onClose, onAddOrder }) => {
+const AddOrderModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState({
     productName: '',
     customerName: '',
@@ -162,14 +164,43 @@ const handleChange = (e) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+
+  const handleSubmit =async (e) => {
     e.preventDefault();
-    
-    if (validateForm()) {
-      onAddOrder(formData);
-      handleClose();
+
+    console.log(formData,"data ")
+
+    if(validateForm()) {
+        const formattedData = {
+          ProductName : formData.productName,
+          CustomerName : formData.customerName,
+          Address : formData.address,
+          Area : formData.area,
+          ContactNo : formData.contactNo,
+          ProductType : formData.productType,
+          Weight : Array.isArray(formData.weight) ? formData.weight [0] : formData.weight,
+          Quantity : Number (formData.quantity),
+          Rate : Number(formData.rate),
+          DeliveryCharge : Number(formData.deliveryCharge),
+          OrderDate : formData.orderDate
+
+        };
+      
+
+
+        try {
+          await dispatch(addOrder(formattedData)).unwrap();
+          toast.success('Order added successfully! 🎉');
+          handleClose();
+        }catch(e) {
+          toast.error("Failed to add Order  😞")
+            console.log("Sending to backend:", formattedData);
+          console.log("Add order error",e)
+        }
     }
-  };
+
+  }
+  
 
   const handleClose = () => {
     setFormData({
@@ -228,16 +259,24 @@ console.log("customerSuggestions from Redux:", customerSuggestions);
                 <label className={styles.inputLabel}>
                   Product Name <span className={styles.required}>*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="productName"
                   value={formData.productName}
                   onChange={handleChange}
-                  placeholder="Enter product name"
                   className={styles.inputField}
-                />
-                {errors.productName && <span className={styles.error}>{errors.productName}</span>}
+                >
+                  <option value="">Select product</option>
+                  <option value="Chicken">Chicken</option>
+                  <option value="Egg">Egg</option>
+                </select>
+                {errors.productName && (
+                  <span className={styles.error}>{errors.productName}</span>
+                )}
               </div>
+
+
+
+              
 
               {/* Customer Name */}
                       <div className={styles.inputGroup}>

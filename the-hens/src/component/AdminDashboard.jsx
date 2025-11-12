@@ -1,10 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import styles from "./AdminDashboard.module.css";
 import { FaEye, FaEdit, FaPlus, FaSearch, FaFilter, FaSyncAlt, FaShieldAlt, FaSyringe } from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
-
+import { useDispatch, useSelector } from "react-redux";
+import { fetchOrder } from "../features/orderSlice";
+import Loader from "./Loader";
 const AdminDashboard = () => {
   const [filters, setFilters] = useState({
     ProductId: "",
@@ -18,90 +20,75 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+   const dispatch = useDispatch()
+
+   const orders = useSelector((state)=> state.order.record);
+   const loading = useSelector((state)=> state.order.loading)
+
+   const [filteredData, setFilteredData] = useState([]);
+const [currentPage, setCurrentPage] = useState(1);
+const recordsPerPage = 10;
+const indexOfLastRecord = currentPage * recordsPerPage;
+const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
+
+const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+
+
+
+  useEffect(()=> {
+      dispatch(fetchOrder())
+  },[dispatch])
+
+  useEffect(()=>{
+    setFilteredData(orders || []);
+
+  },[orders])
   
+   const data = orders || [];
 
-
-  const data = [
-    {
-      id: "EGG102",
-      productName: "Organic Brown Eggs",
-      customerName: "John Restaurant",
-      address: "123 Main St",
-      area: "Downtown",
-      contactNo: "+1-555-0123",
-      productType: "Fresh Produce",
-      weight: "500 gms",
-      quantity: "100",
-      rate: "$4.99",
-      deliveryCharge: "$2.50",
-      orderDate: "2024-01-15",
-      deliveryDate: "2024-01-16",
-      deliveryMan: "Mike Johnson",
-      paymentMode: "Credit Card",
-      orderTakenBy: "Sarah Wilson",
-      remark: "Handle with care",
-      paymentStatus: "Completed"
-    },
-    {
-      id: "EGG103",
-      productName: "Free Range White",
-      customerName: "Green Cafe",
-      address: "456 Oak Ave",
-      area: "Uptown",
-      contactNo: "+1-555-0124",
-      productType: "Fresh Produce",
-      weight: "500 gms",
-      quantity: "75",
-      rate: "$5.49",
-      deliveryCharge: "$3.00",
-      orderDate: "2024-01-14",
-      deliveryDate: "2024-01-15",
-      deliveryMan: "Emma Davis",
-      paymentMode: "Cash",
-      orderTakenBy: "Tom Brown",
-      remark: "Early delivery requested",
-      paymentStatus: "Pending"
-    },
-    {
-      id: "EGG104",
-      productName: "Farm Fresh Eggs",
-      customerName: "City Diner",
-      address: "789 Pine St",
-      area: "Midtown",
-      contactNo: "+1-555-0125",
-      productType: "Organic",
-      weight: "500 gms",
-      quantity: "50",
-      rate: "$6.99",
-      deliveryCharge: "$2.00",
-      orderDate: "2024-01-16",
-      deliveryDate: "2024-01-17",
-      deliveryMan: "John Smith",
-      paymentMode: "Online",
-      orderTakenBy: "Lisa Wang",
-      remark: "Fragile items",
-      paymentStatus: "Processing"
-    }
-  ];
-
+ 
   const handleChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  const handleClear = () => {
-    setFilters({
-      ProductId: "",
-      ProductName: "",
-      ProductType: "",
-      Weight: "",
-      Rate: "",
-      customer: "",
-    });
-  };
+                const handleClear = () => {
+          setFilters({
+            ProductId: "",
+            ProductName: "",
+            ProductType: "",
+            Weight: "",
+            Rate: "",
+            customer: "",
+          });
+          setFilteredData(orders || []);
+        };
 
-  const handleSearch = () => {
-    console.log("Searching with filters:", filters);
-  };
+
+                    const handleSearch = () => {
+                let filtered = orders;
+
+                Object.keys(filters).forEach((key) => {
+                  const value = filters[key].trim().toLowerCase();
+                  if (value) {
+                    filtered = filtered.filter((item) => {
+                      switch (key) {
+                        case "ProductId":
+                          return item.OrderID?.toString().toLowerCase().includes(value);
+                        case "customer":
+                          return item.CustomerName?.toLowerCase().includes(value);
+                        default:
+                          return item[key]?.toString().toLowerCase().includes(value);
+                      }
+                    });
+                  }
+                });
+
+                setFilteredData(filtered);
+                setCurrentPage(1);
+              };
+
+
 
    const handleAddOrder = (orderData) => {
     console.log("New order data:", orderData);
@@ -236,6 +223,19 @@ const AdminDashboard = () => {
           </div>
 
           <div className={styles.tableContainer}>
+                                        {loading && (
+                  <div className={styles.loaderWrapper}>
+                    <Loader />
+                  </div>
+                )}
+
+
+
+              {
+                data.length === 0 && !loading && <p> No order found...</p>
+              }
+
+
             <table className={styles.table}>
               <thead>
                 <tr>
@@ -261,23 +261,23 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {data.length > 0 ? (
-                  data.map((row, index) => (
+                {currentRecords.length > 0 ? (
+                  currentRecords.map((row, index) => (
                     <tr key={row.id} className={index % 2 === 0 ? styles.evenRow : styles.oddRow}>
                       <td>
-                        <span className={styles.productId}>{row.id}</span>
+                        <span className={styles.productId}>{row.OrderID}</span>
                       </td>
-                      <td className={styles.vaccineName}>{row.productName}</td>
-                      <td>{row.customerName}</td>
-                      <td>{row.address}</td>
-                      <td>{row.area}</td>
-                      <td>{row.contactNo}</td>
-                      <td>{row.productType}</td>
-                      <td>{row.weight}</td>
-                      <td>{row.quantity}</td>
-                      <td>{row.rate}</td>
-                      <td>{row.deliveryCharge}</td>
-                      <td>{row.orderDate}</td>
+                      <td className={styles.vaccineName}>{row.ProductName}</td>
+                      <td>{row.CustomerName}</td>
+                      <td>{row.Address}</td>
+                      <td>{row.Area}</td>
+                      <td>{row.ContactNo}</td>
+                      <td>{row.ProductType}</td>
+                      <td>{row.Weight}</td>
+                      <td>{row.Quantity}</td>
+                      <td>{row.Rate}</td>
+                      <td>{row.DeliveryCharge}</td>
+                      <td>{new Date(row.OrderDate).toISOString().split('T')[0]}</td>
                       <td>{row.deliveryDate}</td>
                       <td>{row.deliveryMan}</td>
                       <td>
@@ -322,19 +322,40 @@ const AdminDashboard = () => {
           </div>
 
           {/* PAGINATION */}
-          {data.length > 0 && (
+                  {filteredData.length > 0 && (
             <div className={styles.pagination}>
-              <button className={styles.paginationBtn}>Previous</button>
+              <button
+                className={styles.paginationBtn}
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              >
+                Previous
+              </button>
+
               <div className={styles.paginationPages}>
-                <span className={styles.paginationActive}>1</span>
-                <span>2</span>
-                <span>3</span>
-                <span>...</span>
-                <span>10</span>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <span
+                    key={i}
+                    className={currentPage === i + 1 ? styles.paginationActive : ""}
+                    onClick={() => setCurrentPage(i + 1)}
+                  >
+                    {i + 1}
+                  </span>
+                ))}
               </div>
-              <button className={styles.paginationBtn}>Next</button>
+
+              <button
+                className={styles.paginationBtn}
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+              >
+                Next
+              </button>
             </div>
           )}
+
         </div>
         
       </div>

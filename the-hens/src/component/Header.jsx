@@ -21,6 +21,9 @@ import {
 } from "react-icons/fa";
 import { MdSupervisorAccount, MdNotifications, MdDashboard } from "react-icons/md";
 import { FaPhoenixFramework } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import {logout} from '../features/authSlice'
+import { useNavigate } from "react-router";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
@@ -30,6 +33,16 @@ const Header = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const dispatch = useDispatch()
+  const navigate = useNavigate()
+
+  const user = useSelector((state)=> state.auth.data);
+  console.log(user,"user Data")
+  
+
+    const displayName = user?.name || user?.username || user?.email || "Admin User";
+  const displayRole = user?.role || "Super Admin";
+
   
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
@@ -69,6 +82,12 @@ const Header = () => {
     { id: 4, text: "Performance report generated", time: "5 hours ago", unread: false, type: "info" }
   ];
 
+
+  const handleLogot = () => {
+      dispatch(logout());
+      navigate('/')
+  }
+
   const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
@@ -94,12 +113,7 @@ const Header = () => {
           </div>
         </div>
         
-        {/* <div className={styles.brandText}>
-          <h1 className={styles.brandName}>Hen's Co</h1>
-          <div className={styles.brandMeta}>
-            <span className={styles.brandSubtitle}>ADMIN CONSOLE</span>
-          </div>
-        </div> */}
+ 
 
         {/* Mobile Menu Button */}
         <button 
@@ -232,8 +246,8 @@ const Header = () => {
               <MdSupervisorAccount />
             </div>
             <div className={styles.userInfo}>
-              <span className={styles.userName}>Admin User</span>
-              <span className={styles.userRole}>Super Admin</span>
+              <span className={styles.userName}>{displayName}</span>
+              <span className={styles.userRole}>{displayRole}</span>
             </div>
             <FaCaretDown className={`${styles.chevron} ${open ? styles.chevronRotated : ''}`} />
           </button>
@@ -270,7 +284,7 @@ const Header = () => {
               </div>
               
               <div className={styles.dropdownFooter}>
-                <button className={styles.logoutButton}>
+                <button className={styles.logoutButton} onClick={handleLogot}>
                   <FaSignOutAlt />
                   <span>Sign Out</span>
                 </button>
