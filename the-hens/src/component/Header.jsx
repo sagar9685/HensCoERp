@@ -67,7 +67,7 @@ const Header = () => {
 
   const menuItems = [
     { key: "dashboard", icon: <MdDashboard />, label: "Dashboard" },
-    { key: "flocks", icon: <FaLayerGroup />, label: "Product" },
+    { key: "flocks", icon: <FaLayerGroup />, label: "Purchase" },
     { key: "problems", icon: <FaBug />, label: "Issues" },
     { key: "users", icon: <FaUsers />, label: "Users" },
     { key: "analytics", icon: <FaChartBar />, label: "Analytics" },

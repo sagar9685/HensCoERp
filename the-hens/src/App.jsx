@@ -4,6 +4,10 @@ import Login from "./component/Login";
 import Dashboard from "./pages/DashBoard";
 import UserPage from "./pages/HomePage"; //
 import ProtectedRoute from "./component/ProtectedRoute";
+ 
+import UserDataTable from "./component/user/UserDataTable";
+import UserForm from "./component/user/UserForm";
+import UserChart from "./component/user/UserChart";
 
 function App() {
   return (
@@ -28,8 +32,30 @@ function App() {
           element={
             <ProtectedRoute>
               <UserPage />
+
             </ProtectedRoute>
           } 
+        />
+
+        <Route path = '/datatable' element = {
+          <ProtectedRoute>
+          <UserDataTable/>
+        </ProtectedRoute>
+        }
+        />
+
+         <Route path = '/userForm' element = {
+          <ProtectedRoute>
+          <UserForm/>
+        </ProtectedRoute>
+        }
+        />
+
+         <Route path = '/chart' element = {
+          <ProtectedRoute>
+          <UserChart/>
+        </ProtectedRoute>
+        }
         />
 
         {/* Catch all */}
