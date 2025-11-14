@@ -1,5 +1,20 @@
 import { FaUserCircle } from 'react-icons/fa';
+import { useDispatch } from "react-redux";
+import {logout} from '../../features/authSlice'
+import { useNavigate } from "react-router";
+
+
+
 const UserNavbar = () => {
+
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+     const handleLogout = () => {
+       dispatch (logout())
+              navigate('/')
+     }
+    
     return(
         <>
           <nav className="navbar p-0 fixed-top d-flex flex-row">
@@ -140,7 +155,7 @@ const UserNavbar = () => {
                         <i className="mdi mdi-logout text-danger"></i>
                       </div>
                     </div>
-                    <div className="preview-item-content">
+                    <div className="preview-item-content" onClick={handleLogout}>
                       <p className="preview-subject mb-1">Log out</p>
                     </div>
                   </a>

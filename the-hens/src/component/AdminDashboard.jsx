@@ -31,6 +31,8 @@ const recordsPerPage = 10;
 const indexOfLastRecord = currentPage * recordsPerPage;
 const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
 const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
+ 
+
 
 const totalPages = Math.ceil(filteredData.length / recordsPerPage);
 
@@ -261,48 +263,55 @@ const totalPages = Math.ceil(filteredData.length / recordsPerPage);
                 </tr>
               </thead>
               <tbody>
-                {currentRecords.length > 0 ? (
-                  currentRecords.map((row, index) => (
-                    <tr key={row.id} className={index % 2 === 0 ? styles.evenRow : styles.oddRow}>
-                      <td>
-                        <span className={styles.productId}>{row.OrderID}</span>
-                      </td>
-                      <td className={styles.vaccineName}>{row.ProductName}</td>
-                      <td>{row.CustomerName}</td>
-                      <td>{row.Address}</td>
-                      <td>{row.Area}</td>
-                      <td>{row.ContactNo}</td>
-                      <td>{row.ProductType}</td>
-                      <td>{row.Weight}</td>
-                      <td>{row.Quantity}</td>
-                      <td>{row.Rate}</td>
-                      <td>{row.DeliveryCharge}</td>
-                      <td>{new Date(row.OrderDate).toISOString().split('T')[0]}</td>
-                      <td>{row.deliveryDate}</td>
-                      <td>{row.deliveryMan}</td>
-                      <td>
-                        <span className={styles.paymentModeBadge}>
-                          {row.paymentMode}
-                        </span>
-                      </td>
-                      <td>{row.orderTakenBy}</td>
-                      <td>{row.remark}</td>
-                      <td>
-                        <span className={`${styles.paymentStatus} ${getPaymentStatusClass(row.paymentStatus)}`}>
-                          {row.paymentStatus}
-                        </span>
-                      </td>
-                      <td className={styles.actions}>
-                        <button className={styles.actionBtn} title="View Details">
-                          <FaEye />
-                        </button>
-                        <button className={styles.actionBtn} title="Edit Product">
-                          <FaEdit />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
+              {currentRecords.length > 0 ? (
+  currentRecords.map((row, index) => (
+    <tr key={row.id} className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}>
+      <td>
+        <span className={styles.productId}>{row.OrderID}</span>
+      </td>
+      <td className={styles.productName}>{row.ProductName}</td>
+      <td className={styles.tableData}>{row.CustomerName}</td>
+      <td className={styles.tableData}>{row.Address}</td>
+      <td className={styles.tableData}>{row.Area}</td>
+      <td className={styles.tableData}>{row.ContactNo}</td>
+      <td className={styles.tableData}>{row.ProductType}</td>
+      <td className={styles.tableData}>{row.Weight}</td>
+      <td className={styles.tableData}>{row.Quantity}</td>
+      <td className={styles.tableData}>{row.Rate}</td>
+      <td className={styles.tableData}>{row.DeliveryCharge}</td>
+     <td className={styles.tableData}>
+            {new Date(row.OrderDate).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: '2-digit'
+            }).replace(',', '').replace(' ', '-')}
+          </td>
+
+      <td className={styles.tableData}>{row.deliveryDate}</td>
+      <td className={styles.tableData}>{row.deliveryMan}</td>
+      <td>
+        <span className={styles.paymentModeBadge}>
+          {row.paymentMode}
+        </span>
+      </td>
+      <td className={styles.tableData}>{row.orderTakenBy}</td>
+      <td className={styles.tableData}>{row.remark}</td>
+      <td>
+        <span className={`${styles.paymentStatus} ${getPaymentStatusClass(row.paymentStatus)}`}>
+          {row.paymentStatus}
+        </span>
+      </td>
+      <td className={styles.actions}>
+        <button className={styles.actionBtn} title="View Details">
+          <FaEye />
+        </button>
+        <button className={styles.actionBtn} title="Edit Product">
+          <FaEdit />
+        </button>
+      </td>
+    </tr>
+  ))
+) : (
                   <tr>
                     <td colSpan="19" className={styles.noData}>
                       <div className={styles.noDataContent}>

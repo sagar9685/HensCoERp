@@ -1,0 +1,350 @@
+/* Card Header */
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 0 0.5rem;
+}
+
+.cardTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0;
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.actionBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Table Wrapper */
+.tableWrapper {
+  background: white;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+/* Table Header */
+.dataTable thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.dataTable th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: none;
+}
+
+/* Table Body */
+.dataTable tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.dataTable tbody tr:hover {
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.dataTable td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+  border: none;
+  font-size: 0.875rem;
+}
+
+/* Specific Cell Styles */
+.productCell {
+  min-width: 150px;
+}
+
+.productInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.productInfo strong {
+  color: #2d3748;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.productInfo small {
+  color: #718096;
+  font-size: 0.75rem;
+}
+
+.customerInfo {
+  display: flex;
+  flex-direction: column;
+}
+
+.customerInfo strong {
+  color: #2d3748;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.customerInfo span {
+  color: #718096;
+  font-size: 0.75rem;
+}
+
+.contactCell {
+  color: #4a5568;
+  font-family: 'Courier New', monospace;
+  font-weight: 500;
+}
+
+.areaCell {
+  color: #667eea;
+  font-weight: 500;
+  background: #f7fafc;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  text-align: center;
+}
+
+.typeCell {
+  color: #718096;
+  font-style: italic;
+}
+
+.weightCell, .quantityCell {
+  text-align: center;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.amountCell {
+  min-width: 120px;
+}
+
+.amountInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.amountInfo div {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.amountInfo strong {
+  color: #2d3748;
+  font-size: 0.875rem;
+}
+
+.dateCell {
+  color: #4a5568;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.deliveryCell {
+  color: #667eea;
+  font-weight: 500;
+}
+
+/* Payment Mode */
+.paymentMode {
+  background: #edf2f7;
+  color: #4a5568;
+  padding: 0.375rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: center;
+  display: inline-block;
+  min-width: 80px;
+}
+
+/* Status Badge */
+.statusBadge {
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  min-width: 70px;
+  text-align: center;
+}
+
+.paid {
+  background: #c6f6d5;
+  color: #22543d;
+}
+
+.pending {
+  background: #fef5e7;
+  color: #744210;
+}
+
+.failed {
+  background: #fed7d7;
+  color: #742a2a;
+}
+
+/* Action Buttons */
+.actionButtons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.assignBtn {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+}
+
+.assignBtn:hover {
+  background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.viewBtn, .editBtn {
+  background: #edf2f7;
+  border: none;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewBtn:hover {
+  background: #667eea;
+  color: white;
+}
+
+.editBtn:hover {
+  background: #ed8936;
+  color: white;
+}
+
+/* Table Footer */
+.tableFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding: 1rem 0.5rem 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.tableInfo {
+  color: #718096;
+  font-size: 0.875rem;
+}
+
+.pagination {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.pageBtn {
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #4a5568;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+}
+
+.pageBtn:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.pageBtn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .tableWrapper {
+    overflow-x: auto;
+  }
+  
+  .dataTable {
+    min-width: 1200px;
+  }
+}
+
+@media (max-width: 768px) {
+  .cardHeader {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .headerActions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  
+  .tableFooter {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+  
+  .pagination {
+    width: 100%;
+    justify-content: center;
+  }
+}
