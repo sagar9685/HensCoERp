@@ -6,14 +6,13 @@ exports.assignOrder = async (req, res) => {
   const { 
     orderId, 
     deliveryManId, 
-    otherDeliveryManName, 
-    paymentModeId, 
+    otherDeliveryManName,  
     deliveryDate,
     remark 
   } = req.body;
 
   // Required fields check
-  if (!orderId || !paymentModeId || !deliveryDate) {
+  if (!orderId  || !deliveryDate) {
     return res.status(400).json({ message: "Required fields missing" });
   }
 
@@ -29,15 +28,15 @@ exports.assignOrder = async (req, res) => {
       .input("OrderID", sql.Int, orderId)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
-      .input("PaymentModeID", sql.Int, paymentModeId)
+     
       .input("DeliveryDate", sql.Date, deliveryDate)
       .input("Remark", sql.NVarChar, remark || null)
       .query(`
         INSERT INTO AssignedOrders 
-          (OrderID, DeliveryManID, OtherDeliveryManName, PaymentModeID, DeliveryDate, Remark)
+          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark)
           
         VALUES 
-          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @PaymentModeID, @DeliveryDate, @Remark)
+          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark)
       `);
 
     res.status(201).json({ message: "Order assigned successfully" });
@@ -56,37 +55,20 @@ exports.getAssignedOrders = async (req, res) => {
     const pool = await poolPromise;
 
     const result = await pool.request().query(`
-     SELECT 
-    AO.AssignID,
-    AO.OrderID,
+        SELECT 
+    O.*,
+    A.DeliveryDate,
+    A.DeliveryManID,
+    DM.Name,    
+    A.Remark,
+    A.OrderID AS AssignedOrderID
+FROM Orders O
+LEFT JOIN AssignedOrders A
+    ON O.OrderID = A.OrderID
+LEFT JOIN DeliveryMen DM
+    ON A.DeliveryManID = DM.DeliveryManID
+ORDER BY O.OrderID DESC;
 
-    -- Delivery Man: show dropdown name or other name
-    COALESCE(DM.Name, AO.OtherDeliveryManName) AS DeliveryManName,
-
-    PM.ModeName AS PaymentMode,
-    AO.DeliveryDate,
-    AO.Remark,
-    AO.AssignedAt,
-
-    -- Order details
-    O.ProductName,
-    O.ProductType,
-    O.Weight,
-    O.Quantity,
-    O.Rate,
-    O.DeliveryCharge,
-    O.CustomerName,
-    O.Address,
-    O.Area,
-    O.ContactNo,
-    O.OrderDate
-
-FROM AssignedOrders AO
-LEFT JOIN DeliveryMen DM ON AO.DeliveryManID = DM.DeliveryManID
-JOIN PaymentModes PM ON AO.PaymentModeID = PM.PaymentModeID
-JOIN Orders O ON AO.OrderID = O.OrderID
-
-ORDER BY AO.AssignID DESC;
     `);
 
     res.status(200).json(result.recordset);

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styles from './AssignOrderModal.module.css';
-import { fetchDeliveryMen, assignOrder } from '../../features/assignedOrderSlice';
+import { fetchDeliveryMen } from '../../features/assignedOrderSlice';
 import { useDispatch, useSelector } from 'react-redux';
 
-const AssignOrderModal = ({ isOpen, onClose, order }) => {
+const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
   const dispatch = useDispatch();
 
   const { deliveryMen } = useSelector((state) => state.assignedOrders);
@@ -39,23 +39,26 @@ const AssignOrderModal = ({ isOpen, onClose, order }) => {
   };
 
   const handleSubmit = () => {
-    const payload = {
-      orderId: order.OrderID,
-      deliveryManId:
-        formData.deliveryManId === "other"
-          ? null
-          : Number(formData.deliveryManId),
-      otherDeliveryManName:
-        formData.deliveryManId === "other"
-          ? formData.otherDeliveryManName
-          : null,
-      deliveryDate: formData.deliveryDate,
-      remark: formData.remark,
-    };
-
-    dispatch(assignOrder(payload));
-    onClose();
+  const payload = {
+    orderId: order.OrderID,
+    deliveryManId:
+      formData.deliveryManId === "other"
+        ? null
+        : Number(formData.deliveryManId),
+    otherDeliveryManName:
+      formData.deliveryManId === "other"
+        ? formData.otherDeliveryManName
+        : null,
+    deliveryDate: formData.deliveryDate,
+    remark: formData.remark,
   };
+
+  // send data back to UserForm
+  onSubmit(payload)
+
+  
+};
+
 
   if (!isOpen || !order) return null;
 
