@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
 import { fetchOrder } from "../../features/orderSlice";
 import AssignOrderModal from "./AssignOrderModal";
+import UserCompleteOrderModal from "./UserCompleteOrderModal";
 import { assignOrder, fetchAssignOrder } from "../../features/assignedOrderSlice";
 import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
@@ -16,6 +17,8 @@ const UserForm = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [confirmOrder, setConfirmOrder] = useState(null);
+  const [isCompleteModalOpen, setCompleteModalOpen] = useState(false);
 
   useEffect(() => {
     dispatch(fetchOrder());
@@ -37,12 +40,40 @@ const UserForm = () => {
   const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
   const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
 
-  const getPaymentStatusClass = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'paid': return styles.paid;
-      case 'pending': return styles.pending;
-      case 'failed': return styles.failed;
-      default: return '';
+  const handleStatusChange = (row, newStatus) => {
+    if (newStatus === "Complete") {
+      setConfirmOrder(row);
+      setCompleteModalOpen(true);
+    } else if (newStatus === "Pending") {
+      // Handle status change back to pending if needed
+      if (window.confirm("Are you sure you want to mark this order as pending?")) {
+        updateOrderStatusHandler(row, "Pending");
+      }
+    }
+  };
+
+  const handleCompleteOrder = async (payload) => {
+    try {
+      await dispatch(updateOrderStatus(payload)).unwrap();
+      toast.success("Order marked as completed successfully!");
+      dispatch(fetchAssignOrder());
+      handleCloseCompleteModal();
+    } catch (error) {
+      toast.error("Failed to update order status", error);
+    }
+  };
+
+  const updateOrderStatusHandler = async (order, status) => {
+    try {
+      await dispatch(updateOrderStatus({
+        orderId: order.OrderID,
+        assignedOrderId: order.AssignedOrderID,
+        status: status
+      })).unwrap();
+      toast.success(`Order status updated to ${status} successfully!`);
+      dispatch(fetchAssignOrder());
+    } catch (error) {
+      toast.error("Failed to update order status", error);
     }
   };
 
@@ -60,6 +91,11 @@ const UserForm = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedOrder(null);
+  };
+
+  const handleCloseCompleteModal = () => {
+    setCompleteModalOpen(false);
+    setConfirmOrder(null);
   };
 
   // Generate page numbers with ellipsis
@@ -117,12 +153,11 @@ const UserForm = () => {
                       <div className={styles.cardHeader}>
                         <h4 className={styles.cardTitle}>Orders List</h4>
                         <div className={styles.headerActions}>
-                         <ExcelExport data={assignedOrders} fileName="Orders_List.xlsx">
-                        <button className={`btn btn-success ${styles.actionBtn}`}>
-                          <i className="mdi mdi-download"></i> Export
-                        </button>
-                      </ExcelExport>
-
+                          <ExcelExport data={assignedOrders} fileName="Orders_List.xlsx">
+                            <button className={`btn btn-success ${styles.actionBtn}`}>
+                              <i className="mdi mdi-download"></i> Export
+                            </button>
+                          </ExcelExport>
                         </div>
                       </div>
 
@@ -210,11 +245,15 @@ const UserForm = () => {
                                         {row.Remark || "-"}
                                       </span>
                                     </td>
-
                                     <td>
-                                      <span className={`${styles.statusBadge} ${getPaymentStatusClass(row.PaymentStatus)}`}>
-                                        {row.PaymentStatus}
-                                      </span>
+                                      <select
+                                        className={styles.statusDropdown}
+                                        value={row.DeliveryStatus}
+                                        onChange={(e) => handleStatusChange(row, e.target.value)}
+                                      >
+                                        <option value="Pending">Pending</option>
+                                        <option value="Complete">Complete</option>
+                                      </select>
                                     </td>
 
                                     <td>
@@ -312,6 +351,13 @@ const UserForm = () => {
         onClose={handleCloseModal}
         onSubmit={handleAssignSubmit}
         order={selectedOrder}
+      />
+
+      <UserCompleteOrderModal
+        isOpen={isCompleteModalOpen}
+        onClose={handleCloseCompleteModal}
+        onSubmit={handleCompleteOrder}
+        order={confirmOrder}
       />
     </>
   );
