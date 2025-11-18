@@ -55,19 +55,47 @@ exports.getAssignedOrders = async (req, res) => {
     const pool = await poolPromise;
 
     const result = await pool.request().query(`
-        SELECT 
+      SELECT 
     O.*,
+    A.AssignID,
     A.DeliveryDate,
     A.DeliveryManID,
-    DM.Name,    
+    DM.Name AS DeliveryManName,
     A.Remark,
-    A.OrderID AS AssignedOrderID
+    A.DeliveryStatus AS OrderStatus,
+    A.ActualDeliveryDate,
+
+    -- Payment Summary in one column
+    'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+    ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+    ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+    ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+    ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END), 0) AS VARCHAR(20))
+    AS PaymentSummary,
+
+    -- Total Payment
+    ISNULL(SUM(OP.Amount), 0) AS TotalPaid
+
 FROM Orders O
-LEFT JOIN AssignedOrders A
+LEFT JOIN AssignedOrders A 
     ON O.OrderID = A.OrderID
-LEFT JOIN DeliveryMen DM
+LEFT JOIN DeliveryMen DM 
     ON A.DeliveryManID = DM.DeliveryManID
+LEFT JOIN OrderPayments OP
+    ON A.AssignID = OP.AssignID
+LEFT JOIN PaymentModes PM
+    ON OP.PaymentModeID = PM.PaymentModeID
+
+GROUP BY 
+    O.OrderID, O.ProductName, O.ProductType, O.CustomerName, 
+    O.ContactNo, O.Address, O.Area, O.Weight, O.Quantity, 
+    O.Rate, O.DeliveryCharge, O.OrderDate,
+
+    A.AssignID, A.DeliveryDate, A.DeliveryManID,
+    DM.Name, A.Remark, A.DeliveryStatus, A.ActualDeliveryDate
+
 ORDER BY O.OrderID DESC;
+
 
     `);
 

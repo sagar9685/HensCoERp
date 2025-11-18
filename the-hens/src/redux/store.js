@@ -6,6 +6,7 @@
  import authReducer from '../features/authSlice'
  import assignedOrderReducer from '../features/assignedOrderSlice'
  import paymentModeReducer from '../features/paymentModeSlice'
+ import orderCompletionReducer from '../features/orderCompletionSlice'
  
  const store = configureStore ({
     reducer : {
@@ -15,7 +16,7 @@
         auth : authReducer,
          assignedOrders: assignedOrderReducer,
          paymentMode : paymentModeReducer,
-        
+        orderCompletion: orderCompletionReducer,
     }
  })
 

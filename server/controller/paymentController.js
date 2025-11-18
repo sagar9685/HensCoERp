@@ -1,38 +1,77 @@
 const { sql, poolPromise } = require("../utils/db");
 
+exports.completeOrder = async (req, res) => {
+  const {
+    orderId,
+    assignedOrderId,
+    status,
+    deliveryDate,
+    remarks,
+    paymentSettlement
+  } = req.body;
 
+  const { cashAmount, upiAmount, cardAmount } = paymentSettlement;
 
-exports.savePayments = async (req, res) => {
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
   try {
-    const { OrderID, AssignedOrderID, payments } = req.body;
+    await transaction.begin();
 
-    if (!OrderID || !AssignedOrderID || !payments?.length) {
-      return res.status(400).json({ message: "Invalid request body" });
-    }
+    const request = new sql.Request(transaction);
 
-    const pool = await poolPromise;
+    // 1️⃣ Update AssignedOrders table
+    await request
+      .input("Status", sql.VarChar, status)
+      .input("Remarks", sql.VarChar, remarks || null)
+      .input("ActualDate", sql.Date, deliveryDate || null)
+      .input("AssignedOrderID", sql.Int, assignedOrderId)
+      .query(`
+        UPDATE AssignedOrders
+        SET DeliveryStatus = @Status,
+            CompletionRemarks = @Remarks,
+            ActualDeliveryDate = @ActualDate
+        WHERE AssignID = @AssignedOrderID
+      `);
 
-    for (let p of payments) {
-      await pool.request()
-        .input("OrderID", sql.Int, OrderID)
-        .input("AssignedOrderID", sql.Int, AssignedOrderID)
-        .input("PaymentModeID", sql.Int, p.PaymentModeID)
-        .input("Amount", sql.Decimal(10, 2), p.Amount)
-        .query(`
-          INSERT INTO OrderPayments (OrderID, AssignedOrderID, PaymentModeID, Amount)
-          VALUES (@OrderID, @AssignedOrderID, @PaymentModeID, @Amount)
-        `);
-    }
+    // 2️⃣ Insert Payment rows (only once)
+    const insertPayment = async (mode, amount) => {
+      if (amount > 0) {
+        await new sql.Request(transaction)
+          .input("OrderID", sql.Int, orderId)
+          .input("AssignID", sql.Int, assignedOrderId)
+          .input("PaymentModeID", sql.Int, mode)
+          .input("Amount", sql.Decimal(10, 2), amount)
+          .query(`
+            INSERT INTO OrderPayments
+              (OrderID, AssignID, PaymentModeID, Amount, CreatedAt)
+            VALUES
+              (@OrderID, @AssignID, @PaymentModeID, @Amount, GETDATE());
+          `);
+      }
+    };
 
-    return res.json({ message: "Payments saved successfully" });
+    await insertPayment(1, cashAmount); // Cash
+    await insertPayment(2, upiAmount);  // UPI
+    await insertPayment(3, cardAmount); // Card
 
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "Order completed & payments stored successfully!"
+    });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ message: "Failed to save payments", error });
+    console.error(error);
+    await transaction.rollback();
+    res.status(500).json({
+      message: "Failed to complete order",
+      error: error.message
+    });
   }
 };
 
- 
+
+// 📌 GET all payment modes
 exports.getPaymentModes = async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -42,5 +81,3 @@ exports.getPaymentModes = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-

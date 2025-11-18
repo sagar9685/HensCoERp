@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import styles from './CompleteOrderModal.module.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPaymentModes } from '../../features/paymentModeSlice';
-
-const UserCompleteOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
+import { completeOrder, resetOrderState } from "../../features/orderCompletionSlice";
+const UserCompleteOrderModal = ({ isOpen, onClose, order,  }) => {
   const dispatch = useDispatch();
+  const { loading, success } = useSelector(state => state.orderCompletion);
   const paymentModes = useSelector((state) => state.paymentMode?.list || []);
     console.log(paymentModes,"pay")
+
   const totalAmount = order
     ? Number(order.Rate) + Number(order.DeliveryCharge)
     : 0;
@@ -26,6 +28,15 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
   useEffect(() => {
     dispatch(fetchPaymentModes());
   }, [dispatch]);
+
+  useEffect(() => {
+  if (success) {
+    alert("Order Completed Successfully!");
+    onClose();
+    dispatch(resetOrderState());
+  }
+}, [success]);
+
 
   useEffect(() => {
     if (order) {
@@ -52,21 +63,22 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
 
  const handlePaymentMethodToggle = (method) => {
   setSelectedPaymentMethods((prev) => {
+    let updated;
+
     if (prev.includes(method)) {
-      // Remove method and reset its amount
-      setFormData((prevData) => ({
-        ...prevData,
-        [`${method}Amount`]: '0',
-      }));
-      return prev.filter((m) => m !== method);
+      updated = prev.filter((m) => m !== method);
     } else {
-      // Add method and initialize its amount to 0
-      setFormData((prevData) => ({
-        ...prevData,
-        [`${method}Amount`]: '0',
-      }));
-      return [...prev, method];
+      updated = [...prev, method];
     }
+
+    // recalc remaining
+    const totalPaid = updated.reduce(
+      (sum, m) => sum + Number(formData[`${m}Amount`] || 0),
+      0
+    );
+    setRemainingAmount(totalAmount - totalPaid);
+
+    return updated;
   });
 };
 
@@ -117,24 +129,23 @@ const handlePaymentAmountChange = (method, value) => {
 
   
 
-  const handleSubmit = () => {
-    const payload = {
-      orderId: order.OrderID,
-      assignedOrderId: order.AssignedOrderID,
-      status: "Complete",
-      deliveryDate: formData.deliveryDate,
-      remarks: formData.remarks,
-      paymentSettlement: {
-        cashAmount: Number(formData.cashAmount || 0),
-        upiAmount: Number(formData.upiAmount || 0),
-        cardAmount: Number(formData.cardAmount || 0),
-        totalPaid: getTotalPaid(),
-        remainingAmount: remainingAmount
-      }
-    };
-
-    onSubmit(payload);
+ 
+const handleSubmit = () => {
+  const payload = {
+    orderId: order.OrderID,
+    assignedOrderId: order.AssignedOrderID,
+    status: "Complete",
+    deliveryDate: formData.deliveryDate,
+    remarks: formData.remarks,
+    paymentSettlement: {
+      cashAmount: Number(formData.cashAmount || 0),
+      upiAmount: Number(formData.upiAmount || 0),
+      cardAmount: Number(formData.cardAmount || 0)
+    }
   };
+
+  dispatch(completeOrder(payload));
+};
 
   if (!isOpen || !order) return null;
 
@@ -286,8 +297,8 @@ const handlePaymentAmountChange = (method, value) => {
            <div className={`${styles.formGroup} ${styles.fullWidth}`}>
   <div className={styles.paymentSummary}>
     <div className={styles.summaryItem}>
-      <span>Total Amount:</span>
-      <span className={styles.totalAmount}>₹{totalAmount}</span>
+      <span style={{color: 'black'}}>Total Amount:</span>
+      <span className={styles.totalAmount} style={{color: 'black'}}>₹{totalAmount}</span>
     </div>
 
     {/* Individual Payment Method Breakdown */}
@@ -297,38 +308,39 @@ const handlePaymentAmountChange = (method, value) => {
       
       return (
         <div key={method} className={styles.summaryItem}>
-          <span>
-            {method === 'cash' && <i className="mdi mdi-cash" style={{marginRight: '8px'}}></i>}
-            {method === 'upi' && <i className="mdi mdi-cellphone" style={{marginRight: '8px'}}></i>}
-            {method === 'card' && <i className="mdi mdi-credit-card" style={{marginRight: '8px'}}></i>}
+          <span style={{color: 'black'}}>
+            {method === 'cash' && <i className="mdi mdi-cash" style={{marginRight: '8px', color: 'black'}}></i>}
+            {method === 'upi' && <i className="mdi mdi-cellphone" style={{marginRight: '8px', color: 'black'}}></i>}
+            {method === 'card' && <i className="mdi mdi-credit-card" style={{marginRight: '8px', color: 'black'}}></i>}
             {method.charAt(0).toUpperCase() + method.slice(1)} Paid:
           </span>
-          <span className={styles.methodAmount}>₹{amount}</span>
+          <span className={styles.methodAmount} style={{color: 'black'}}>₹{amount}</span>
         </div>
       );
     })}
 
     {/* Total Paid */}
     <div className={styles.summaryItem}>
-      <span>Total Paid:</span>
-      <span className={styles.paidAmount}>₹{getTotalPaid()}</span>
+      <span style={{color: 'black'}}>Total Paid:</span>
+      <span className={styles.paidAmount} style={{color: 'black'}}>₹{getTotalPaid()}</span>
     </div>
 
     {/* Remaining Amount */}
     <div className={styles.summaryItem}>
-      <span>Remaining:</span>
+      <span style={{color: 'black'}}>Remaining:</span>
       <span
         className={`${styles.remainingAmount} ${
           remainingAmount > 0 ? styles.remaining : styles.fullyPaid
         }`}
+        style={{color: remainingAmount > 0 ? '#d32f2f' : '#388e3c'}}
       >
         ₹{remainingAmount}
       </span>
     </div>
 
     {remainingAmount > 0 && (
-      <div className={styles.remainingHint}>
-        <i className="mdi mdi-information"></i>
+      <div className={styles.remainingHint} style={{color: 'black'}}>
+        <i className="mdi mdi-information" style={{color: 'black'}}></i>
         Select payment methods and distribute the remaining amount
       </div>
     )}
@@ -337,7 +349,7 @@ const handlePaymentAmountChange = (method, value) => {
     <div className={styles.paymentStatus}>
       <div className={`${styles.statusIndicator} ${
         remainingAmount === 0 ? styles.fullyPaid : styles.partiallyPaid
-      }`}>
+      }`} style={{color: remainingAmount === 0 ? '#388e3c' : '#f57c00'}}>
         <i className={`mdi mdi-${
           remainingAmount === 0 ? 'check-circle' : 'alert-circle'
         }`}></i>
@@ -373,14 +385,14 @@ const handlePaymentAmountChange = (method, value) => {
             Cancel
           </button>
 
-          <button
-            className={styles.completeButton}
-            onClick={handleSubmit}
-            disabled={remainingAmount !== 0}
-          >
-            <i className="mdi mdi-check-circle"></i>
-            {remainingAmount === 0 ? 'Mark as Complete' : `₹${remainingAmount} Remaining`}
-          </button>
+         <button
+  className={styles.completeButton}
+  onClick={handleSubmit}
+  disabled={remainingAmount !== 0 || loading}
+>
+  {loading ? "Processing..." : "Mark as Complete"}
+</button>
+
         </div>
 
       </div>
