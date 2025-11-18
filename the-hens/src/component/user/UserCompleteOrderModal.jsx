@@ -292,51 +292,51 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
               </div>
 
               {/* Summary */}
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                <div className={styles.paymentSummary}>
-                  <div className={styles.summaryItem}>
-                    <span>Total Amount:</span>
-                    <span className={styles.totalAmount}>₹{totalAmount}</span>
-                  </div>
+             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+  <div className={styles.paymentSummary}>
+    <div className={styles.summaryItem}>
+      <span>Total Amount:</span>
+      <span className={styles.totalAmount}>₹{totalAmount}</span>
+    </div>
 
-                  {selectedPaymentMethods.map(modeName => {
-                    const amount = Number(formData[makeAmountKey(modeName)] || 0);
-                    if (amount <= 0) return null;
-                    return (
-                      <div key={modeName} className={styles.summaryItem}>
-                        <span>{modeName} Paid:</span>
-                        <span className={styles.methodAmount}>₹{amount}</span>
-                      </div>
-                    );
-                  })}
+    {selectedPaymentMethods.map(modeName => {
+      const amount = Number(formData[makeAmountKey(modeName)] || 0);
+      if (amount <= 0) return null;
+      return (
+        <div key={modeName} className={styles.summaryItem}>
+          <span>{modeName} Paid:</span>
+          <span className={styles.methodAmount}>₹{amount}</span>
+        </div>
+      );
+    })}
 
-                  <div className={styles.summaryItem}>
-                    <span>Total Paid:</span>
-                    <span className={styles.paidAmount}>₹{getTotalPaid()}</span>
-                  </div>
+    <div className={styles.summaryItem}>
+      <span>Total Paid:</span>
+      <span className={styles.paidAmount}>₹{getTotalPaid()}</span>
+    </div>
 
-                  <div className={styles.summaryItem}>
-                    <span>Remaining:</span>
-                    <span className={`${styles.remainingAmount}`} style={{ color: remainingAmount > 0 ? '#d32f2f' : '#388e3c' }}>
-                      ₹{remainingAmount}
-                    </span>
-                  </div>
+    <div className={styles.summaryItem}>
+      <span>Remaining:</span>
+      <span className={`${styles.remainingAmount} ${remainingAmount > 0 ? styles.remaining : styles.fullyPaid}`}>
+        ₹{remainingAmount}
+      </span>
+    </div>
 
-                  {remainingAmount > 0 && (
-                    <div className={styles.remainingHint}>
-                      <i className="mdi mdi-information"></i>
-                      Select payment methods and distribute the remaining amount
-                    </div>
-                  )}
+    {remainingAmount > 0 && (
+      <div className={styles.remainingHint}>
+        <i className="mdi mdi-information"></i>
+        Select payment methods and distribute the remaining amount
+      </div>
+    )}
 
-                  <div className={styles.paymentStatus}>
-                    <div className={`${styles.statusIndicator}`}>
-                      <i className={`mdi mdi-${remainingAmount === 0 ? 'check-circle' : 'alert-circle'}`}></i>
-                      {remainingAmount === 0 ? 'Fully Paid' : 'Partially Paid'}
-                    </div>
-                  </div>
-                </div>
-              </div>
+    <div className={styles.paymentStatus}>
+      <div className={`${styles.statusIndicator} ${remainingAmount === 0 ? styles.fullyPaid : styles.partiallyPaid}`}>
+        <i className={`mdi mdi-${remainingAmount === 0 ? 'check-circle' : 'alert-circle'}`}></i>
+        {remainingAmount === 0 ? 'Fully Paid' : 'Partially Paid'}
+      </div>
+    </div>
+  </div>
+</div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                 <label className={styles.formLabel}>

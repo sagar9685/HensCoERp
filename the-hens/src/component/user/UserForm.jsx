@@ -23,6 +23,21 @@ const UserForm = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
+  const formatPaymentSummary = (summary) => {
+  if (!summary) return "-";
+
+  
+  return summary
+    .split("|")
+    .map(item => item.trim())
+    .filter(item => {
+      const amount = parseFloat(item.split(":")[1]);
+      return amount > 0;
+    })
+    .join(" | ");
+};
+
+
   useEffect(() => {
     dispatch(fetchOrder());
   }, [dispatch]);
@@ -267,7 +282,7 @@ const UserForm = () => {
                                 <th>Remark</th>
                                 <th>Delivery Status</th>
                                 <th>Payment Mode</th>
-                                <th>Actions</th>
+                                {/* <th>Actions</th> */}
                               </tr>
                             </thead>
                             <tbody>
@@ -304,7 +319,7 @@ const UserForm = () => {
                                         {row.ProductType}
                                       </span>
                                     </td>
-                                    <td className={styles.weightCell}>{row.Weight}kg</td>
+                                    <td className={styles.weightCell}>{row.Weight}</td>
                                     <td className={styles.quantityCell}>{row.Quantity}</td>
 
                                     <td className={styles.amountCell}>
@@ -363,54 +378,28 @@ const UserForm = () => {
                                           Completed
                                         </span>
                                       ) : (
-                                        <select
-                                          className={styles.statusDropdown}
-                                          value={row.OrderStatus}
-                                          onChange={(e) => handleStatusChange(row, e.target.value)}
-                                        >
-                                          <option value="Pending">Pending</option>
-                                          <option value="Complete">Complete</option>
-                                        </select>
+                                       <select
+  className={styles.statusDropdown}
+  value={row.DeliveryStatus}
+  onChange={(e) => handleStatusChange(row, e.target.value)}
+  disabled={!row.AssignID || row.OrderStatus === "Complete"}  
+>
+  <option value="Pending">Pending</option>
+  <option value="In Progress">In Progress</option>
+  <option value="Complete">Complete</option>
+</select>
+
                                       )}
                                     </td>
 
                                     <td>
-                                      <span className={`${styles.paymentMode} ${
-                                        row.PaymentSummary === 'Cash' ? styles.cash : styles.online
-                                      }`}>
-                                        {row.PaymentSummary || "-"}
-                                      </span>
-                                    </td>
+  <span className={styles.paymentMode}>
+    {formatPaymentSummary(row.PaymentSummary)}
+  </span>
+</td>
 
-                                    {/* Actions Column */}
-                                    <td>
-                                      <div className={styles.actionButtons}>
-                                        <button 
-                                          className={`${styles.assignBtn} ${
-                                            (row.DeliveryManID || row.OrderStatus === "Complete") 
-                                              ? styles.disabledBtn 
-                                              : ""
-                                          }`}
-                                          onClick={() => {
-                                            setSelectedOrder(row);
-                                            setIsModalOpen(true);
-                                          }}
-                                          disabled={row.AssignedOrderID || row.DeliveryStatus === "Complete"}
-                                          title={row.AssignedOrderID ? "Already assigned" : "Assign delivery man"}
-                                        >
-                                          <i className="mdi mdi-truck-delivery"></i>
-                                          {row.AssignedOrderID ? "Assigned" : "Assign"}
-                                        </button>
 
-                                        <button className={styles.viewBtn} title="View details">
-                                          <i className="mdi mdi-eye"></i>
-                                        </button>
-
-                                        <button className={styles.editBtn} title="Edit order">
-                                          <i className="mdi mdi-pencil"></i>
-                                        </button>
-                                      </div>
-                                    </td>
+                                  
                                   </tr>
                                 ))
                               ) : (
