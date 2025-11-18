@@ -9,15 +9,14 @@ exports.completeOrder = async (req, res) => {
     remarks,
     paymentSettlement
   } = req.body;
-
-  const { cashAmount, upiAmount, cardAmount } = paymentSettlement;
+  console.log("BODY RECEIVED ===>", req.body);
+console.log("PAYMENT SETTLEMENT LIST ===>", paymentSettlement);
 
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
   try {
     await transaction.begin();
-
     const request = new sql.Request(transaction);
 
     // 1️⃣ Update AssignedOrders table
@@ -34,13 +33,27 @@ exports.completeOrder = async (req, res) => {
         WHERE AssignID = @AssignedOrderID
       `);
 
-    // 2️⃣ Insert Payment rows (only once)
-    const insertPayment = async (mode, amount) => {
+    // 2️⃣ Fetch all Payment Modes (dynamic)
+    const modeRequest = new sql.Request(transaction);
+    const modeResult = await modeRequest.query(`
+      SELECT PaymentModeID, ModeName FROM PaymentModes
+    `);
+
+    const paymentModes = modeResult.recordset;
+
+    // 3️⃣ Insert dynamic payment rows
+    for (const [mode, amount] of Object.entries(paymentSettlement)) {
       if (amount > 0) {
+        const modeData = paymentModes.find(
+          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase()
+        );
+
+        if (!modeData) continue;
+
         await new sql.Request(transaction)
           .input("OrderID", sql.Int, orderId)
           .input("AssignID", sql.Int, assignedOrderId)
-          .input("PaymentModeID", sql.Int, mode)
+          .input("PaymentModeID", sql.Int, modeData.PaymentModeID)
           .input("Amount", sql.Decimal(10, 2), amount)
           .query(`
             INSERT INTO OrderPayments
@@ -49,17 +62,14 @@ exports.completeOrder = async (req, res) => {
               (@OrderID, @AssignID, @PaymentModeID, @Amount, GETDATE());
           `);
       }
-    };
-
-    await insertPayment(1, cashAmount); // Cash
-    await insertPayment(2, upiAmount);  // UPI
-    await insertPayment(3, cardAmount); // Card
+    }
 
     await transaction.commit();
 
     res.status(200).json({
       message: "Order completed & payments stored successfully!"
     });
+
   } catch (error) {
     console.error(error);
     await transaction.rollback();
@@ -69,6 +79,7 @@ exports.completeOrder = async (req, res) => {
     });
   }
 };
+
 
 
 // 📌 GET all payment modes
