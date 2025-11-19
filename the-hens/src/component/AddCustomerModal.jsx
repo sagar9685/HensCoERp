@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes, FaUserPlus, FaUser, FaPaperPlane, FaMapMarkerAlt, FaPhone } from 'react-icons/fa';
 import styles from './AddCustomerModal.module.css';
-import { useDispatch } from 'react-redux'
-import { addCustomerData } from '../features/cutomerSlice';
+import { useDispatch, useSelector } from 'react-redux'
+import { addCustomerData, fetchArea } from '../features/cutomerSlice';
 import { toast } from "react-toastify";
  
 
@@ -17,8 +17,16 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
   });
 
   const [errors, setErrors] = useState({});
+  
+  const areaTypes = useSelector((state)=>state.customer.areaData);
+  console.log(areaTypes,"area")
 
   const dispatch = useDispatch();
+
+  useEffect(()=> {
+    dispatch(fetchArea());
+  },[dispatch])
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -103,6 +111,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
 
   if (!isOpen) return null;
 
+
   return (
     <div className={styles.modalOverlay} onClick={handleClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
@@ -173,14 +182,27 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                 <label className={styles.inputLabel}>
                   Area <span className={styles.required}>*</span>
                 </label>
-                <input
-                  type="text"
+                <select
+                
                   name="area"
                   value={formData.area}
                   onChange={handleChange}
                   placeholder="Enter area/location"
                   className={styles.inputField}
-                />
+                >
+                  <option value=''> select area</option>
+                  {Array.isArray(areaTypes) && areaTypes.length > 0 ? (
+  areaTypes.map((item) => (
+    <option key={item.areaId} value={item.areaName}>
+      {item.areaName}
+    </option>
+  ))
+) : (
+  <option disabled>Loading areas...</option>
+)}
+
+
+                  </select>
                 {errors.area && <span className={styles.error}>{errors.area}</span>}
               </div>
 

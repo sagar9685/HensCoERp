@@ -281,6 +281,7 @@ const UserForm = () => {
                                 <th>Delivery Man</th>
                                 <th>Remark</th>
                                 <th>Delivery Status</th>
+                                  <th>Assign Status</th>
                                 <th>Payment Mode</th>
                                 {/* <th>Actions</th> */}
                               </tr>
@@ -393,6 +394,20 @@ const UserForm = () => {
                                     </td>
 
                                     <td>
+  <button
+    className="btn btn-primary btn-sm"
+    onClick={() => {
+      setSelectedOrder(row);
+      setIsModalOpen(true);
+    }}
+    disabled={row.OrderStatus === "Complete"}
+  >
+    Assign
+  </button>
+</td>
+
+
+                                    <td>
   <span className={styles.paymentMode}>
     {formatPaymentSummary(row.PaymentSummary)}
   </span>
@@ -453,6 +468,7 @@ const UserForm = () => {
                             Next <i className="mdi mdi-chevron-right"></i>
                           </button>
                         </div>
+                        
                       </div>
                     </div>
                   </div>

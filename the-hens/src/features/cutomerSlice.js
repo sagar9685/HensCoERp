@@ -5,6 +5,7 @@ import axios from "axios"
 const initialState = {
     isLoading : false,
     data : [],
+    areaData : [],
     customerSuggestions: null,
     error : '',
 }
@@ -28,8 +29,7 @@ export const searchCustomers = createAsyncThunk(
   "customer/searchCustomers",
   async (name, thunkAPI) => {
     try {
-        console.log("Calling API for:", name); 
-        console.log("API_BASE_URL:", import.meta.env.VITE_API_BASE_URL);
+         
 
       const res = await axios.get(`${API_BASE_URL}/api/customers/search?name=${name}`);
       console.log("Response from backend:", res.data);
@@ -40,6 +40,16 @@ export const searchCustomers = createAsyncThunk(
   }
 );
 
+
+export const fetchArea = createAsyncThunk("area",async(_,thunkAPI)=>{
+  try{
+      const res = await axios.get(`${API_BASE_URL}/api/area`);
+      return res.data;
+  } catch(err) {
+    return thunkAPI.rejectWithValue(err.response?.data || "Search failed");
+  }
+
+})
 
 
 const customerSlice = createSlice({
@@ -63,7 +73,7 @@ const customerSlice = createSlice({
             state.isLoading = true
         });
 
-           // --- Fetch Customer By Name ---
+           //  Fetch Customer By Name 
     builder
       .addCase(searchCustomers.pending, (state) => {
         state.isLoading = true;
@@ -81,7 +91,19 @@ const customerSlice = createSlice({
         state.error = action.payload;
         state.customerData = null;
       });
-
+          // fetch area 
+      builder
+      .addCase(fetchArea.pending, (state)=> {
+        state.isLoading = true;
+      })
+      .addCase(fetchArea.fulfilled, (state,action)=> {
+        state.isLoading = false;
+        state.areaData = action.payload;
+      })
+      .addCase(fetchArea.rejected, (state,action)=> {
+        state.isLoading=false;
+        state.error = action.payload
+      })
     }
 })
 
