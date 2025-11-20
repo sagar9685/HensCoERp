@@ -13,7 +13,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   console.log("ORDER RECEIVED IN MODAL ===>", order);
 
   const totalAmount = order
-    ? Number(order.Rate || 0) + Number(order.DeliveryCharge || 0)
+    ? Number(order.GrandItemTotal || 0) + Number(order.DeliveryCharge || 0)
     : 0;
 
   const [formData, setFormData] = useState({

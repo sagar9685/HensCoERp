@@ -1,67 +1,71 @@
 const { sql, poolPromise } = require('../utils/db');
 
 exports.addOrder = async (req, res) => {
-  console.log('add order',req.body)
   try {
     const {
-      ProductName,
-      ProductType,
-      Weight,
-      Quantity,
-      Rate,
-      DeliveryCharge,
       CustomerName,
       Address,
       Area,
       ContactNo,
-      OrderDate
+      DeliveryCharge,
+      OrderDate,
+      Items
     } = req.body;
 
-    
-    if (
-      !ProductName || !ProductType || !Weight ||
-      !Quantity || !Rate || !DeliveryCharge ||
-      !CustomerName || !Address
-    ) {
-      return res.status(400).json({ message: "Required fields are missing." });
+    if (!Items || !Array.isArray(Items) || Items.length === 0) {
+      return res.status(400).json({ message: "Order must contain at least one item." });
     }
 
     const pool = await poolPromise;
-    if (!pool) {
-      return res.status(500).json({ message: "Database connection failed." });
-    }
 
-    const query = `
-      INSERT INTO Orders (
-        ProductName, ProductType, Weight, Quantity, Rate,
-        DeliveryCharge, CustomerName, Address, Area, ContactNo, OrderDate
-      )
-      VALUES (
-        @ProductName, @ProductType, @Weight, @Quantity, @Rate,
-        @DeliveryCharge, @CustomerName, @Address, @Area, @ContactNo, 
-        ISNULL(@OrderDate, GETDATE())
-      )
+    // Insert into Orders table
+    const orderQuery = `
+      INSERT INTO OrdersTemp (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate)
+      OUTPUT INSERTED.OrderID
+      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate);
     `;
 
-    const request = pool.request();
-    request.input("ProductName", sql.NVarChar, ProductName);
-    request.input("ProductType", sql.NVarChar, ProductType);
-    request.input("Weight", sql.NVarChar, Weight);
-    request.input("Quantity", sql.Int, Quantity);
-    request.input("Rate", sql.Decimal(10, 2), Rate);
-    request.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
-    request.input("CustomerName", sql.NVarChar, CustomerName);
-    request.input("Address", sql.NVarChar, Address);
-    request.input("Area", sql.NVarChar, Area || null);
-    request.input("ContactNo", sql.VarChar, ContactNo || null);
-    request.input("OrderDate", sql.Date, OrderDate || null);
+    const orderRequest = pool.request();
+    orderRequest.input("CustomerName", sql.NVarChar, CustomerName);
+    orderRequest.input("Address", sql.NVarChar, Address);
+    orderRequest.input("Area", sql.NVarChar, Area);
+    orderRequest.input("ContactNo", sql.VarChar, ContactNo);
+    orderRequest.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
+    orderRequest.input("OrderDate", sql.Date, OrderDate);
 
-    await request.query(query);
+    const result = await orderRequest.query(orderQuery);
+    const orderId = result.recordset[0].OrderID;
 
-    res.status(200).json({ message: "Order added successfully!" });
+    // Insert multiple items
+    for (let item of Items) {
+      const itemQuery = `
+        INSERT INTO OrderItems (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+        VALUES (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+      `;
+
+      const itemReq = pool.request();
+      itemReq.input("OrderID", sql.Int, orderId);
+      itemReq.input("ProductName", sql.NVarChar, item.ProductName);
+      itemReq.input("ProductType", sql.NVarChar, item.ProductType);
+      itemReq.input("Weight", sql.NVarChar, item.Weight);
+      itemReq.input("Quantity", sql.Int, item.Quantity);
+      itemReq.input("Rate", sql.Decimal(10, 2), item.Rate);
+      itemReq.input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate);
+
+      await itemReq.query(itemQuery);
+    }
+
+    res.status(200).json({
+      message: "Order added successfully with multiple items!",
+      orderId
+    });
+
   } catch (error) {
     console.error("❌ Error adding order:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message
+    });
   }
 };
 
@@ -73,7 +77,7 @@ exports.getAllorder = async(req,res) => {
       return res.status(500).json({message: "DataBase connection failed"});
     }
 
-    const result = await pool.request().query("select * from orders order by OrderID desc");
+    const result = await pool.request().query("select * from orderstemp order by OrderID desc");
     res.status(200).json(result.recordset);
 
   }

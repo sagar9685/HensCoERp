@@ -77,6 +77,7 @@ const UserForm = () => {
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredAndSortedOrders.slice(indexOfFirstItem, indexOfLastItem);
+  console.log(currentItems,"currr");
   const totalPages = Math.ceil(filteredAndSortedOrders.length / itemsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -316,18 +317,18 @@ const UserForm = () => {
                                     </td>
                                     <td className={styles.areaCell}>{row.Area}</td>
                                     <td className={styles.typeCell}>
-                                      <span className={`${styles.typeBadge} ${row.ProductType === 'Express' ? styles.express : ''}`}>
-                                        {row.ProductType}
+                                      <span className={`${styles.typeBadge} ${row.ProductTypes === 'Express' ? styles.express : ''}`}>
+                                        {row.ProductTypes}
                                       </span>
                                     </td>
-                                    <td className={styles.weightCell}>{row.Weight}</td>
-                                    <td className={styles.quantityCell}>{row.Quantity}</td>
+                                    <td className={styles.weightCell}>{row.Weights}</td>
+                                    <td className={styles.quantityCell}>{row.Quantities}</td>
 
                                     <td className={styles.amountCell}>
                                       <div className={styles.amountInfo}>
-                                        <div>Rate: ₹{row.Rate}</div>
+                                        <div>Rate: ₹{row.Rates}</div>
                                         <div>Delivery: ₹{row.DeliveryCharge}</div>
-                                        <strong>Total: ₹{Number(row.Rate) + Number(row.DeliveryCharge)}</strong>
+                                        <strong>Total: ₹{Number(row.GrandItemTotal) + Number(row.DeliveryCharge)}</strong>
                                       </div>
                                     </td>
 

@@ -1,94 +1,160 @@
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaPaperPlane } from 'react-icons/fa';
+import { FaTimes, FaPaperPlane, FaPlus, FaTrashAlt, FaEdit, FaShoppingCart } from 'react-icons/fa';
 import { useDispatch, useSelector } from 'react-redux';
 import styles from '../AddOrderModal.module.css';
-import { fetchWeightByType, clearWeight, fetchProductTypes, fetchRateByProductType } from "../../features/productTypeSlice";
+import { 
+  fetchWeightByType, 
+  fetchProductTypes, 
+  fetchRateByProductType 
+} from "../../features/productTypeSlice";
 import { addOrder } from '../../features/orderSlice';
 import { toast } from 'react-toastify';
 import CustomerSearch from './CustomerSearch';
+import OrderFormModal from './OrderFormModal';
+import OrderItemsSection from './OrderItemsSection';
+
+// Define the initial state for a single item
+const initialItemState = {
+  productName: '',
+  productType: '',
+  weight: '',
+  quantity: 1,
+  rate: '',
+};
 
 const OrderForm = ({ onClose }) => {
+  // Main form data for customer/order header
   const [formData, setFormData] = useState({
-    productName: '',
     customerName: '',
     address: '',
     area: '',
     contactNo: '',
-    productType: '',
-    weight: '',
-    quantity: 1,
-    rate: '',
     deliveryCharge: '',
     orderDate: ''
   });
 
+  // State to handle multiple order items
+  const [orderItems, setOrderItems] = useState([]);
   const [errors, setErrors] = useState({});
+  const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+  const [currentItem, setCurrentItem] = useState(initialItemState);
+  const [editingIndex, setEditingIndex] = useState(null);
 
   const dispatch = useDispatch();
   const productTypes = useSelector((state) => state.product.types || []);
-  const weightOptions = useSelector((state) => state.product.weight || []);
-  const productWeight = useSelector((state) => state.product.weight);
-  const productLoading = useSelector((state) => state.product.loading);
-  const productError = useSelector((state) => state.product.error);
-  const baseRate = useSelector((state) => state.product.rate || 0);
+  const [fetchedData, setFetchedData] = useState({});
 
   // Fetch product types on component mount
   useEffect(() => {
     dispatch(fetchProductTypes());
+    setFormData(prev => ({
+        ...prev,
+        orderDate: getTodayDate()
+    }));
   }, [dispatch]);
 
-  // Update weight when productWeight changes
-  useEffect(() => {
-    if (productWeight) {
-      setFormData(prev => ({
-        ...prev,
-        weight: productWeight,
-      }));
-    }
-  }, [productWeight]);
+  // --- Item Modal Functions ---
+  const openItemModal = (item = initialItemState, index = null) => {
+    setCurrentItem(item);
+    setEditingIndex(index);
+    setIsItemModalOpen(true);
+  };
 
-  // Update rate when baseRate changes
-  useEffect(() => {
-    if (baseRate) {
-      setFormData(prev => ({
-        ...prev,
-        rate: baseRate,
-      }));
-    }
-  }, [baseRate]);
+  const closeItemModal = () => {
+    setCurrentItem(initialItemState);
+    setEditingIndex(null);
+    setIsItemModalOpen(false);
+    setErrors({});
+  };
 
-  const handleProductTypeChange = (e) => {
-    const { value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      productType: value,
-    }));
+  const handleItemChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentItem(prev => ({ ...prev, [name]: value }));
+  };
 
-    try {
-      if (value) {
-        dispatch(fetchWeightByType(value));
-        dispatch(fetchRateByProductType(value));
-      } else {
-        dispatch(clearWeight());
+  const handleProductTypeChange = async (e) => {
+    const value = e.target.value;
+    
+    setCurrentItem(prev => ({ ...prev, productType: value }));
+
+    if (value) {
+      if (fetchedData[value]) {
+        const { weight, rate } = fetchedData[value];
+        // const quantity = Number(currentItem.quantity || 1);
+        setCurrentItem(prev => ({ 
+          ...prev, 
+          weight: weight, 
+       rate: (Number(rate))
+        
+        }));
+        return;
       }
-    } catch (e) {
-      console.log('getting error in productType', e);
+
+      try {
+        const weightAction = await dispatch(fetchWeightByType(value)).unwrap();
+        const rateAction = await dispatch(fetchRateByProductType(value)).unwrap();
+
+        const fetchedWeight = Array.isArray(weightAction) ? weightAction[0] : weightAction;
+        const fetchedRate = Number(rateAction || 0);
+        
+        setFetchedData(prev => ({
+          ...prev,
+          [value]: { weight: fetchedWeight, rate: fetchedRate }
+        }));
+
+        const quantity = Number(currentItem.quantity || 1);
+        setCurrentItem(prev => ({ 
+          ...prev, 
+          weight: fetchedWeight, 
+          rate: (fetchedRate * quantity).toFixed(2)
+        }));
+
+      } catch (e) {
+        toast.error(`Error fetching data for ${value}`);
+        console.error('Error fetching product data:', e);
+      }
+    } else {
+      setCurrentItem(prev => ({ ...prev, weight: '', rate: '' }));
     }
   };
 
+  const saveItem = () => {
+    // Validate item
+    const itemErrors = {};
+    if (!currentItem.productName.trim()) itemErrors.productName = 'Product name is required';
+    if (!currentItem.productType) itemErrors.productType = 'Product type is required';
+    if (!currentItem.quantity || Number(currentItem.quantity) <= 0) itemErrors.quantity = 'Valid quantity is required';
+    if (!currentItem.rate || Number(currentItem.rate) <= 0) itemErrors.rate = 'Valid rate is required';
+
+    if (Object.keys(itemErrors).length > 0) {
+      setErrors(itemErrors);
+      return;
+    }
+
+    if (editingIndex !== null) {
+      // Update existing item
+      setOrderItems(prev => prev.map((item, index) => 
+        index === editingIndex ? currentItem : item
+      ));
+      toast.success('Item updated successfully!');
+    } else {
+      // Add new item
+      setOrderItems(prev => [...prev, currentItem]);
+      toast.success('Item added successfully!');
+    }
+    
+    closeItemModal();
+  };
+
+  const removeItem = (index) => {
+    setOrderItems(prev => prev.filter((_, i) => i !== index));
+    toast.success('Item removed successfully!');
+  };
+
+  // --- Main Form Functions ---
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData(prev => {
-      let updated = { ...prev, [name]: value };
-
-      // Auto update rate if quantity changes and baseRate exists
-      if (name === "quantity" && baseRate) {
-        updated.rate = (Number(baseRate) * Number(value || 0)).toFixed(2);
-      }
-
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [name]: value }));
 
     if (errors[name]) {
       setErrors(prev => ({
@@ -100,39 +166,18 @@ const OrderForm = ({ onClose }) => {
 
   const validateForm = () => {
     const newErrors = {};
+
+    // Validate main form data
+    if (!formData.customerName.trim()) newErrors.customerName = 'Customer name is required';
+    if (!formData.address.trim()) newErrors.address = 'Address is required';
+    if (!formData.area.trim()) newErrors.area = 'Area is required';
+    if (!formData.contactNo.trim()) newErrors.contactNo = 'Contact number is required';
+    if (!formData.deliveryCharge || Number(formData.deliveryCharge) < 0) newErrors.deliveryCharge = 'Valid delivery charge is required';
+    if (!formData.orderDate) newErrors.orderDate = 'Order date is required';
     
-    if (!formData.productName.trim()) {
-      newErrors.productName = 'Product name is required';
-    }
-    if (!formData.customerName.trim()) {
-      newErrors.customerName = 'Customer name is required';
-    }
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-    if (!formData.area.trim()) {
-      newErrors.area = 'Area is required';
-    }
-    if (!formData.contactNo.trim()) {
-      newErrors.contactNo = 'Contact number is required';
-    }
-    if (!formData.productType) {
-      newErrors.productType = 'Product type is required';
-    }
-    if (!formData.weight) {
-      newErrors.weight = 'Weight is required';
-    }
-    if (!formData.quantity || formData.quantity <= 0) {
-      newErrors.quantity = 'Valid quantity is required';
-    }
-    if (!formData.rate || formData.rate <= 0) {
-      newErrors.rate = 'Valid rate is required';
-    }
-    if (!formData.deliveryCharge) {
-      newErrors.deliveryCharge = 'Delivery charge is required';
-    }
-    if (!formData.orderDate) {
-      newErrors.orderDate = 'Order date is required';
+    // Validate order items
+    if (orderItems.length === 0) {
+      newErrors.orderItems = 'At least one order item is required';
     }
 
     setErrors(newErrors);
@@ -143,45 +188,45 @@ const OrderForm = ({ onClose }) => {
     e.preventDefault();
 
     if (validateForm()) {
-      const formattedData = {
-        ProductName: formData.productName,
+      const formattedItems = orderItems.map(item => ({
+        ProductName: item.productName,
+        ProductType: item.productType,
+        Weight: Array.isArray(item.weight) ? item.weight[0] : item.weight,
+        Quantity: Number(item.quantity),
+        Rate: Number(item.rate),
+      }));
+
+      const orderData = {
         CustomerName: formData.customerName,
         Address: formData.address,
         Area: formData.area,
         ContactNo: formData.contactNo,
-        ProductType: formData.productType,
-        Weight: Array.isArray(formData.weight) ? formData.weight[0] : formData.weight,
-        Quantity: Number(formData.quantity),
-        Rate: Number(formData.rate),
         DeliveryCharge: Number(formData.deliveryCharge),
-        OrderDate: formData.orderDate
+        OrderDate: formData.orderDate,
+        Items: formattedItems
       };
 
       try {
-        await dispatch(addOrder(formattedData)).unwrap();
+        await dispatch(addOrder(orderData)).unwrap();
         toast.success('Order added successfully! 🎉');
         handleClose();
       } catch (e) {
         toast.error("Failed to add Order 😞");
-        console.log("Add order error", e);
+        console.error("Add order error", e);
       }
     }
   };
 
   const handleClose = () => {
     setFormData({
-      productName: '',
       customerName: '',
       address: '',
       area: '',
       contactNo: '',
-      productType: '',
-      weight: '',
-      quantity: '',
-      rate: '',
       deliveryCharge: '',
-      orderDate: ''
+      orderDate: getTodayDate()
     });
+    setOrderItems([]);
     setErrors({});
     onClose();
   };
@@ -189,211 +234,156 @@ const OrderForm = ({ onClose }) => {
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
   };
+  
+const getTotalAmount = () => {
+  const itemsTotal = orderItems.reduce((total, item) => {
+    return total + (Number(item.rate) * Number(item.quantity));
+  }, 0);
+
+  const delivery = Number(formData.deliveryCharge) || 0;
+
+  return itemsTotal + delivery;  // Delivery sirf ek baar add
+};
+
+
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className={styles.formGrid}>
-        {/* Product Name */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Product Name <span className={styles.required}>*</span>
-          </label>
-          <select
-            name="productName"
-            value={formData.productName}
-            onChange={handleChange}
-            className={styles.inputField}
-          >
-            <option value="">Select product</option>
-            <option value="Chicken">Chicken</option>
-            <option value="Egg">Egg</option>
-          </select>
-          {errors.productName && (
-            <span className={styles.error}>{errors.productName}</span>
-          )}
-        </div>
+    <>
+      <form onSubmit={handleSubmit}>
+        
+        {/* Customer and Order Header Details */}
+        <section className={styles.section}>
+          <h3 className={styles.sectionTitle}>
+            <FaShoppingCart />
+            Customer Details
+          </h3>
+          <div className={styles.formGrid}>
+            
+            <CustomerSearch 
+              formData={formData} 
+              setFormData={setFormData} 
+              errors={errors} 
+            />
 
-        {/* Customer Search Component */}
-        <CustomerSearch 
-          formData={formData} 
-          setFormData={setFormData} 
-          errors={errors} 
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Address <span className={styles.required}>*</span></label>
+              <input
+                type="text"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+                placeholder="Enter full address"
+                className={styles.inputField}
+              />
+              {errors.address && <span className={styles.error}>{errors.address}</span>}
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Area <span className={styles.required}>*</span></label>
+              <input
+                type="text"
+                name="area"
+                value={formData.area}
+                onChange={handleChange}
+                placeholder="Enter area/location"
+                className={styles.inputField}
+              />
+              {errors.area && <span className={styles.error}>{errors.area}</span>}
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Contact No <span className={styles.required}>*</span></label>
+              <input
+                type="tel"
+                name="contactNo"
+                value={formData.contactNo}
+                onChange={handleChange}
+                placeholder="Enter contact number"
+                className={styles.inputField}
+              />
+              {errors.contactNo && <span className={styles.error}>{errors.contactNo}</span>}
+            </div>
+            
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Delivery Charge (rs) <span className={styles.required}>*</span></label>
+              <input
+                type="number"
+                name="deliveryCharge"
+                value={formData.deliveryCharge}
+                onChange={handleChange}
+                placeholder="Enter delivery charge"
+                min="0"
+                step="0.01"
+                className={styles.inputField}
+              />
+              {errors.deliveryCharge && <span className={styles.error}>{errors.deliveryCharge}</span>}
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Order Date <span className={styles.required}>*</span></label>
+              <input
+                type="date"
+                name="orderDate"
+                value={formData.orderDate}
+                onChange={handleChange}
+                max={getTodayDate()}
+                className={styles.inputField}
+              />
+              {errors.orderDate && <span className={styles.error}>{errors.orderDate}</span>}
+            </div>
+            
+          </div>
+        </section>
+
+        <hr />
+
+        {/* Order Items Section */}
+        <OrderItemsSection
+          orderItems={orderItems}
+          errors={errors}
+          openItemModal={openItemModal}
+          removeItem={removeItem}
+          getTotalAmount={getTotalAmount}
         />
 
-        {/* Address */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Address <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="text"
-            name="address"
-            value={formData.address}
-            onChange={handleChange}
-            placeholder="Enter full address"
-            className={styles.inputField}
-          />
-          {errors.address && <span className={styles.error}>{errors.address}</span>}
+        <hr />
+
+        {/* Modal Footer */}
+        <div className={styles.modalFooter}>
+          <div className={styles.footerInfo}>
+            <span className={styles.itemsCount}>
+              {orderItems.length} item{orderItems.length !== 1 ? 's' : ''} added
+            </span>
+            <span className={styles.totalAmount}>
+              Total: ₹{getTotalAmount().toFixed(2)}
+            </span>
+          </div>
+          <div className={styles.footerActions}>
+            <button className={styles.cancelButton} onClick={handleClose} type="button">
+              <FaTimes />
+              Cancel
+            </button>
+            <button className={styles.submitButton} type="submit" disabled={orderItems.length === 0}>
+              <FaPaperPlane />
+              Create Order
+            </button>
+          </div>
         </div>
+      </form>
 
-        {/* Area */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Area <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="text"
-            name="area"
-            value={formData.area}
-            onChange={handleChange}
-            placeholder="Enter area/location"
-            className={styles.inputField}
-          />
-          {errors.area && <span className={styles.error}>{errors.area}</span>}
-        </div>
-
-        {/* Contact No */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Contact No <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="tel"
-            name="contactNo"
-            value={formData.contactNo}
-            onChange={handleChange}
-            placeholder="Enter contact number"
-            className={styles.inputField}
-          />
-          {errors.contactNo && <span className={styles.error}>{errors.contactNo}</span>}
-        </div>
-
-        {/* Product Type */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Product Type <span className={styles.required}>*</span>
-          </label>
-          <select
-            name="productType"
-            value={formData.productType}
-            onChange={handleProductTypeChange}
-            className={styles.selectField}
-          >
-            <option value="">Select product type</option>
-            {productTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-
-          {productLoading && <p>Loading weight...</p>}
-          {productError && <p style={{ color: "red" }}>{productError}</p>}
-
-          {errors.productType && <span className={styles.error}>{errors.productType}</span>}
-        </div>
-
-        {/* Weight */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Weight <span className={styles.required}>*</span>
-          </label>
-          <select
-            name="weight"
-            value={formData.weight}
-            onChange={handleChange}
-            className={styles.selectField}
-          >
-            <option value="">Select weight</option>
-            {weightOptions.map(weight => (
-              <option key={weight} value={weight}>{weight}</option>
-            ))}
-          </select>
-          {errors.weight && <span className={styles.error}>{errors.weight}</span>}
-        </div>
-
-        {/* Quantity */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Quantity <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="number"
-            name="quantity"
-            value={formData.quantity}
-            onChange={handleChange}
-            placeholder="Enter quantity"
-            min="1"
-            className={styles.inputField}
-          />
-          {errors.quantity && <span className={styles.error}>{errors.quantity}</span>}
-        </div>
-
-        {/* Rate */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Rate (rs) <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="number"
-            name="rate"
-            value={formData.rate}
-            onChange={handleChange}
-            placeholder="Enter rate per unit"
-            min="0"
-            step="0.01"
-            className={styles.inputField}
-          />
-          {errors.rate && <span className={styles.error}>{errors.rate}</span>}
-        </div>
-
-        {/* Delivery Charge */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Delivery Charge (rs) <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="number"
-            name="deliveryCharge"
-            value={formData.deliveryCharge}
-            onChange={handleChange}
-            placeholder="Enter delivery charge"
-            min="0"
-            step="0.01"
-            className={styles.inputField}
-          />
-          {errors.deliveryCharge && <span className={styles.error}>{errors.deliveryCharge}</span>}
-        </div>
-
-        {/* Order Date */}
-        <div className={styles.inputGroup}>
-          <label className={styles.inputLabel}>
-            Order Date <span className={styles.required}>*</span>
-          </label>
-          <input
-            type="date"
-            name="orderDate"
-            value={formData.orderDate}
-            onChange={handleChange}
-            max={getTodayDate()}
-            className={styles.inputField}
-          />
-          {errors.orderDate && <span className={styles.error}>{errors.orderDate}</span>}
-        </div>
-      </div>
-
-      {/* Modal Footer */}
-      <div className={styles.modalFooter}>
-        <button className={styles.cancelButton} onClick={handleClose} type="button">
-          <FaTimes />
-          Cancel
-        </button>
-        <button className={styles.submitButton} type="submit">
-          <FaPaperPlane />
-          Create Order
-        </button>
-      </div>
-    </form>
+      {/* Item Modal */}
+      <OrderFormModal
+        isItemModalOpen={isItemModalOpen}
+        closeItemModal={closeItemModal}
+        currentItem={currentItem}
+        editingIndex={editingIndex}
+        handleItemChange={handleItemChange}
+        handleProductTypeChange={handleProductTypeChange}
+        productTypes={productTypes}
+        errors={errors}
+        saveItem={saveItem}
+      />
+    </>
   );
 };
 
