@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import styles from "./AdminDashboard.module.css";
 import { FaEye, FaEdit, FaPlus, FaSearch, FaFilter, FaSyncAlt, FaShieldAlt, FaSyringe } from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
-import AddOrderModal from "./AddOrderModal";
+import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchOrder } from "../features/orderSlice";
