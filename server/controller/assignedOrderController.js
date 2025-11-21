@@ -56,7 +56,7 @@ exports.getAssignedOrders = async (req, res) => {
 
     const result = await pool.request().query(`
       
-  SELECT 
+SELECT 
     O.OrderID,
     O.CustomerName,
     O.ContactNo,
@@ -73,6 +73,7 @@ exports.getAssignedOrders = async (req, res) => {
     A.Remark,
     A.DeliveryStatus AS OrderStatus,
     A.ActualDeliveryDate,
+    A.PaymentReceivedDate,
 
     -- ITEMS (NO DUPLICATE)
     Items.ProductNames,
@@ -122,6 +123,7 @@ OUTER APPLY (
 ) Payments
 
 ORDER BY O.OrderID DESC;
+
 
 
 

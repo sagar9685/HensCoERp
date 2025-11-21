@@ -1,14 +1,15 @@
 const { sql, poolPromise } = require("../utils/db");
 
 exports.completeOrder = async (req, res) => {
-  const {
-    orderId,
-    assignedOrderId,
-    status,
-    deliveryDate,
-    remarks,
-    paymentSettlement
-  } = req.body;
+const {
+  orderId,
+  assignedOrderId,
+  status,
+  paymentReceivedDate,
+  remarks,
+  paymentSettlement
+} = req.body;
+
   console.log("BODY RECEIVED ===>", req.body);
 console.log("PAYMENT SETTLEMENT LIST ===>", paymentSettlement);
 
@@ -21,17 +22,21 @@ console.log("PAYMENT SETTLEMENT LIST ===>", paymentSettlement);
 
     // 1️⃣ Update AssignedOrders table
     await request
-      .input("Status", sql.VarChar, status)
-      .input("Remarks", sql.VarChar, remarks || null)
-      .input("ActualDate", sql.Date, deliveryDate || null)
-      .input("AssignedOrderID", sql.Int, assignedOrderId)
-      .query(`
-        UPDATE AssignedOrders
-        SET DeliveryStatus = @Status,
-            CompletionRemarks = @Remarks,
-            ActualDeliveryDate = @ActualDate
-        WHERE AssignID = @AssignedOrderID
-      `);
+  .input("Status", sql.VarChar, status)
+  .input("Remarks", sql.VarChar, remarks || null)
+  .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || null)
+  .input("ActualDate", sql.Date, paymentReceivedDate || null) // FIXED
+  .input("AssignedOrderID", sql.Int, assignedOrderId)
+  .query(`
+    UPDATE AssignedOrders
+    SET 
+      DeliveryStatus = @Status,
+      CompletionRemarks = @Remarks,
+      PaymentReceivedDate = @PaymentReceivedDate,
+      ActualDeliveryDate = @ActualDate
+    WHERE AssignID = @AssignedOrderID
+  `);
+
 
     // 2️⃣ Fetch all Payment Modes (dynamic)
     const modeRequest = new sql.Request(transaction);
@@ -55,11 +60,12 @@ console.log("PAYMENT SETTLEMENT LIST ===>", paymentSettlement);
           .input("AssignID", sql.Int, assignedOrderId)
           .input("PaymentModeID", sql.Int, modeData.PaymentModeID)
           .input("Amount", sql.Decimal(10, 2), amount)
+          .input("PaymentReceivedDate", sql.Date, paymentReceivedDate)
           .query(`
             INSERT INTO OrderPayments
-              (OrderID, AssignID, PaymentModeID, Amount, CreatedAt)
+              (OrderID, AssignID, PaymentModeID, Amount, PaymentReceivedDate,CreatedAt)
             VALUES
-              (@OrderID, @AssignID, @PaymentModeID, @Amount, GETDATE());
+              (@OrderID, @AssignID, @PaymentModeID, @Amount, @PaymentReceivedDate,GETDATE());
           `);
       }
     }

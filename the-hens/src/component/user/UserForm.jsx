@@ -279,6 +279,7 @@ const UserForm = () => {
                                   )}
                                 </th>
                                 <th>Delivery Date</th>
+                                     <th>Payment Recive Date</th>
                                 <th>Delivery Man</th>
                                 <th>Remark</th>
                                 <th>Delivery Status</th>
@@ -317,12 +318,23 @@ const UserForm = () => {
                                     </td>
                                     <td className={styles.areaCell}>{row.Area}</td>
                                     <td className={styles.typeCell}>
-                                      <span className={`${styles.typeBadge} ${row.ProductTypes === 'Express' ? styles.express : ''}`}>
-                                        {row.ProductTypes}
-                                      </span>
-                                    </td>
-                                    <td className={styles.weightCell}>{row.Weights}</td>
-                                    <td className={styles.quantityCell}>{row.Quantities}</td>
+  {row.ProductTypes?.split(",").map((item, i) => (
+    <div key={i} className={styles.lineItem}>{item.trim()}</div>
+  ))}
+</td>
+
+<td className={styles.weightCell}>
+  {row.Weights?.split(",").map((item, i) => (
+    <div key={i} className={styles.lineItem}>{item.trim()}</div>
+  ))}
+</td>
+
+<td className={styles.quantityCell}>
+  {row.Quantities?.split(",").map((item, i) => (
+    <div key={i} className={styles.lineItem}>{item.trim()}</div>
+  ))}
+</td>
+
 
                                     <td className={styles.amountCell}>
                                       <div className={styles.amountInfo}>
@@ -346,6 +358,16 @@ const UserForm = () => {
                                     <td className={styles.dateCell}>
                                       {row.DeliveryDate
                                         ? new Date(row.DeliveryDate).toLocaleDateString("en-GB", {
+                                            day: "2-digit",
+                                            month: "short",
+                                            year: "2-digit",
+                                          }).replace(",", "").toLowerCase()
+                                        : "-"}
+                                    </td>
+
+                                     <td className={styles.dateCell}>
+                                      {row.PaymentReceivedDate
+                                        ? new Date(row.PaymentReceivedDate).toLocaleDateString("en-GB", {
                                             day: "2-digit",
                                             month: "short",
                                             year: "2-digit",

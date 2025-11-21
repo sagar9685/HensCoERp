@@ -152,7 +152,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
       orderId: order.OrderID,
       assignedOrderId: order.AssignID,
       status: "Complete",
-      deliveryDate: formData.deliveryDate,
+        paymentReceivedDate: formData.deliveryDate,
       remarks: formData.remarks,
       paymentSettlement
     };
@@ -210,7 +210,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
                   <i className="mdi mdi-calendar-check"></i>
-                  Actual Delivery Date *
+                  Payment Received Date *
                 </label>
                 <input
                   type="date"
