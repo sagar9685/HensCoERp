@@ -23,6 +23,11 @@ export const fetchPaymentModes = createAsyncThunk(
   }
 );
 
+export const fetchCashByDeliveryMen  = createAsyncThunk("/fetchcase",async ()=> {
+   const res = await axios.get(`${API_BASE_URL}/api/users/cash`);
+    return res.data;
+})
+
 // ASSIGN ORDER
 export const assignOrder = createAsyncThunk(
   "assignedOrders/assignOrder",
@@ -42,6 +47,7 @@ const assignedOrderSlice = createSlice({
   initialState: {
     deliveryMen: [],
     paymentModes: [],
+     cashList: [], 
     data : [],
     loading: false,
     success: false,
@@ -83,6 +89,17 @@ const assignedOrderSlice = createSlice({
       .addCase(fetchAssignOrder.rejected, (state)=> {
         state.loading= false;
         state.error = "something went wrong";
+      })
+      .addCase(fetchCashByDeliveryMen.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchCashByDeliveryMen.fulfilled, (state, action) => {
+        state.loading = false;
+        state.cashList = action.payload.data;     // 👈 store data here
+      })
+      .addCase(fetchCashByDeliveryMen.rejected, (state) => {
+        state.loading = false;
+        state.error = "Failed to fetch cash data";
       })
   },
 });
