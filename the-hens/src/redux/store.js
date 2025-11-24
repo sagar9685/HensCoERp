@@ -7,6 +7,7 @@
  import assignedOrderReducer from '../features/assignedOrderSlice'
  import paymentModeReducer from '../features/paymentModeSlice'
  import orderCompletionReducer from '../features/orderCompletionSlice'
+ import denominationReducer from '../features/denominationSlice'
  
  const store = configureStore ({
     reducer : {
@@ -17,6 +18,7 @@
          assignedOrders: assignedOrderReducer,
          paymentMode : paymentModeReducer,
         orderCompletion: orderCompletionReducer,
+           denomination: denominationReducer,
     }
  })
 

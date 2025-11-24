@@ -9,15 +9,20 @@ import DeliveryMenList from "./DeliveryMenList";
 import styles from "./UserDataTable.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCashByDeliveryMen } from "../../../features/assignedOrderSlice";
+import { addDenomination, handoverCash,clearMessages } from "../../../features/denominationSlice";
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
 const calculateTotalFromDenominations = (denominations) => {
-    return DENOMINATIONS.reduce((total, value) => {
-        const count = denominations[value] || 0;
-        return total + (value * count);
-    }, 0);
+  return DENOMINATIONS.reduce((total, value) => {
+    const count = Number(denominations[value]) || 0; // NaN se 0
+    return total + (value * count);
+  }, 0);
 };
+
+
+
+
 
 export default function UserDataTable() {
     const [list, setList] = useState([]);
@@ -27,6 +32,7 @@ export default function UserDataTable() {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [showInvoice, setShowInvoice] = useState(false);
+    
 
     const [manualDenominations, setManualDenominations] = useState(
         DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
@@ -42,6 +48,20 @@ export default function UserDataTable() {
     const [handoverHistory, setHandoverHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
     const dispatch = useDispatch()
+    const { loading: dLoading, success: dSuccess, error: dError } = useSelector(
+            (state) => state.denomination
+                );
+
+                useEffect(() => {
+                if (dSuccess) {
+                    setSuccessMessage(dSuccess);
+                    setTimeout(() => dispatch(clearMessages()), 3000);
+                }
+                if (dError) {
+                    setError(dError);
+                    setTimeout(() => dispatch(clearMessages()), 3000);
+                }
+                }, [dSuccess, dError]);
    
       
     const {cashList}  = useSelector((state) => state.assignedOrders);
@@ -123,57 +143,51 @@ export default function UserDataTable() {
         setSuccessMessage(`Quick select: ₹${finalAmount.toLocaleString()} calculated and notes populated.`);
     };
 
-    const handleHandover = () => {
-        const amountToDeduct = totalHandoverAmount;
-        
-        if (!selected) {
-            setError("Please select a delivery man first.");
-            return;
-        }
-        if (amountToDeduct <= 0) {
-            setError("Please enter a total handover amount greater than zero by adjusting note counts.");
-            return;
-        }
-        if (amountToDeduct > selected.TotalCash) {
-            setError(`Handover total (${amountToDeduct}₹) cannot exceed Total Cash (${selected.TotalCash}₹).`);
-            return;
-        }
-        
-        setError("");
-        setSuccessMessage("");
-        
-        const updatedList = list.map(item => 
-            item.DeliveryManID === selected.DeliveryManID
-                ? { ...item, TotalCash: item.TotalCash - amountToDeduct }
-                : item
-        );
+const handleHandover = () => {
+    if (!selected) {
+        setError("Please select a delivery man first.");
+        return;
+    }
+    if (totalHandoverAmount <= 0) {
+        setError("Please enter note counts to calculate total.");
+        return;
+    }
+    if (totalHandoverAmount > selected.TotalCash) {
+        setError("Amount exceeds current balance.");
+        return;
+    }
 
-        const historyEntry = {
-            id: Date.now(),
-            deliveryManId: selected.DeliveryManID,
-            deliveryManName: selected.Name,
-            amount: amountToDeduct,
-            date: new Date().toLocaleString(),
-            previousBalance: selected.TotalCash,
-            newBalance: selected.TotalCash - amountToDeduct,
-            notesHandedOver: DENOMINATIONS.map(note => ({ 
-                value: note, 
-                count: manualDenominations[note] || 0 
-            })).filter(n => n.count > 0)
-        };
+    const denominationsToSend = {};
+    DENOMINATIONS.forEach(note => {
+        const count = manualDenominations[note];
+        if (count && count > 0) denominationsToSend[note] = Number(count);
+    });
 
-        setHandoverHistory(prev => [historyEntry, ...prev]);
-        setList(updatedList);
-        
-        setManualDenominations(
-            DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
-        );
-        
-        setSuccessMessage(`✅ Successfully handed over ₹${amountToDeduct.toFixed(2)} from ${selected.Name} using specified notes.`);
-        
-        setTimeout(() => setSuccessMessage(""), 5000);
+  const payload = {
+  deliveryManId: Number(selected.DeliveryManID), // Number me convert karo
+  totalHandoverAmount: Number(totalHandoverAmount), // Number me convert
+  denominationJSON: denominationsToSend,
+  orderPaymentIds: []
+};
 
-    };
+
+    dispatch(handoverCash(payload));
+
+    // UI updates
+    const updatedList = list.map(item =>
+        item.DeliveryManID === selected.DeliveryManID
+            ? { ...item, TotalCash: item.TotalCash - totalHandoverAmount }
+            : item
+    );
+    setList(updatedList);
+
+    setManualDenominations(
+        DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+    );
+    setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
+};
+
+
 
     const clearSelection = () => {
         setSelectedId("");
@@ -366,7 +380,8 @@ export default function UserDataTable() {
     onQuickAmount={handleQuickAmount}
     onHandover={handleHandover}
     onClearSelection={clearSelection}
-    onGenerateInvoice={() => setShowInvoice(true)}   // <-- Add this
+    onGenerateInvoice={() => setShowInvoice(true)} 
+     dLoading={dLoading}   // <-- Add this
 />
 
 

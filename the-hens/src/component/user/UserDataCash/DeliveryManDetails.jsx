@@ -1,8 +1,7 @@
 import React from "react";
 import styles from "./UserDataTable.module.css";
-
-const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
-
+import { DENOMINATIONS, handoverCash } from "../../../features/denominationSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function DeliveryManDetails({ 
     selected, 
@@ -10,11 +9,38 @@ export default function DeliveryManDetails({
     totalHandoverAmount,
     onNoteCountChange,
     onQuickAmount,
-    onHandover,
     onClearSelection,
     onGenerateInvoice
-})
- {
+}) {
+    const dispatch = useDispatch();
+    const { loading: dLoading, success, error } = useSelector((state) => state.denomination);
+
+const handleHandover = () => {
+  if (!selected || totalHandoverAmount <= 0) return;
+
+const denominationsToSend = {};
+DENOMINATIONS.forEach(note => {
+  const count = manualDenominations[note];
+  if (count && count > 0) denominationsToSend[note] = Number(count);
+});
+
+
+  const payload = {
+  deliveryManId: selected.DeliveryManID,
+  totalHandoverAmount: totalHandoverAmount,
+  denominationJSON: denominationsToSend,
+  orderPaymentIds: []
+};
+
+
+
+
+ 
+
+
+  dispatch(handoverCash(payload));
+};
+
     if (!selected) {
         return (
             <div className={styles.detailCard}>
@@ -33,8 +59,6 @@ export default function DeliveryManDetails({
         );
     }
 
-
-    
     return (
         <div className={styles.detailCard}>
             <div className={styles.cardHeader}>
@@ -51,6 +75,7 @@ export default function DeliveryManDetails({
             </div>
 
             <div className={styles.cardBody}>
+                {/* PROFILE SECTION */}
                 <div className={styles.profileSection}>
                     <div className={styles.avatarLarge}>
                         {selected.Name.split(' ').map(n => n[0]).join('')}
@@ -63,6 +88,7 @@ export default function DeliveryManDetails({
                     </div>
                 </div>
 
+                {/* BALANCE & STATUS */}
                 <div className={styles.detailGrid}>
                     <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>Current Balance</span>
@@ -70,7 +96,6 @@ export default function DeliveryManDetails({
                             ₹{selected.TotalCash.toLocaleString()}
                         </span>
                     </div>
-
                     <div className={styles.detailItem}>
                         <span className={styles.detailLabel}>Status</span>
                         <span className={`${styles.detailValue} ${styles.statusBadge} ${
@@ -85,7 +110,7 @@ export default function DeliveryManDetails({
                     </div>
                 </div>
 
-                {/* Handover Section */}
+                {/* HANDOVER SECTION */}
                 <div className={styles.handoverSection}>
                     <div className={styles.handoverHeader}>
                         <h4>💰 Cash Handover - Manual Notes</h4>
@@ -102,8 +127,8 @@ export default function DeliveryManDetails({
                             ))}
                         </div>
                     </div>
-                    
-                    {/* MANUAL DENOMINATION INPUTS */}
+
+                    {/* MANUAL DENOMINATIONS */}
                     <div className={styles.denominationsInputGrid}>
                         {DENOMINATIONS.map((noteValue) => (
                             <div key={noteValue} className={styles.denominationInputItem}>
@@ -120,7 +145,7 @@ export default function DeliveryManDetails({
                             </div>
                         ))}
                     </div>
-                    
+
                     {/* TOTAL PREVIEW */}
                     <div className={styles.previewSection}>
                         <div className={styles.previewRow}>
@@ -143,28 +168,32 @@ export default function DeliveryManDetails({
                         </div>
                     </div>
 
+                    {/* HANDOVER BUTTON */}
                     <button
                         className={styles.handoverButton}
-                        onClick={onHandover}
-                        disabled={totalHandoverAmount <= 0 || totalHandoverAmount > selected.TotalCash}
+                        onClick={handleHandover}
+                        disabled={dLoading || totalHandoverAmount <= 0}
                     >
-                        💸 Confirm Handover (₹{totalHandoverAmount.toLocaleString()})
+                        {dLoading ? "Processing..." : `💸 Confirm Handover (₹${totalHandoverAmount})`}
                     </button>
+
+                    {/* SUCCESS & ERROR MESSAGES */}
+                    {success && <p className={styles.successMsg}>{success}</p>}
+                    {error && <p className={styles.errorMsg}>{error}</p>}
                 </div>
 
+                {/* ACTIONS */}
                 <div className={styles.cardActions}>
                     <button className={styles.secondaryButton}>
                         📞 Contact
                     </button>
                     <button
-    className={styles.generateInvoiceButton}
-    onClick={() => onGenerateInvoice()}
-    disabled={totalHandoverAmount <= 0}
->
-    🧾 Generate Invoice
-</button>
-
-
+                        className={styles.generateInvoiceButton}
+                        onClick={() => onGenerateInvoice()}
+                        disabled={totalHandoverAmount <= 0}
+                    >
+                        🧾 Generate Invoice
+                    </button>
                 </div>
             </div>
         </div>
