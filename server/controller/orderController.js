@@ -69,22 +69,89 @@ exports.addOrder = async (req, res) => {
   }
 };
 
-exports.getAllorder = async(req,res) => {
-
-  try{
+exports.getAllorder = async (req, res) => {
+  try {
     const pool = await poolPromise;
-    if(!pool) {
-      return res.status(500).json({message: "DataBase connection failed"});
-    }
 
-    const result = await pool.request().query("select * from orderstemp order by OrderID desc");
+    const result = await pool.request().query(`
+      
+SELECT 
+    O.OrderID,
+    O.CustomerName,
+    O.ContactNo,
+    O.Address,
+    O.Area,
+    O.DeliveryCharge,
+    O.OrderDate,
+
+    -- Assignment
+    A.AssignID,
+    A.DeliveryDate,
+    A.DeliveryManID,
+    DM.Name AS DeliveryManName,
+    A.Remark,
+    A.DeliveryStatus AS OrderStatus,
+    A.ActualDeliveryDate,
+    A.PaymentReceivedDate,
+
+    -- ITEMS (NO DUPLICATE)
+    Items.ProductNames,
+    Items.ProductTypes,
+    Items.Weights,
+    Items.Quantities,
+    Items.Rates,
+    Items.ItemTotals,
+    Items.GrandItemTotal,
+
+    -- PAYMENT SUMMARY (NO DUPLICATE)
+    Payments.PaymentSummary,
+    Payments.TotalPaid
+
+FROM OrdersTemp O
+LEFT JOIN AssignedOrders A ON O.OrderID = A.OrderID
+LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
+
+-- ITEM SUBQUERY
+OUTER APPLY (
+    SELECT 
+        STRING_AGG(OI.ProductName, ', ') AS ProductNames,
+        STRING_AGG(OI.ProductType, ', ') AS ProductTypes,
+        STRING_AGG(CAST(OI.Weight AS VARCHAR(10)), ', ') AS Weights,
+        STRING_AGG(CAST(OI.Quantity AS VARCHAR(10)), ', ') AS Quantities,
+        STRING_AGG(CAST(OI.Rate AS VARCHAR(10)), ', ') AS Rates,
+        STRING_AGG(CAST(OI.Total AS VARCHAR(10)), ', ') AS ItemTotals,
+        SUM(OI.Total) AS GrandItemTotal
+    FROM OrderItems OI
+    WHERE OI.OrderID = O.OrderID
+) Items
+
+-- PAYMENT SUBQUERY
+OUTER APPLY (
+    SELECT 
+        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END), 0) AS VARCHAR(20)) +
+        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END), 0) AS VARCHAR(20))
+        AS PaymentSummary,
+
+        ISNULL(SUM(OP.Amount), 0) AS TotalPaid
+    FROM OrderPayments OP
+    LEFT JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+    WHERE OP.AssignID = A.AssignID
+) Payments
+
+ORDER BY O.OrderID DESC;
+
+
+
+
+
+    `);
+
     res.status(200).json(result.recordset);
 
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-  catch(error){
-    console.log(error,"error getting on all order");
-    res.status(500).json({message : "Internal server error",error: error.message})
-
-  }
-
-}
+};
