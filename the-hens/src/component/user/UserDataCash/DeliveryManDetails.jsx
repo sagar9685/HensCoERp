@@ -18,28 +18,38 @@ export default function DeliveryManDetails({
 const handleHandover = () => {
   if (!selected || totalHandoverAmount <= 0) return;
 
-const denominationsToSend = {};
-DENOMINATIONS.forEach(note => {
-  const count = manualDenominations[note];
-  if (count && count > 0) denominationsToSend[note] = Number(count);
-});
-
+  const denominationsToSend = {};
+  DENOMINATIONS.forEach(note => {
+    const count = manualDenominations[note];
+    if (count && count > 0) denominationsToSend[note] = Number(count);
+  });
 
   const payload = {
-  deliveryManId: selected.DeliveryManID,
-  totalHandoverAmount: totalHandoverAmount,
-  denominationJSON: denominationsToSend,
-  orderPaymentIds: []
+    deliveryManId: selected.DeliveryManID,
+    totalHandoverAmount,
+    denominationJSON: denominationsToSend,
+    orderPaymentIds: []
+  };
+
+  dispatch(handoverCash(payload))
+    .unwrap()
+    .then((res) => {
+      // 🔥 Update selected object's balance directly
+      selected.TotalCash = res.updatedBalance;
+
+      // 🔥 Clear manual note fields
+      Object.keys(manualDenominations).forEach(note => {
+        manualDenominations[note] = "";
+      });
+
+      alert(`Handover ₹${totalHandoverAmount} successful.\nNew Balance: ₹${res.updatedBalance}`);
+    })
+    .catch((err) => {
+      console.error("Handover error:", err);
+      alert("Failed: " + err);
+    });
 };
 
-
-
-
- 
-
-
-  dispatch(handoverCash(payload));
-};
 
     if (!selected) {
         return (

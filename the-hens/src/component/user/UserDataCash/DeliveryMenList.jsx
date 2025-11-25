@@ -74,7 +74,8 @@ export default function DeliveryMenList({
                                     <td className={styles[cashLevel + 'Amount']}>
                                         <div className={styles.amountWrapper}>
                                             <span className={styles.currency}>₹</span>
-                                            {item.TotalCash.toLocaleString()}
+                                         {Number(item.TotalCash || 0).toLocaleString()}
+
                                             <span className={styles.decimal}>.00</span>
                                         </div>
                                     </td>

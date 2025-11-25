@@ -16,23 +16,18 @@ exports.getDeliveryMenCash = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    const query = `
-       SELECT 
-        A.DeliveryManID,
-        DM.Name,
-        DM.MobileNo,
-        DM.Area,
-        SUM(P.Amount) AS TotalCash
-      FROM OrderPayments P
-      JOIN AssignedOrders A ON P.AssignID = A.AssignID
-      JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
-      WHERE P.PaymentModeID = 1
-      GROUP BY 
-        A.DeliveryManID, 
-        DM.Name, 
-        DM.MobileNo, 
-        DM.Area
-    `;
+   const query = `
+SELECT 
+    DM.DeliveryManID,
+    DM.Name,
+    DM.MobileNo,
+    DM.Area,
+    C.CurrentBalance AS TotalCash
+FROM DeliveryMen DM
+LEFT JOIN DeliveryMenCashBalance C
+    ON DM.DeliveryManID = C.DeliveryManID
+`;
+
 
     const result = await pool.request().query(query);
 

@@ -252,11 +252,8 @@ exports.addDenominations = async (req, res) => {
  ;
 
  
-
 exports.handoverCash = async (req, res) => {
   const { deliveryManId, totalHandoverAmount, denominationJSON, orderPaymentIds } = req.body;
-
-  console.log("HANDOVER BODY ===>", req.body);
 
   if (!deliveryManId || !totalHandoverAmount) {
     return res.status(400).json({ message: "DeliveryManID and Amount required!" });
@@ -268,7 +265,27 @@ exports.handoverCash = async (req, res) => {
   try {
     await transaction.begin();
 
-    // ⭐ STEP 1 : DeliveryMan se balance minus karna
+    // 1️⃣ Get current balance from DeliveryMenCashBalance
+    const balanceResult = await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .query(`
+        SELECT CurrentBalance 
+        FROM DeliveryMenCashBalance 
+        WHERE DeliveryManID = @DeliveryManID
+      `);
+
+    if (balanceResult.recordset.length === 0) {
+      throw new Error("Delivery man balance record not found");
+    }
+
+    const currentBalance = balanceResult.recordset[0].CurrentBalance;
+
+    // Check sufficient balance
+    if (currentBalance < totalHandoverAmount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    // 2️⃣ Subtract balance
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
@@ -278,20 +295,19 @@ exports.handoverCash = async (req, res) => {
         WHERE DeliveryManID = @DeliveryManID
       `);
 
-    // ⭐ STEP 2 : CashDepartment me credit + denomination store
+    // 3️⃣ Insert into CashDepartment
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
       .input("DenominationJSON", sql.NVarChar(sql.MAX), JSON.stringify(denominationJSON))
       .query(`
-            INSERT INTO CashDepartment 
-              (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
-            VALUES
-              (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
-        `);
+        INSERT INTO CashDepartment 
+        (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
+        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
+      `);
 
-    // ⭐ STEP 3 : OrderPayments me mark IsHandovered = 1 (optional)
-    if (Array.isArray(orderPaymentIds) && orderPaymentIds.length > 0) {
+    // 4️⃣ Mark OrderPayments as handed over
+    if (orderPaymentIds?.length > 0) {
       await new sql.Request(transaction)
         .input("IDs", sql.VarChar, orderPaymentIds.join(','))
         .query(`
@@ -301,33 +317,41 @@ exports.handoverCash = async (req, res) => {
         `);
     }
 
-    // ⭐ STEP 4 : CashHandoverHistory me entry
+    // 5️⃣ Insert history
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
       .input("Type", sql.VarChar, "DEBIT")
       .query(`
         INSERT INTO CashHandoverHistory
-          (DeliveryManID, Amount, TransactionType, EntryDate)
-        VALUES
-          (@DeliveryManID, @Amount, @Type, GETDATE())
+        (DeliveryManID, Amount, TransactionType, EntryDate)
+        VALUES (@DeliveryManID, @Amount, @Type, GETDATE())
       `);
+
+    // 6️⃣ Fetch updated balance
+    const updatedBalanceResult = await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .query(`
+        SELECT CurrentBalance 
+        FROM DeliveryMenCashBalance 
+        WHERE DeliveryManID = @DeliveryManID
+      `);
+
+    const updatedBalance = updatedBalanceResult.recordset[0].CurrentBalance;
 
     await transaction.commit();
 
     res.status(200).json({
-      message: "Cash Handover Successful! Balance Updated & CashDepartment Credited."
+      message: "Cash Handover Successful!",
+      updatedBalance
     });
 
   } catch (err) {
-    console.error(err);
     await transaction.rollback();
-    res.status(500).json({
-      message: "Handover failed",
-      error: err.message
-    });
+    res.status(500).json({ message: "Handover failed", error: err.message });
   }
 };
+
 
 
 

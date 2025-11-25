@@ -144,47 +144,57 @@ export default function UserDataTable() {
     };
 
 const handleHandover = () => {
-    if (!selected) {
-        setError("Please select a delivery man first.");
-        return;
-    }
-    if (totalHandoverAmount <= 0) {
-        setError("Please enter note counts to calculate total.");
-        return;
-    }
-    if (totalHandoverAmount > selected.TotalCash) {
-        setError("Amount exceeds current balance.");
-        return;
-    }
+  if (!selected) {
+    setError("Please select a delivery man first.");
+    return;
+  }
+  if (totalHandoverAmount <= 0) {
+    setError("Please enter note counts to calculate total.");
+    return;
+  }
+  if (totalHandoverAmount > selected.TotalCash) {
+    setError("Amount exceeds current balance.");
+    return;
+  }
 
-    const denominationsToSend = {};
-    DENOMINATIONS.forEach(note => {
-        const count = manualDenominations[note];
-        if (count && count > 0) denominationsToSend[note] = Number(count);
-    });
+  const denominationsToSend = {};
+  DENOMINATIONS.forEach(note => {
+    const count = manualDenominations[note];
+    if (count && count > 0) denominationsToSend[note] = Number(count);
+  });
 
   const payload = {
-  deliveryManId: Number(selected.DeliveryManID), // Number me convert karo
-  totalHandoverAmount: Number(totalHandoverAmount), // Number me convert
-  denominationJSON: denominationsToSend,
-  orderPaymentIds: []
-};
+    deliveryManId: Number(selected.DeliveryManID),
+    totalHandoverAmount: Number(totalHandoverAmount),
+    denominationJSON: denominationsToSend,
+    orderPaymentIds: []
+  };
 
+  // 🔥 Dispatch and wait
+  dispatch(handoverCash(payload))
+    .unwrap()
+    .then((res) => {
+      const updatedBalance = res.updatedBalance;
 
-    dispatch(handoverCash(payload));
-
-    // UI updates
-    const updatedList = list.map(item =>
-        item.DeliveryManID === selected.DeliveryManID
-            ? { ...item, TotalCash: item.TotalCash - totalHandoverAmount }
+      // 🔥 Update UI with updatedBalance from backend
+      setList(prev =>
+        prev.map(item =>
+          item.DeliveryManID === selected.DeliveryManID
+            ? { ...item, TotalCash: updatedBalance }
             : item
-    );
-    setList(updatedList);
+        )
+      );
 
-    setManualDenominations(
+      // Reset UI
+      setManualDenominations(
         DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
-    );
-    setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
+      );
+
+      setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
+    })
+    .catch((err) => {
+      setError(err.message || "Handover failed");
+    });
 };
 
 
