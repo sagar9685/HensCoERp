@@ -1,7 +1,7 @@
 import React from "react";
 import styles from "./UserDataTable.module.css";
-import { DENOMINATIONS, handoverCash } from "../../../features/denominationSlice";
-import { useDispatch, useSelector } from "react-redux";
+import { DENOMINATIONS } from "../../../features/denominationSlice";
+import {  useSelector } from "react-redux";
 
 export default function DeliveryManDetails({ 
     selected, 
@@ -10,45 +10,13 @@ export default function DeliveryManDetails({
     onNoteCountChange,
     onQuickAmount,
     onClearSelection,
+    onHandover,
     onGenerateInvoice
 }) {
-    const dispatch = useDispatch();
+   
     const { loading: dLoading, success, error } = useSelector((state) => state.denomination);
 
-const handleHandover = () => {
-  if (!selected || totalHandoverAmount <= 0) return;
-
-  const denominationsToSend = {};
-  DENOMINATIONS.forEach(note => {
-    const count = manualDenominations[note];
-    if (count && count > 0) denominationsToSend[note] = Number(count);
-  });
-
-  const payload = {
-    deliveryManId: selected.DeliveryManID,
-    totalHandoverAmount,
-    denominationJSON: denominationsToSend,
-    orderPaymentIds: []
-  };
-
-  dispatch(handoverCash(payload))
-    .unwrap()
-    .then((res) => {
-      // 🔥 Update selected object's balance directly
-      selected.TotalCash = res.updatedBalance;
-
-      // 🔥 Clear manual note fields
-      Object.keys(manualDenominations).forEach(note => {
-        manualDenominations[note] = "";
-      });
-
-      alert(`Handover ₹${totalHandoverAmount} successful.\nNew Balance: ₹${res.updatedBalance}`);
-    })
-    .catch((err) => {
-      console.error("Handover error:", err);
-      alert("Failed: " + err);
-    });
-};
+ ;
 
 
     if (!selected) {
@@ -179,13 +147,13 @@ const handleHandover = () => {
                     </div>
 
                     {/* HANDOVER BUTTON */}
-                    <button
-                        className={styles.handoverButton}
-                        onClick={handleHandover}
-                        disabled={dLoading || totalHandoverAmount <= 0}
-                    >
-                        {dLoading ? "Processing..." : `💸 Confirm Handover (₹${totalHandoverAmount})`}
-                    </button>
+                   <button
+    className={styles.handoverButton}
+    onClick={onHandover}
+    disabled={dLoading || totalHandoverAmount <= 0}
+>
+    {dLoading ? "Processing..." : `💸 Confirm Handover (₹${totalHandoverAmount})`}
+</button>
 
                     {/* SUCCESS & ERROR MESSAGES */}
                     {success && <p className={styles.successMsg}>{success}</p>}

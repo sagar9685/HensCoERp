@@ -29,7 +29,7 @@ const UserSideBar = () => {
               <span class="menu-icon">
                 <i class="mdi mdi-playlist-play"></i>
               </span>
-              <span class="menu-title">Form Elements</span>
+              <span class="menu-title">Assign Order</span>
             </Link>
           </li>
 
@@ -38,7 +38,7 @@ const UserSideBar = () => {
                     <span className="menu-icon">
                     <i className="mdi mdi-table-large"></i>
                     </span>
-                    <span className="menu-title">Tables</span>
+                    <span className="menu-title">Delivery Boy Cash</span>
                 </Link>
                 </li>
            

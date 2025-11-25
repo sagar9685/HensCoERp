@@ -23,6 +23,7 @@ const AdminDashboard = () => {
    const dispatch = useDispatch()
 
    const orders = useSelector((state)=> state.order.record);
+   console.log(orders,"fetch admin side oderr");
    const loading = useSelector((state)=> state.order.loading)
 
    const [filteredData, setFilteredData] = useState([]);
@@ -35,6 +36,20 @@ const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord)
 
 
 const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+
+const formatPaymentSummary = (summary) => {
+  if (!summary) return "-";
+
+  
+  return summary
+    .split("|")
+    .map(item => item.trim())
+    .filter(item => {
+      const amount = parseFloat(item.split(":")[1]);
+      return amount > 0;
+    })
+    .join(" | ");
+};
 
 
 
@@ -269,15 +284,15 @@ const totalPages = Math.ceil(filteredData.length / recordsPerPage);
       <td>
         <span className={styles.productId}>{row.OrderID}</span>
       </td>
-      <td className={styles.productName}>{row.ProductName}</td>
+      <td className={styles.productName}>{row.ProductNames}</td>
       <td className={styles.tableData}>{row.CustomerName}</td>
       <td className={styles.tableData}>{row.Address}</td>
       <td className={styles.tableData}>{row.Area}</td>
       <td className={styles.tableData}>{row.ContactNo}</td>
-      <td className={styles.tableData}>{row.ProductType}</td>
-      <td className={styles.tableData}>{row.Weight}</td>
-      <td className={styles.tableData}>{row.Quantity}</td>
-      <td className={styles.tableData}>{row.Rate}</td>
+      <td className={styles.tableData}>{row.ProductTypes}</td>
+      <td className={styles.tableData}>{row.Weights}</td>
+      <td className={styles.tableData}>{row.Quantities}</td>
+      <td className={styles.tableData}>{row.Rates}</td>
       <td className={styles.tableData}>{row.DeliveryCharge}</td>
      <td className={styles.tableData}>
             {new Date(row.OrderDate).toLocaleDateString('en-GB', {
@@ -287,15 +302,23 @@ const totalPages = Math.ceil(filteredData.length / recordsPerPage);
             }).replace(',', '').replace(' ', '-')}
           </td>
 
-      <td className={styles.tableData}>{row.deliveryDate}</td>
-      <td className={styles.tableData}>{row.deliveryMan}</td>
+ <td className={styles.tableData}>
+            {new Date(row.DeliveryDate).toLocaleDateString('en-GB', {
+              day: '2-digit',
+              month: 'short',
+              year: '2-digit'
+            }).replace(',', '').replace(' ', '-')}
+          </td>
+
+     
+      <td className={styles.tableData}>{row.DeliveryManName}</td>
       <td>
         <span className={styles.paymentModeBadge}>
-          {row.paymentMode}
+       {formatPaymentSummary(row.PaymentSummary)}
         </span>
       </td>
       <td className={styles.tableData}>{row.orderTakenBy}</td>
-      <td className={styles.tableData}>{row.remark}</td>
+      <td className={styles.tableData}>{row.Remark}</td>
       <td>
         <span className={`${styles.paymentStatus} ${getPaymentStatusClass(row.paymentStatus)}`}>
           {row.paymentStatus}
