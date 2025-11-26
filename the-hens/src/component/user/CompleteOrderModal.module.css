@@ -499,3 +499,191 @@
   color: #c53030;
   border: 1px solid #feb2b2;
 }
+.errorText {
+  color: #ff4d4f;
+  font-size: 14px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  background-color: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  font-weight: 500;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(255, 77, 79, 0.1);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.errorText::before {
+  content: "⚠";
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.errorText:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 77, 79, 0.15);
+  background-color: #fff;
+}
+
+/* Success variant */
+.errorText.success {
+  color: #52c41a;
+  background-color: #f6ffed;
+  border-color: #b7eb8f;
+  box-shadow: 0 2px 8px rgba(82, 196, 26, 0.1);
+}
+
+.errorText.success::before {
+  content: "✓";
+}
+
+/* Warning variant */
+.errorText.warning {
+  color: #faad14;
+  background-color: #fffbe6;
+  border-color: #ffe58f;
+  box-shadow: 0 2px 8px rgba(250, 173, 20, 0.1);
+}
+
+.errorText.warning::before {
+  content: "⚠";
+}
+
+/* Info variant */
+.errorText.info {
+  color: #1890ff;
+  background-color: #f0f8ff;
+  border-color: #91d5ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.1);
+}
+
+.errorText.info::before {
+  content: "ℹ";
+}
+
+/* Animation for error appearance */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.errorText.animate {
+  animation: slideInUp 0.3s ease-out;
+}
+
+/* Pulse animation for important errors */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba(255, 77, 79, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0);
+  }
+}
+
+.errorText.important {
+  animation: pulse 2s infinite;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .errorText {
+    font-size: 13px;
+    padding: 10px;
+    margin-top: 8px;
+    border-radius: 8px;
+  }
+  
+  .errorText::before {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .errorText {
+    font-size: 12px;
+    padding: 8px 10px;
+    gap: 6px;
+    line-height: 1.3;
+  }
+  
+  .errorText::before {
+    font-size: 13px;
+    margin-top: 1px;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .errorText {
+    background-color: rgba(255, 77, 79, 0.1);
+    border-color: rgba(255, 77, 79, 0.3);
+    color: #ff7875;
+  }
+  
+  .errorText.success {
+    background-color: rgba(82, 196, 26, 0.1);
+    border-color: rgba(82, 196, 26, 0.3);
+    color: #73d13d;
+  }
+  
+  .errorText.warning {
+    background-color: rgba(250, 173, 20, 0.1);
+    border-color: rgba(250, 173, 20, 0.3);
+    color: #ffc53d;
+  }
+  
+  .errorText.info {
+    background-color: rgba(24, 144, 255, 0.1);
+    border-color: rgba(24, 144, 255, 0.3);
+    color: #69c0ff;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .errorText {
+    border-width: 2px;
+    font-weight: 600;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .errorText {
+    transition: none;
+    animation: none;
+  }
+  
+  .errorText:hover {
+    transform: none;
+  }
+}
+
+/* Print styles */
+@media print {
+  .errorText {
+    border: 1px solid #000;
+    background: none;
+    color: #000;
+    box-shadow: none;
+  }
+  
+  .errorText::before {
+    content: "Error:" !important;
+  }
+}

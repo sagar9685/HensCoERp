@@ -15,6 +15,9 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
     remark: "",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+
   useEffect(() => {
     dispatch(fetchDeliveryMen());
   }, [dispatch]);
@@ -38,7 +41,11 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
     }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  setIsSubmitting(true); // disable button + show processing
+
   const payload = {
     orderId: order.OrderID,
     deliveryManId:
@@ -53,11 +60,15 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
     remark: formData.remark,
   };
 
-  // send data back to UserForm
-  onSubmit(payload)
-
-  
+  try {
+    await onSubmit(payload); // parent function ko data bhejna
+  } catch (error) {
+    console.error("Submit error:", error);
+  } finally {
+    setIsSubmitting(false); // enable button back
+  }
 };
+
 
 
   if (!isOpen || !order) return null;
@@ -228,15 +239,22 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
             <i className="mdi mdi-close"></i>
             Cancel
           </button>
+            <button
+              type="submit"
+              className={styles.assignButton}
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                "Processing..."
+              ) : (
+                <>
+                  <i className="mdi mdi-check-circle"></i>
+                  Assign Order
+                </>
+              )}
+            </button>
 
-          <button
-            type="submit"
-            className={styles.assignButton}
-            onClick={handleSubmit}
-          >
-            <i className="mdi mdi-check-circle"></i>
-            Assign Order
-          </button>
         </div>
       </div>
     </div>

@@ -17,7 +17,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
   });
 
   const [errors, setErrors] = useState({});
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const areaTypes = useSelector((state)=>state.customer.areaData);
   console.log(areaTypes,"area")
 
@@ -85,12 +86,15 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     };
 
      try {
+      setIsSubmitting(true);
       await dispatch(addCustomerData(formattedData)).unwrap();
       toast.success("Customer added successfully! 🎉");
       handleClose();
     } catch (error) {
       toast.error("Failed to add customer 😞");
       console.error("Add customer error:", error);
+    }finally {
+      setIsSubmitting(false)
     }
   }
 };
@@ -248,10 +252,15 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
             <FaTimes />
             Cancel
           </button>
-          <button className={styles.submitButton} onClick={handleSubmit}
+          <button className={styles.submitButton} onClick={handleSubmit} disabled={isSubmitting}
           >
-            <FaUser />
+            {
+              isSubmitting ? (<>Processing...</>) : ( <>
+                <FaUser />
             Add Customer
+              </>
+            )}
+          
           </button>
         </div>
       </div>

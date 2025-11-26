@@ -43,6 +43,7 @@ const OrderForm = ({ onClose }) => {
   const dispatch = useDispatch();
   const productTypes = useSelector((state) => state.product.types || []);
   const [fetchedData, setFetchedData] = useState({});
+  const [isSubmitting,setIsSubmitting] = useState(false);
 
   // Fetch product types on component mount
   useEffect(() => {
@@ -207,12 +208,17 @@ const OrderForm = ({ onClose }) => {
       };
 
       try {
+         setIsSubmitting(true)
         await dispatch(addOrder(orderData)).unwrap();
         toast.success('Order added successfully! 🎉');
+       
         handleClose();
       } catch (e) {
         toast.error("Failed to add Order 😞");
         console.error("Add order error", e);
+       
+      }finally {
+        setIsSubmitting(false)
       }
     }
   };
@@ -363,9 +369,13 @@ const getTotalAmount = () => {
               <FaTimes />
               Cancel
             </button>
-            <button className={styles.submitButton} type="submit" disabled={orderItems.length === 0}>
-              <FaPaperPlane />
-              Create Order
+            <button className={styles.submitButton} type="submit" disabled={orderItems.length === 0 || isSubmitting}>
+               {isSubmitting ? "Processing..." : (
+                  <>
+                    <FaPaperPlane /> Create Order
+                  </>
+                )}
+             
             </button>
           </div>
         </div>

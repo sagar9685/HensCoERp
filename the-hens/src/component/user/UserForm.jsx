@@ -2,7 +2,7 @@ import UserFooter from "./UserFooter";
 import UserNavbar from "./UserNavBar";
 import UserSideBar from "./UserSidebar";
 import styles from "./UserForm.module.css";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
 import { fetchOrder } from "../../features/orderSlice";
 import AssignOrderModal from "./AssignOrderModal";
@@ -10,87 +10,41 @@ import UserCompleteOrderModal from "./UserCompleteOrderModal";
 import { assignOrder, fetchAssignOrder } from "../../features/assignedOrderSlice";
 import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
+import { useOrderFilter } from "./UserOrderFilter";
 
 const UserForm = () => {
   const dispatch = useDispatch();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
   const [confirmOrder, setConfirmOrder] = useState(null);
   const [isCompleteModalOpen, setCompleteModalOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
-  const formatPaymentSummary = (summary) => {
-  if (!summary) return "-";
-
-  
-  return summary
-    .split("|")
-    .map(item => item.trim())
-    .filter(item => {
-      const amount = parseFloat(item.split(":")[1]);
-      return amount > 0;
-    })
-    .join(" | ");
-};
-
+  // Use the custom hook for filtering and pagination
+  const {
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    sortConfig,
+    currentPage,
+    currentItems,
+    totalPages,
+    filteredAndSortedOrders,
+    assignedOrders,
+    handleSort,
+    paginate,
+    nextPage,
+    prevPage,
+    getPageNumbers,
+    formatPaymentSummary,
+    indexOfFirstItem,
+    indexOfLastItem
+  } = useOrderFilter();
 
   useEffect(() => {
     dispatch(fetchOrder());
-  }, [dispatch]);
-
-  useEffect(() => {
     dispatch(fetchAssignOrder());
   }, [dispatch]);
-
-  const assignedOrders = useSelector((state) => state.assignedOrders.data);
-
-  // Filter and sort logic
-  const filteredAndSortedOrders = assignedOrders?.filter(order => {
-    const matchesSearch = 
-      order.CustomerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.ProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.OrderID?.toString().includes(searchTerm);
-    
-    const matchesStatus = 
-      statusFilter === "all" || 
-      (statusFilter === "completed" && order.OrderStatus === "Complete") ||
-      (statusFilter === "pending" && order.OrderStatus === "Pending");
-    
-    return matchesSearch && matchesStatus;
-  }).sort((a, b) => {
-    if (!sortConfig.key) return 0;
-    
-    if (a[sortConfig.key] < b[sortConfig.key]) {
-      return sortConfig.direction === 'asc' ? -1 : 1;
-    }
-    if (a[sortConfig.key] > b[sortConfig.key]) {
-      return sortConfig.direction === 'asc' ? 1 : -1;
-    }
-    return 0;
-  }) || [];
-
-  // Pagination logic
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredAndSortedOrders.slice(indexOfFirstItem, indexOfLastItem);
-  console.log(currentItems,"currr");
-  const totalPages = Math.ceil(filteredAndSortedOrders.length / itemsPerPage);
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
-  const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
-  const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
-
-  const handleSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
 
   const handleStatusChange = (row, newStatus) => {
     if (newStatus === "Complete") {
@@ -149,36 +103,6 @@ const UserForm = () => {
     setConfirmOrder(null);
   };
 
-  // Generate page numbers with ellipsis
-  const getPageNumbers = () => {
-    const pageNumbers = [];
-    const maxPagesToShow = 5;
-    
-    if (totalPages <= maxPagesToShow) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      if (currentPage <= 3) {
-        for (let i = 1; i <= 4; i++) pageNumbers.push(i);
-        pageNumbers.push('...');
-        pageNumbers.push(totalPages);
-      } else if (currentPage >= totalPages - 2) {
-        pageNumbers.push(1);
-        pageNumbers.push('...');
-        for (let i = totalPages - 3; i <= totalPages; i++) pageNumbers.push(i);
-      } else {
-        pageNumbers.push(1);
-        pageNumbers.push('...');
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) pageNumbers.push(i);
-        pageNumbers.push('...');
-        pageNumbers.push(totalPages);
-      }
-    }
-    
-    return pageNumbers;
-  };
-
   return (
     <>
       <div className="container-scroller">
@@ -201,6 +125,7 @@ const UserForm = () => {
                 <div className="col-12 grid-margin">
                   <div className="card">
                     <div className="card-body">
+                      {/* Header Section */}
                       <div className={styles.cardHeader}>
                         <div className={styles.headerContent}>
                           <h4 className={styles.cardTitle}>Orders List</h4>
@@ -252,6 +177,7 @@ const UserForm = () => {
                         </div>
                       </div>
 
+                      {/* Table Section */}
                       <div className={styles.tableContainer}>
                         <div className={styles.tableWrapper}>
                           <table className={styles.dataTable}>
@@ -279,167 +205,27 @@ const UserForm = () => {
                                   )}
                                 </th>
                                 <th>Delivery Date</th>
-                                     <th>Payment Recive Date</th>
+                                <th>Payment Recive Date</th>
                                 <th>Delivery Man</th>
                                 <th>Remark</th>
                                 <th>Delivery Status</th>
-                                  <th>Assign Status</th>
+                                <th>Assign Status</th>
                                 <th>Payment Mode</th>
-                                {/* <th>Actions</th> */}
                               </tr>
                             </thead>
                             <tbody>
                               {currentItems.length > 0 ? (
                                 currentItems.map((row) => (
-                                  <tr key={row.OrderID} className={row.OrderStatus === "Complete" ? styles.completedRow : ""}>
-                                    <td className={styles.productCell}>
-                                      <div className={styles.productInfo}>
-                                        <div className={styles.productImage}>
-                                          <i className="mdi mdi-package-variant"></i>
-                                        </div>
-                                        <div className={styles.productDetails}>
-                                          <strong>{row.ProductName}</strong>
-                                          <small>{row.ProductType}</small>
-                                        </div>
-                                      </div>
-                                    </td>
-
-                                    <td>
-                                      <div className={styles.customerInfo}>
-                                        <strong>{row.CustomerName}</strong>
-                                        <span>{row.Address}</span>
-                                      </div>
-                                    </td>
-
-                                    <td className={styles.contactCell}>
-                                      <a href={`tel:${row.ContactNo}`} className={styles.contactLink}>
-                                        {row.ContactNo}
-                                      </a>
-                                    </td>
-                                    <td className={styles.areaCell}>{row.Area}</td>
-                                    <td className={styles.typeCell}>
-  {row.ProductTypes?.split(",").map((item, i) => (
-    <div key={i} className={styles.lineItem}>{item.trim()}</div>
-  ))}
-</td>
-
-<td className={styles.weightCell}>
-  {row.Weights?.split(",").map((item, i) => (
-    <div key={i} className={styles.lineItem}>{item.trim()}</div>
-  ))}
-</td>
-
-<td className={styles.quantityCell}>
-  {row.Quantities?.split(",").map((item, i) => (
-    <div key={i} className={styles.lineItem}>{item.trim()}</div>
-  ))}
-</td>
-
-
-                                    <td className={styles.amountCell}>
-                                      <div className={styles.amountInfo}>
-                                        <div>Rate: ₹{row.Rates}</div>
-                                        <div>Delivery: ₹{row.DeliveryCharge}</div>
-                                        <strong>Total: ₹{Number(row.GrandItemTotal) + Number(row.DeliveryCharge)}</strong>
-                                      </div>
-                                    </td>
-
-                                    <td className={styles.dateCell}>
-                                      {new Date(row.OrderDate)
-                                        .toLocaleDateString('en-GB', {
-                                          day: '2-digit',
-                                          month: 'short',
-                                          year: '2-digit'
-                                        })
-                                        .replace(',', '')
-                                        .replace(' ', '-')}
-                                    </td>
-
-                                    <td className={styles.dateCell}>
-                                      {row.DeliveryDate
-                                        ? new Date(row.DeliveryDate).toLocaleDateString("en-GB", {
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "2-digit",
-                                          }).replace(",", "").toLowerCase()
-                                        : "-"}
-                                    </td>
-
-                                     <td className={styles.dateCell}>
-                                      {row.PaymentReceivedDate
-                                        ? new Date(row.PaymentReceivedDate).toLocaleDateString("en-GB", {
-                                            day: "2-digit",
-                                            month: "short",
-                                            year: "2-digit",
-                                          }).replace(",", "").toLowerCase()
-                                        : "-"}
-                                    </td>
-
-                                    <td className={styles.deliveryCell}>
-                                      {row.DeliveryManName ? (
-                                        <div className={styles.deliveryMan}>
-                                          <div className={styles.avatar}>
-                                            {row.DeliveryManName.charAt(0)}
-                                          </div>
-                                          <span>{row.DeliveryManName}</span>
-                                        </div>
-                                      ) : (
-                                        "-"
-                                      )}
-                                    </td>
-
-                                    <td>
-                                      <span className={styles.remark}>
-                                        {row.Remark || "-"}
-                                      </span>
-                                    </td>
-
-                                    {/* Delivery Status Column */}
-                                    <td>
-                                      {row.OrderStatus === "Complete" ? (
-                                        <span className={styles.completedBadge}>
-                                          <i className="mdi mdi-check-circle"></i>
-                                          Completed
-                                        </span>
-                                      ) : (
-                                       <select
-  className={styles.statusDropdown}
-  value={row.DeliveryStatus}
-  onChange={(e) => handleStatusChange(row, e.target.value)}
-  disabled={!row.AssignID || row.OrderStatus === "Complete"}  
->
-  <option value="Pending">Pending</option>
-  <option value="In Progress">In Progress</option>
-  <option value="Complete">Complete</option>
-   <option value="Cancel">Cancel</option>
-</select>
-
-                                      )}
-                                    </td>
-
-                                    <td>
-  <button
-    className="btn btn-primary btn-sm"
-    onClick={() => {
-      setSelectedOrder(row);
-      setIsModalOpen(true);
-    }}
-    disabled={row.OrderStatus === "Complete"}
-  >
-    Assign
-  </button>
-</td>
-
-
-                                    <td>
-  <span className={styles.paymentMode}>
-    {formatPaymentSummary(row.PaymentSummary)}
-  </span>
-</td>
-
-
-                                  
-                                  </tr>
+                                  <OrderTableRow 
+                                    key={row.OrderID}
+                                    row={row}
+                                    onStatusChange={handleStatusChange}
+                                    onAssignClick={() => {
+                                      setSelectedOrder(row);
+                                      setIsModalOpen(true);
+                                    }}
+                                    formatPaymentSummary={formatPaymentSummary}
+                                  />
                                 ))
                               ) : (
                                 <tr>
@@ -457,43 +243,18 @@ const UserForm = () => {
                         </div>
                       </div>
 
-                      <div className={styles.tableFooter}>
-                        <div className={styles.tableInfo}>
-                          Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredAndSortedOrders.length)} of {filteredAndSortedOrders.length} orders
-                        </div>
-                        <div className={styles.pagination}>
-                          <button 
-                            className={styles.pageBtn} 
-                            onClick={prevPage}
-                            disabled={currentPage === 1}
-                          >
-                            <i className="mdi mdi-chevron-left"></i> Previous
-                          </button>
-                          
-                          {getPageNumbers().map((number, index) => (
-                            number === '...' ? (
-                              <span key={`ellipsis-${index}`} className={styles.paginationInfo}>...</span>
-                            ) : (
-                              <button
-                                key={number}
-                                className={`${styles.pageBtn} ${currentPage === number ? styles.active : ''}`}
-                                onClick={() => paginate(number)}
-                              >
-                                {number}
-                              </button>
-                            )
-                          ))}
-                          
-                          <button 
-                            className={styles.pageBtn} 
-                            onClick={nextPage}
-                            disabled={currentPage === totalPages || totalPages === 0}
-                          >
-                            Next <i className="mdi mdi-chevron-right"></i>
-                          </button>
-                        </div>
-                        
-                      </div>
+                      {/* Footer Section */}
+                      <TableFooter 
+                        indexOfFirstItem={indexOfFirstItem}
+                        indexOfLastItem={indexOfLastItem}
+                        totalItems={filteredAndSortedOrders.length}
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPrevPage={prevPage}
+                        onNextPage={nextPage}
+                        onPaginate={paginate}
+                        getPageNumbers={getPageNumbers}
+                      />
                     </div>
                   </div>
                 </div>
@@ -504,6 +265,7 @@ const UserForm = () => {
         </div>
       </div>
 
+      {/* Modals */}
       <AssignOrderModal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
@@ -519,6 +281,206 @@ const UserForm = () => {
       />
     </>
   );
-}
+};
+
+// Separate component for table row
+const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummary }) => {
+  return (
+    <tr key={row.OrderID} className={row.OrderStatus === "Complete" ? styles.completedRow : ""}>
+      <td className={styles.productCell}>
+        <div className={styles.productInfo}>
+          <div className={styles.productImage}>
+            <i className="mdi mdi-package-variant"></i>
+          </div>
+          <div className={styles.productDetails}>
+            <strong>{row.ProductName}</strong>
+            <small>{row.ProductType}</small>
+          </div>
+        </div>
+      </td>
+
+      <td>
+        <div className={styles.customerInfo}>
+          <strong>{row.CustomerName}</strong>
+          <span>{row.Address}</span>
+        </div>
+      </td>
+
+      <td className={styles.contactCell}>
+        <a href={`tel:${row.ContactNo}`} className={styles.contactLink}>
+          {row.ContactNo}
+        </a>
+      </td>
+      
+      <td className={styles.areaCell}>{row.Area}</td>
+      
+      <td className={styles.typeCell}>
+        {row.ProductTypes?.split(",").map((item, i) => (
+          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+        ))}
+      </td>
+
+      <td className={styles.weightCell}>
+        {row.Weights?.split(",").map((item, i) => (
+          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+        ))}
+      </td>
+
+      <td className={styles.quantityCell}>
+        {row.Quantities?.split(",").map((item, i) => (
+          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+        ))}
+      </td>
+
+      <td className={styles.amountCell}>
+        <div className={styles.amountInfo}>
+          <div>Rate: ₹{row.Rates}</div>
+          <div>Delivery: ₹{row.DeliveryCharge}</div>
+          <strong>Total: ₹{Number(row.GrandItemTotal) + Number(row.DeliveryCharge)}</strong>
+        </div>
+      </td>
+
+      <td className={styles.dateCell}>
+        {new Date(row.OrderDate)
+          .toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: '2-digit'
+          })
+          .replace(',', '')
+          .replace(' ', '-')}
+      </td>
+
+      <td className={styles.dateCell}>
+        {row.DeliveryDate
+          ? new Date(row.DeliveryDate).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "2-digit",
+            }).replace(",", "").toLowerCase()
+          : "-"}
+      </td>
+
+      <td className={styles.dateCell}>
+        {row.PaymentReceivedDate
+          ? new Date(row.PaymentReceivedDate).toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "2-digit",
+            }).replace(",", "").toLowerCase()
+          : "-"}
+      </td>
+
+      <td className={styles.deliveryCell}>
+        {row.DeliveryManName ? (
+          <div className={styles.deliveryMan}>
+            <div className={styles.avatar}>
+              {row.DeliveryManName.charAt(0)}
+            </div>
+            <span>{row.DeliveryManName}</span>
+          </div>
+        ) : (
+          "-"
+        )}
+      </td>
+
+      <td>
+        <span className={styles.remark}>
+          {row.Remark || "-"}
+        </span>
+      </td>
+
+      {/* Delivery Status Column */}
+      <td>
+        {row.OrderStatus === "Complete" ? (
+          <span className={styles.completedBadge}>
+            <i className="mdi mdi-check-circle"></i>
+            Completed
+          </span>
+        ) : (
+          <select
+            className={styles.statusDropdown}
+            value={row.DeliveryStatus}
+            onChange={(e) => onStatusChange(row, e.target.value)}
+            disabled={!row.AssignID || row.OrderStatus === "Complete"}  
+          >
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Complete">Complete</option>
+            <option value="Cancel">Cancel</option>
+          </select>
+        )}
+      </td>
+
+      <td>
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={onAssignClick}
+          disabled={row.AssignID !== null}
+        >
+          Assign
+        </button>
+      </td>
+
+      <td>
+        <span className={styles.paymentMode}>
+          {formatPaymentSummary(row.PaymentSummary)}
+        </span>
+      </td>
+    </tr>
+  );
+};
+
+// Separate component for table footer
+const TableFooter = ({ 
+  indexOfFirstItem, 
+  indexOfLastItem, 
+  totalItems, 
+  currentPage, 
+  totalPages, 
+  onPrevPage, 
+  onNextPage, 
+  onPaginate, 
+  getPageNumbers 
+}) => {
+  return (
+    <div className={styles.tableFooter}>
+      <div className={styles.tableInfo}>
+        Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, totalItems)} of {totalItems} orders
+      </div>
+      <div className={styles.pagination}>
+        <button 
+          className={styles.pageBtn} 
+          onClick={onPrevPage}
+          disabled={currentPage === 1}
+        >
+          <i className="mdi mdi-chevron-left"></i> Previous
+        </button>
+        
+        {getPageNumbers().map((number, index) => (
+          number === '...' ? (
+            <span key={`ellipsis-${index}`} className={styles.paginationInfo}>...</span>
+          ) : (
+            <button
+              key={number}
+              className={`${styles.pageBtn} ${currentPage === number ? styles.active : ''}`}
+              onClick={() => onPaginate(number)}
+            >
+              {number}
+            </button>
+          )
+        ))}
+        
+        <button 
+          className={styles.pageBtn} 
+          onClick={onNextPage}
+          disabled={currentPage === totalPages || totalPages === 0}
+        >
+          Next <i className="mdi mdi-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default UserForm;

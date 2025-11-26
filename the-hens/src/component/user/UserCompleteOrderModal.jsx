@@ -25,6 +25,8 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   // selectedPaymentMethods stores exact ModeName values from DB (e.g. "Cash", "GPay", "Bank Transfer")
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([]);
   const [remainingAmount, setRemainingAmount] = useState(totalAmount);
+  const [errors, setErrors] = useState({});
+
 
   useEffect(() => {
     dispatch(fetchPaymentModes());
@@ -137,29 +139,51 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     }, 0);
   };
 
-  const handleSubmit = () => {
-    // Build paymentSettlement using exact ModeName keys (as in DB)
-    const paymentSettlement = {};
-    selectedPaymentMethods.forEach(modeName => {
-      const amountKey = makeAmountKey(modeName);
-      paymentSettlement[modeName] = Number(formData[amountKey] || 0);
-    });
+  const validateForm = () => {
+  const newErrors = {};
 
-    // ensure all selected payment modes appear (even zero) if you prefer:
-    // paymentModes.forEach(pm => { paymentSettlement[pm.ModeName] = Number(formData[makeAmountKey(pm.ModeName)] || 0) });
+  if (!formData.deliveryDate) newErrors.deliveryDate = "Payment received date is required";
+  if (selectedPaymentMethods.length === 0) newErrors.paymentMethods = "Select at least 1 payment method";
 
-    const payload = {
-      orderId: order.OrderID,
-      assignedOrderId: order.AssignID,
-      status: "Complete",
-        paymentReceivedDate: formData.deliveryDate,
-      remarks: formData.remarks,
-      paymentSettlement
-    };
+  selectedPaymentMethods.forEach(modeName => {
+    const amountKey = makeAmountKey(modeName);
+    if (!formData[amountKey] || Number(formData[amountKey]) <= 0) {
+      newErrors[amountKey] = `${modeName} amount is required`;
+    }
+  });
 
-    console.log("FINAL PAYLOAD ====>", payload);
-    dispatch(completeOrder(payload));
+  if (!formData.remarks.trim()) newErrors.remarks = "Remarks are required";
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+
+
+const handleSubmit = () => {
+  if (!validateForm()) {
+    return; // stop submit
+  }
+
+  // proceed with submit
+  const paymentSettlement = {};
+  selectedPaymentMethods.forEach(modeName => {
+    const amountKey = makeAmountKey(modeName);
+    paymentSettlement[modeName] = Number(formData[amountKey] || 0);
+  });
+
+  const payload = {
+    orderId: order.OrderID,
+    assignedOrderId: order.AssignID,
+    status: "Complete",
+    paymentReceivedDate: formData.deliveryDate,
+    remarks: formData.remarks,
+    paymentSettlement
   };
+
+  console.log("FINAL PAYLOAD ====>", payload);
+  dispatch(completeOrder(payload));
+};
+
 
   if (!isOpen || !order) return null;
 
@@ -218,7 +242,10 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
                   value={formData.deliveryDate || ''}
                   onChange={handleInputChange}
                   className={styles.formInput}
+                  
                 />
+                {errors.deliveryDate && <p className={styles.errorText}>{errors.deliveryDate}</p>}
+
               </div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
@@ -246,7 +273,10 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
                           {modeName === "Bank Transfer" && <i className="mdi mdi-bank"></i>}
                           {pm.ModeName}
                         </label>
+                        {errors.paymentMethods && <p className={styles.errorText}>{errors.paymentMethods}</p>}
+
                       </div>
+                      
                     );
                   })}
                 </div>
@@ -284,10 +314,14 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
                               <i className="mdi mdi-plus-circle"></i>
                             </button>
                           )}
+                          
                         </div>
+                       
                       </div>
                     );
                   })}
+                   {errors.paymentMethods && <p className={styles.errorText}>{errors.paymentMethods}</p>}
+
                 </div>
               </div>
 
@@ -373,7 +407,6 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
         </div>
       </div>
     </div>
-  );
-};
+  )};
 
 export default UserCompleteOrderModal;
