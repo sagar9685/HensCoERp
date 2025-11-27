@@ -33,6 +33,8 @@ const Header = () => {
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -65,6 +67,22 @@ const Header = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+  window.addNotification = (data) => {
+    setNotifications(prev => [
+      {
+        id: Date.now(),
+        text: data.message,
+        time: new Date().toLocaleTimeString(),
+        unread: true,
+        type: data.type || "info"
+      },
+      ...prev
+    ]);
+  };
+}, []);
+
+
   const menuItems = [
     { key: "dashboard", icon: <MdDashboard />, label: "Dashboard" },
     { key: "flocks", icon: <FaLayerGroup />, label: "Purchase" },
@@ -75,12 +93,7 @@ const Header = () => {
     { key: "settings", icon: <FaCog />, label: "Settings" }
   ];
 
-  const notifications = [
-    { id: 1, text: "New flock added successfully", time: "2 min ago", unread: true, type: "success" },
-    { id: 2, text: "Vaccination schedule updated", time: "1 hour ago", unread: true, type: "info" },
-    { id: 3, text: "System backup completed", time: "3 hours ago", unread: false, type: "success" },
-    { id: 4, text: "Performance report generated", time: "5 hours ago", unread: false, type: "info" }
-  ];
+   
 
 
   const handleLogot = () => {
