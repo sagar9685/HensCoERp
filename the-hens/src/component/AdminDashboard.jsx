@@ -38,7 +38,20 @@ const recordsPerPage = 10;
 const indexOfLastRecord = currentPage * recordsPerPage;
 const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
 const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
- 
+ const totalOrders = orders.length;
+
+const totalItems = orders.reduce((acc, order) => {
+  const quantities = order.Quantities ? order.Quantities.split(",").map(Number) : [];
+  const totalQty = quantities.reduce((sum, q) => sum + q, 0);
+  return acc + totalQty;
+}, 0);
+
+const totalDueAmount = orders.reduce((acc, order) => {
+  return acc + (order.ShortAmount || 0);
+}, 0);
+
+const totalPending = orders.filter(order => order.PaymentVerifyStatus !== "Verified").length;
+
 
 
 const totalPages = Math.ceil(filteredData.length / recordsPerPage);
@@ -210,16 +223,25 @@ const handleStatusChange = (row, value) => {
               <p className={styles.subtitle}>Manage and monitor all product records</p>
             </div>
           </div>
-          <div className={styles.statsCard}>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>24</span>
-              <span className={styles.statLabel}>Active Orders</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>156</span>
-              <span className={styles.statLabel}>Total Production</span>
-            </div>
-          </div>
+         <div className={styles.statsCard}>
+  <div className={styles.statItem}>
+    <span className={styles.statNumber}>{totalOrders}</span>
+    <span className={styles.statLabel}>Total Orders</span>
+  </div>
+  <div className={styles.statItem}>
+    <span className={styles.statNumber}>{totalItems}</span>
+    <span className={styles.statLabel}>Total Items</span>
+  </div>
+  <div className={styles.statItem}>
+    <span className={styles.statNumber}>₹{totalDueAmount}</span>
+    <span className={styles.statLabel}>Total Due Amount</span>
+  </div>
+  <div className={styles.statItem}>
+    <span className={styles.statNumber}>{totalPending}</span>
+    <span className={styles.statLabel}>Total Pending</span>
+  </div>
+</div>
+
         </div>
       </div>
 

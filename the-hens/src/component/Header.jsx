@@ -27,14 +27,12 @@ import { useNavigate } from "react-router";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
+ 
   const [darkMode, setDarkMode] = useState(false);
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
@@ -47,7 +45,7 @@ const Header = () => {
 
   
   const dropdownRef = useRef(null);
-  const notificationRef = useRef(null);
+  // const notificationRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
   useEffect(() => {
@@ -55,9 +53,7 @@ const Header = () => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpen(false);
       }
-      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-        setNotificationsOpen(false);
-      }
+      
       if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
         setMobileMenuOpen(false);
       }
@@ -66,22 +62,6 @@ const Header = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  useEffect(() => {
-  window.addNotification = (data) => {
-    setNotifications(prev => [
-      {
-        id: Date.now(),
-        text: data.message,
-        time: new Date().toLocaleTimeString(),
-        unread: true,
-        type: data.type || "info"
-      },
-      ...prev
-    ]);
-  };
-}, []);
-
 
   const menuItems = [
     { key: "dashboard", icon: <MdDashboard />, label: "Dashboard" },
@@ -93,7 +73,12 @@ const Header = () => {
     { key: "settings", icon: <FaCog />, label: "Settings" }
   ];
 
-   
+  // const notifications = [
+  //   { id: 1, text: "New flock added successfully", time: "2 min ago", unread: true, type: "success" },
+  //   { id: 2, text: "Vaccination schedule updated", time: "1 hour ago", unread: true, type: "info" },
+  //   { id: 3, text: "System backup completed", time: "3 hours ago", unread: false, type: "success" },
+  //   { id: 4, text: "Performance report generated", time: "5 hours ago", unread: false, type: "info" }
+  // ];
 
 
   const handleLogot = () => {
@@ -101,7 +86,7 @@ const Header = () => {
       navigate('/')
   }
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
     <header className={`${styles.header} ${darkMode ? styles.dark : ''}`}>
@@ -200,7 +185,7 @@ const Header = () => {
         </button>
 
         {/* Notifications */}
-        <div className={styles.notificationWrapper} ref={notificationRef}>
+        {/* <div className={styles.notificationWrapper} ref={notificationRef}>
           <button 
             className={styles.notificationButton}
             onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -246,7 +231,7 @@ const Header = () => {
               </div>
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* User Menu */}
         <div className={styles.userMenu} ref={dropdownRef}>
