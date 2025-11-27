@@ -8,6 +8,7 @@ router.get("/cash-history", paymentController.getCashHistory);
 router.get("/cash-balance", paymentController.getAllCashBalance);
 router.post("/denominations", paymentController.addDenominations);
  router.post("/handover", paymentController.handoverCash);
-
+ router.post("/verify", paymentController.verifyPayment);
+  router.post("/mark-verified", paymentController.markPaymentVerified);
 
 module.exports = router;

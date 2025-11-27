@@ -5,7 +5,10 @@ import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
 import { useDispatch, useSelector } from "react-redux";
+import { verifyPayment, markVerified } from "../features/paymentVerifySlice";
+import { toast } from "react-toastify";
 import { fetchOrder } from "../features/orderSlice";
+import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
 const AdminDashboard = () => {
   const [filters, setFilters] = useState({
@@ -21,9 +24,12 @@ const AdminDashboard = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
    const dispatch = useDispatch()
-
+const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+const [selectedPayment, setSelectedPayment] = useState(null);
+const [receivedAmount, setReceivedAmount] = useState("");
    const orders = useSelector((state)=> state.order.record);
    console.log(orders,"fetch admin side oderr");
+   
    const loading = useSelector((state)=> state.order.loading)
 
    const [filteredData, setFilteredData] = useState([]);
@@ -68,6 +74,63 @@ const formatPaymentSummary = (summary) => {
   const handleChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
+
+
+const handleStatusChange = (row, value) => {
+
+  // Verified Status
+  if (value === "Verified") {
+    dispatch(markVerified({ paymentId: row.PaymentID }))
+      .unwrap()
+      .then(() => {
+        dispatch(fetchOrder());
+        toast.success("Payment marked as Verified!");
+        setIsPaymentModalOpen(false);
+      })
+      .catch((err) => toast.error(err.message || "Failed to verify"));
+  }
+
+  // Incomplete → Open Modal
+  if (value === "Incomplete") {
+    setSelectedPayment(row);
+    setIsPaymentModalOpen(true);
+  }
+};
+
+ const handleVerifyPayment = () => {
+    dispatch(verifyPayment({
+      paymentId: selectedPayment.PaymentID,
+      receivedAmount: Number(receivedAmount),
+    }))
+      .unwrap()
+      .then(() => {
+        setTimeout(() => dispatch(fetchOrder()), 200);
+        toast.success("Payment updated successfully!");
+        setIsPaymentModalOpen(false);
+        setReceivedAmount("");
+      })
+      .catch(err => toast.error(err.message || "Payment verification failed"));
+  };
+
+
+
+
+//   const handleVerify = (row) => {
+//   if (!row.receivedAmount) {
+//     return toast.error("Please enter received amount");
+//   }
+
+//   dispatch(verifyPayment({
+//     paymentId: row.PaymentID,
+//     receivedAmount: row.receivedAmount
+//   })).then(() => {
+//     dispatch(fetchOrder()); // refresh table
+//     toast.success("Payment verified!");
+//   });
+// };
+
+ 
+
 
                 const handleClear = () => {
           setFilters({
@@ -120,20 +183,20 @@ const formatPaymentSummary = (summary) => {
     alert('Customer added successfully!');
   };
 
-  const getPaymentStatusClass = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed':
-        return styles.paymentCompleted;
-      case 'pending':
-        return styles.paymentPending;
-      case 'failed':
-        return styles.paymentFailed;
-      case 'processing':
-        return styles.paymentProcessing;
-      default:
-        return styles.paymentPending;
-    }
-  };
+  // const getPaymentStatusClass = (status) => {
+  //   switch(status?.toLowerCase()) {
+  //     case 'completed':
+  //       return styles.paymentCompleted;
+  //     case 'pending':
+  //       return styles.paymentPending;
+  //     case 'failed':
+  //       return styles.paymentFailed;
+  //     case 'processing':
+  //       return styles.paymentProcessing;
+  //     default:
+  //       return styles.paymentPending;
+  //   }
+  // };
 
   return (
     <div className={styles.container}>
@@ -319,11 +382,29 @@ const formatPaymentSummary = (summary) => {
       </td>
       <td className={styles.tableData}>{row.orderTakenBy}</td>
       <td className={styles.tableData}>{row.Remark}</td>
-      <td>
-        <span className={`${styles.paymentStatus} ${getPaymentStatusClass(row.paymentStatus)}`}>
-          {row.paymentStatus}
-        </span>
-      </td>
+     
+     {/* payment verify */}
+    <td>
+  <select
+    value={row.PaymentVerifyStatus || "Pending"}
+    disabled={row.PaymentVerifyStatus === "Verified"}   // <-- disable when done
+    onChange={(e) => handleStatusChange(row, e.target.value)}
+    className={styles.paymentDropdown}
+  >
+    <option value="Pending">Pending</option>
+    <option value="Verified">Verified</option>
+    <option value="Incomplete">Incomplete</option>
+  </select>
+
+  {/* SHOW DUE AMOUNT IF SHORT */}
+  {row.ShortAmount > 0 && (
+    <p className={styles.shortDue}>Due: ₹{row.ShortAmount}</p>
+  )}
+</td>
+
+
+{/* edit start */}
+
       <td className={styles.actions}>
         <button className={styles.actionBtn} title="View Details">
           <FaEye />
@@ -404,6 +485,20 @@ const formatPaymentSummary = (summary) => {
   onClose={()=>setIsCustomerModalOpen(false)}
   onAddCustomer={handleAddCustomer}
   />
+
+ 
+  <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => {
+          setIsPaymentModalOpen(false);
+          setReceivedAmount("");
+        }}
+        selectedPayment={selectedPayment}
+        receivedAmount={receivedAmount}
+        setReceivedAmount={setReceivedAmount}
+        onVerifyPayment={handleVerifyPayment}
+       
+      />
 
     </div>
 

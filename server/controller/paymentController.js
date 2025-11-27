@@ -247,6 +247,91 @@ exports.addDenominations = async (req, res) => {
   }
 };
 
+exports.verifyPayment = async (req, res) => {
+  const { paymentId, receivedAmount } = req.body;
+
+  if (!paymentId || receivedAmount == null) {
+    return res.status(400).json({ message: "paymentId and receivedAmount required" });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    // 1. Fetch original order payment amount
+    const payment = await pool.request()
+      .input("paymentId", sql.Int, paymentId)
+      .query(`
+        SELECT Amount 
+        FROM OrderPayments 
+        WHERE PaymentID = @paymentId
+      `);
+
+    if (payment.recordset.length === 0) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    const originalAmount = payment.recordset[0].Amount;
+
+    let status = "Verified";
+    let shortAmount = 0;
+
+    if (receivedAmount < originalAmount) {
+      status = "Short";
+      shortAmount = originalAmount - receivedAmount;
+    }
+
+    // 2. Update record with status
+    await pool.request()
+      .input("paymentId", sql.Int, paymentId)
+      .input("status", sql.VarChar, status)
+      .input("shortAmount", sql.Decimal(10, 2), shortAmount)
+      .query(`
+        UPDATE OrderPayments
+        SET PaymentVerifyStatus = @status,
+            ShortAmount = @shortAmount
+        WHERE PaymentID = @paymentId
+      `);
+
+    return res.json({
+      message: "Verification updated",
+      paymentId,
+      originalAmount,
+      receivedAmount,
+      status,
+      shortAmount
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+exports.markPaymentVerified = async (req, res) => {
+  const { paymentId } = req.body;
+
+  if (!paymentId) {
+    return res.status(400).json({ message: "PaymentID required" });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    await pool.request()
+      .input("paymentId", sql.Int, paymentId)
+      .query(`
+        UPDATE OrderPayments
+        SET PaymentVerifyStatus = 'Verified',
+            ShortAmount = 0
+        WHERE PaymentID = @paymentId
+      `);
+
+    res.json({ message: "Payment marked as Verified" });
+
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
  ;

@@ -94,7 +94,7 @@ SELECT
     A.ActualDeliveryDate,
     A.PaymentReceivedDate,
 
-    -- ITEMS (NO DUPLICATE)
+    -- ITEMS
     Items.ProductNames,
     Items.ProductTypes,
     Items.Weights,
@@ -103,9 +103,12 @@ SELECT
     Items.ItemTotals,
     Items.GrandItemTotal,
 
-    -- PAYMENT SUMMARY (NO DUPLICATE)
+    -- PAYMENTS
+    Payments.PaymentID,               -- ✅ ADD THIS
     Payments.PaymentSummary,
-    Payments.TotalPaid
+    Payments.TotalPaid,
+    Payments.PaymentVerifyStatus,
+    Payments.ShortAmount
 
 FROM OrdersTemp O
 LEFT JOIN AssignedOrders A ON O.OrderID = A.OrderID
@@ -127,23 +130,43 @@ OUTER APPLY (
 
 -- PAYMENT SUBQUERY
 OUTER APPLY (
-    SELECT 
-        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END), 0) AS VARCHAR(20))
+    SELECT
+        MAX(OP.PaymentID) AS PaymentID,
+
+        -- PAYMENT SUMMARY
+        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20)) 
         AS PaymentSummary,
 
-        ISNULL(SUM(OP.Amount), 0) AS TotalPaid
+        -- TOTAL PAID
+        ISNULL(SUM(OP.Amount),0) AS TotalPaid,
+
+        -- TOTAL SHORT AMOUNT
+        ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
+
+        -- MODE-WISE VERIFY STATUS
+        'Verified' AS CashVerifyStatus,
+
+        MAX(CASE WHEN PM.ModeName = 'GPay' THEN 'Verified' END) AS GPayVerifyStatus,
+        MAX(CASE WHEN PM.ModeName = 'Paytm' THEN 'Verified' END) AS PaytmVerifyStatus,
+        MAX(CASE WHEN PM.ModeName = 'Bank Transfer' THEN 'Verified' END) AS BankVerifyStatus,
+        MAX(CASE WHEN PM.ModeName = 'FOC' THEN 'Verified' END) AS FOCVerifyStatus,
+
+        -- ⭐ REAL DB VERIFIED STATUS (NOT OVERRIDDEN)
+        MAX(OP.PaymentVerifyStatus) AS PaymentVerifyStatus
+
     FROM OrderPayments OP
-    LEFT JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+    LEFT JOIN PaymentModes PM 
+        ON OP.PaymentModeID = PM.PaymentModeID
     WHERE OP.AssignID = A.AssignID
 ) Payments
 
+
+
 ORDER BY O.OrderID DESC;
-
-
 
 
 
