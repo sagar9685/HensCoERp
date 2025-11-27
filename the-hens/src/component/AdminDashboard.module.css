@@ -6,6 +6,39 @@
   position: relative;
   overflow-x: hidden;
 }
+.productTable {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.productRow {
+  display: grid;
+  grid-template-columns: 140px 100px 80px 80px;
+  background: #f7f7f7;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.pType {
+  font-weight: 600;
+}
+
+.pWeight {
+  color: #555;
+}
+
+.pQty {
+  color: #0a7;
+  font-weight: 600;
+}
+
+.pRate {
+  color: #007bff;
+  font-weight: 600;
+}
+
 
 .container::before {
   content: '';

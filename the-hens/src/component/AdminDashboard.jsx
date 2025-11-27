@@ -326,9 +326,7 @@ const handleStatusChange = (row, value) => {
                   <th>Area</th>
                   <th>Contact No</th>
                   <th>Product Type</th>
-                  <th>Weight / Pack </th>
-                  <th>Quantity</th>
-                  <th>Rate</th>
+                   
                   <th>Delivery Charge</th>
                   <th>Order Date</th>
                   <th>Delivery Date</th>
@@ -352,10 +350,19 @@ const handleStatusChange = (row, value) => {
       <td className={styles.tableData}>{row.Address}</td>
       <td className={styles.tableData}>{row.Area}</td>
       <td className={styles.tableData}>{row.ContactNo}</td>
-      <td className={styles.tableData}>{row.ProductTypes}</td>
-      <td className={styles.tableData}>{row.Weights}</td>
-      <td className={styles.tableData}>{row.Quantities}</td>
-      <td className={styles.tableData}>{row.Rates}</td>
+    <td className={styles.tableData}>
+  <div className={styles.productTable}>
+    {row.ProductTypes.split(",").map((type, i) => (
+      <div key={i} className={styles.productRow}>
+        <span className={styles.pType}>{type.trim()}</span>
+        <span className={styles.pWeight}>{row.Weights.split(",")[i].trim()}</span>
+        <span className={styles.pQty}>Qty: {row.Quantities.split(",")[i].trim()}</span>
+        <span className={styles.pRate}>₹{row.Rates.split(",")[i].trim()}</span>
+      </div>
+    ))}
+  </div>
+</td>
+
       <td className={styles.tableData}>{row.DeliveryCharge}</td>
      <td className={styles.tableData}>
             {new Date(row.OrderDate).toLocaleDateString('en-GB', {
