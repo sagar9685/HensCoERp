@@ -394,7 +394,7 @@ const handleStatusChange = (row, value) => {
     <td>
   <select
     value={row.PaymentVerifyStatus || "Pending"}
-    disabled={row.PaymentVerifyStatus === "Verified"}   // <-- disable when done
+    disabled={row.PaymentVerifyStatus === "Verified" || ! row.PaymentID}   // <-- disable when done
     onChange={(e) => handleStatusChange(row, e.target.value)}
     className={styles.paymentDropdown}
   >
