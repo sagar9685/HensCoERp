@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styles from "./AdminDashboard.module.css";
-import { FaEye, FaEdit, FaPlus, FaSearch, FaFilter, FaSyncAlt, FaShieldAlt, FaSyringe } from "react-icons/fa";
+import { FaEye, FaEdit, FaPlus, FaSearch, FaFilter, FaSyncAlt, FaShieldAlt,  FaFileInvoiceDollar   } from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
@@ -10,6 +10,15 @@ import { toast } from "react-toastify";
 import { fetchOrder } from "../features/orderSlice";
 import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
+ import InvoiceGenerator from "./OrderInvoice";
+
+import InvoiceTemplate from "./OrderInvoice";
+import ReactDOM from "react-dom";
+
+ 
+ 
+  
+
 const AdminDashboard = () => {
   const [filters, setFilters] = useState({
     ProductId: "",
@@ -51,6 +60,19 @@ const totalDueAmount = orders.reduce((acc, order) => {
 }, 0);
 
 const totalPending = orders.filter(order => order.PaymentVerifyStatus !== "Verified").length;
+
+ const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  const handleGenerateInvoice = (orderRow) => {
+    setSelectedOrderForInvoice(orderRow);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const closeInvoiceModal = () => {
+    setIsInvoiceModalOpen(false);
+    setSelectedOrderForInvoice(null);
+  };
 
 
 
@@ -441,6 +463,14 @@ const handleStatusChange = (row, value) => {
         <button className={styles.actionBtn} title="Edit Product">
           <FaEdit />
         </button>
+        <button 
+            className={styles.actionBtn} 
+            title="Generate Invoice"
+            onClick={() => handleGenerateInvoice(row)} // <-- Trigger the invoice modal
+        >
+          <FaFileInvoiceDollar />
+        </button>
+
       </td>
     </tr>
   ))
@@ -528,6 +558,14 @@ const handleStatusChange = (row, value) => {
         onVerifyPayment={handleVerifyPayment}
        
       />
+
+      {isInvoiceModalOpen && (
+  <InvoiceGenerator
+    orderData={selectedOrderForInvoice}
+    onClose={closeInvoiceModal}
+  />
+)}
+
 
     </div>
 
