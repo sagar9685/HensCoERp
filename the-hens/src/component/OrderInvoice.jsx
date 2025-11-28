@@ -172,406 +172,409 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         }
     };
 
-    const handlePrint = () => {
-        const printContent = document.getElementById('invoice-print-content').innerHTML;
-        const printWindow = window.open('', '_blank', 'width=1000,height=800');
+
+    
+
+    // const handlePrint = () => {
+    //     const printContent = document.getElementById('invoice-print-content').innerHTML;
+    //     const printWindow = window.open('', '_blank', 'width=1000,height=800');
         
-        printWindow.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Invoice ${orderData.OrderID} - ${COMPANY_INFO.brand}</title>
-                <meta charset="utf-8">
-                <style>
-                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    //     printWindow.document.write(`
+    //         <!DOCTYPE html>
+    //         <html>
+    //         <head>
+    //             <title>Invoice ${orderData.OrderID} - ${COMPANY_INFO.brand}</title>
+    //             <meta charset="utf-8">
+    //             <style>
+    //                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
                     
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
+    //                 * {
+    //                     margin: 0;
+    //                     padding: 0;
+    //                     box-sizing: border-box;
+    //                 }
                     
-                    body {
-                        font-family: 'Inter', sans-serif;
-                        background: white;
-                        padding: 0;
-                        margin: 0;
-                        font-size: 10px;
-                        line-height: 1.2;
-                        width: 210mm;
-                        min-height: 297mm;
-                    }
+    //                 body {
+    //                     font-family: 'Inter', sans-serif;
+    //                     background: white;
+    //                     padding: 0;
+    //                     margin: 0;
+    //                     font-size: 10px;
+    //                     line-height: 1.2;
+    //                     width: 210mm;
+    //                     min-height: 297mm;
+    //                 }
                     
-                    .invoice-print-container {
-                        width: 210mm;
-                        min-height: 297mm;
-                        margin: 0 auto;
-                        background: white;
-                        padding: 15mm;
-                        position: relative;
-                    }
+    //                 .invoice-print-container {
+    //                     width: 210mm;
+    //                     min-height: 297mm;
+    //                     margin: 0 auto;
+    //                     background: white;
+    //                     padding: 15mm;
+    //                     position: relative;
+    //                 }
                     
-                    /* Ultra Compact Header Styles */
-                    .print-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        border-bottom: 1px solid #e74c3c;
-                        padding-bottom: 8px;
-                        margin-bottom: 8px;
-                    }
+    //                 /* Ultra Compact Header Styles */
+    //                 .print-header {
+    //                     display: flex;
+    //                     justify-content: space-between;
+    //                     align-items: flex-start;
+    //                     border-bottom: 1px solid #e74c3c;
+    //                     padding-bottom: 8px;
+    //                     margin-bottom: 8px;
+    //                 }
                     
-                    .print-company-info h2 {
-                        color: #e74c3c;
-                        margin: 0 0 3px 0;
-                        font-size: 12px;
-                        font-weight: 700;
-                    }
+    //                 .print-company-info h2 {
+    //                     color: #e74c3c;
+    //                     margin: 0 0 3px 0;
+    //                     font-size: 12px;
+    //                     font-weight: 700;
+    //                 }
                     
-                    .print-company-info .brand {
-                        color: #2c3e50;
-                        font-size: 10px;
-                        font-weight: 600;
-                        margin-bottom: 4px;
-                    }
+    //                 .print-company-info .brand {
+    //                     color: #2c3e50;
+    //                     font-size: 10px;
+    //                     font-weight: 600;
+    //                     margin-bottom: 4px;
+    //                 }
                     
-                    .print-company-info p {
-                        margin: 1px 0;
-                        font-size: 8px;
-                        color: #555;
-                        line-height: 1.1;
-                    }
+    //                 .print-company-info p {
+    //                     margin: 1px 0;
+    //                     font-size: 8px;
+    //                     color: #555;
+    //                     line-height: 1.1;
+    //                 }
                     
-                    .print-logo-section {
-                        display: flex;
-                        align-items: center;
-                        gap: 8px;
-                        margin-bottom: 5px;
-                    }
+    //                 .print-logo-section {
+    //                     display: flex;
+    //                     align-items: center;
+    //                     gap: 8px;
+    //                     margin-bottom: 5px;
+    //                 }
                     
-                    .print-logo {
-                        width: 80px;
-                        height: 25px;
-                        background: #e74c3c;
-                        border-radius: 4px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-weight: bold;
-                        font-size: 8px;
-                    }
+    //                 .print-logo {
+    //                     width: 80px;
+    //                     height: 25px;
+    //                     background: #e74c3c;
+    //                     border-radius: 4px;
+    //                     display: flex;
+    //                     align-items: center;
+    //                     justify-content: center;
+    //                     color: white;
+    //                     font-weight: bold;
+    //                     font-size: 8px;
+    //                 }
                     
-                    .print-qr {
-                        width: 35px;
-                        height: 35px;
-                        background: #f8f9fa;
-                        border: 1px solid #e74c3c;
-                        border-radius: 4px;
-                    }
+    //                 .print-qr {
+    //                     width: 35px;
+    //                     height: 35px;
+    //                     background: #f8f9fa;
+    //                     border: 1px solid #e74c3c;
+    //                     border-radius: 4px;
+    //                 }
                     
-                    .print-invoice-meta {
-                        text-align: right;
-                    }
+    //                 .print-invoice-meta {
+    //                     text-align: right;
+    //                 }
                     
-                    .print-invoice-meta h1 {
-                        color: #e74c3c;
-                        margin: 0 0 5px 0;
-                        font-size: 14px;
-                        font-weight: 800;
-                        text-transform: uppercase;
-                    }
+    //                 .print-invoice-meta h1 {
+    //                     color: #e74c3c;
+    //                     margin: 0 0 5px 0;
+    //                     font-size: 14px;
+    //                     font-weight: 800;
+    //                     text-transform: uppercase;
+    //                 }
                     
-                    .print-invoice-details {
-                        background: #e74c3c;
-                        color: white;
-                        padding: 6px;
-                        border-radius: 4px;
-                    }
+    //                 .print-invoice-details {
+    //                     background: #e74c3c;
+    //                     color: white;
+    //                     padding: 6px;
+    //                     border-radius: 4px;
+    //                 }
                     
-                    .print-invoice-details p {
-                        margin: 2px 0;
-                        font-size: 8px;
-                        font-weight: 500;
-                    }
+    //                 .print-invoice-details p {
+    //                     margin: 2px 0;
+    //                     font-size: 8px;
+    //                     font-weight: 500;
+    //                 }
                     
-                    /* Ultra Compact Customer Details */
-                    .print-customer-details {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 8px;
-                        margin-bottom: 8px;
-                    }
+    //                 /* Ultra Compact Customer Details */
+    //                 .print-customer-details {
+    //                     display: grid;
+    //                     grid-template-columns: 1fr 1fr;
+    //                     gap: 8px;
+    //                     margin-bottom: 8px;
+    //                 }
                     
-                    .print-detail-box {
-                        background: #f8f9fa;
-                        padding: 6px;
-                        border-radius: 4px;
-                        border-left: 2px solid #e74c3c;
-                    }
+    //                 .print-detail-box {
+    //                     background: #f8f9fa;
+    //                     padding: 6px;
+    //                     border-radius: 4px;
+    //                     border-left: 2px solid #e74c3c;
+    //                 }
                     
-                    .print-detail-box h3 {
-                        margin: 0 0 4px 0;
-                        color: #2c3e50;
-                        font-size: 9px;
-                        font-weight: 700;
-                    }
+    //                 .print-detail-box h3 {
+    //                     margin: 0 0 4px 0;
+    //                     color: #2c3e50;
+    //                     font-size: 9px;
+    //                     font-weight: 700;
+    //                 }
                     
-                    .print-detail-box p {
-                        margin: 2px 0;
-                        font-size: 8px;
-                        color: #555;
-                        line-height: 1.1;
-                    }
+    //                 .print-detail-box p {
+    //                     margin: 2px 0;
+    //                     font-size: 8px;
+    //                     color: #555;
+    //                     line-height: 1.1;
+    //                 }
                     
-                    /* Ultra Compact Products Table */
-                    .print-products-section {
-                        margin-bottom: 8px;
-                    }
+    //                 /* Ultra Compact Products Table */
+    //                 .print-products-section {
+    //                     margin-bottom: 8px;
+    //                 }
                     
-                    .print-products-section h3 {
-                        color: white;
-                        margin-bottom: 5px;
-                        font-size: 10px;
-                        font-weight: 700;
-                        text-align: center;
-                        background: #e74c3c;
-                        padding: 4px;
-                        border-radius: 3px;
-                    }
+    //                 .print-products-section h3 {
+    //                     color: white;
+    //                     margin-bottom: 5px;
+    //                     font-size: 10px;
+    //                     font-weight: 700;
+    //                     text-align: center;
+    //                     background: #e74c3c;
+    //                     padding: 4px;
+    //                     border-radius: 3px;
+    //                 }
                     
-                    .print-products-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        font-size: 7px;
-                        border-radius: 3px;
-                        overflow: hidden;
-                    }
+    //                 .print-products-table {
+    //                     width: 100%;
+    //                     border-collapse: collapse;
+    //                     font-size: 7px;
+    //                     border-radius: 3px;
+    //                     overflow: hidden;
+    //                 }
                     
-                    .print-products-table th {
-                        background: #2c3e50;
-                        color: white;
-                        padding: 3px 2px;
-                        text-align: left;
-                        font-weight: 600;
-                        font-size: 6px;
-                        text-transform: uppercase;
-                    }
+    //                 .print-products-table th {
+    //                     background: #2c3e50;
+    //                     color: white;
+    //                     padding: 3px 2px;
+    //                     text-align: left;
+    //                     font-weight: 600;
+    //                     font-size: 6px;
+    //                     text-transform: uppercase;
+    //                 }
                     
-                    .print-products-table td {
-                        padding: 2px;
-                        border-bottom: 1px solid #ecf0f1;
-                        background: white;
-                    }
+    //                 .print-products-table td {
+    //                     padding: 2px;
+    //                     border-bottom: 1px solid #ecf0f1;
+    //                     background: white;
+    //                 }
                     
-                    .print-products-table tr:nth-child(even) td {
-                        background: #f8f9fa;
-                    }
+    //                 .print-products-table tr:nth-child(even) td {
+    //                     background: #f8f9fa;
+    //                 }
                     
-                    /* Ultra Compact Totals Section */
-                    .print-totals-section {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 8px;
-                        margin-bottom: 8px;
-                    }
+    //                 /* Ultra Compact Totals Section */
+    //                 .print-totals-section {
+    //                     display: grid;
+    //                     grid-template-columns: 1fr 1fr;
+    //                     gap: 8px;
+    //                     margin-bottom: 8px;
+    //                 }
                     
-                    .print-amount-breakdown {
-                        background: #f8f9fa;
-                        padding: 6px;
-                        border-radius: 4px;
-                    }
+    //                 .print-amount-breakdown {
+    //                     background: #f8f9fa;
+    //                     padding: 6px;
+    //                     border-radius: 4px;
+    //                 }
                     
-                    .print-total-row {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 2px 0;
-                        border-bottom: 1px solid #ddd;
-                        font-size: 8px;
-                        font-weight: 500;
-                    }
+    //                 .print-total-row {
+    //                     display: flex;
+    //                     justify-content: space-between;
+    //                     align-items: center;
+    //                     padding: 2px 0;
+    //                     border-bottom: 1px solid #ddd;
+    //                     font-size: 8px;
+    //                     font-weight: 500;
+    //                 }
                     
-                    .print-grand-total {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        padding: 4px 0 0 0;
-                        margin-top: 4px;
-                        border-top: 1px solid #e74c3c;
-                        font-size: 9px;
-                        font-weight: 700;
-                        color: #e74c3c;
-                    }
+    //                 .print-grand-total {
+    //                     display: flex;
+    //                     justify-content: space-between;
+    //                     align-items: center;
+    //                     padding: 4px 0 0 0;
+    //                     margin-top: 4px;
+    //                     border-top: 1px solid #e74c3c;
+    //                     font-size: 9px;
+    //                     font-weight: 700;
+    //                     color: #e74c3c;
+    //                 }
                     
-                    .print-bank-signature {
-                        display: flex;
-                        flex-direction: column;
-                        gap: 6px;
-                    }
+    //                 .print-bank-signature {
+    //                     display: flex;
+    //                     flex-direction: column;
+    //                     gap: 6px;
+    //                 }
                     
-                    .print-bank-details {
-                        background: #667eea;
-                        color: white;
-                        padding: 6px;
-                        border-radius: 4px;
-                    }
+    //                 .print-bank-details {
+    //                     background: #667eea;
+    //                     color: white;
+    //                     padding: 6px;
+    //                     border-radius: 4px;
+    //                 }
                     
-                    .print-bank-details h4 {
-                        margin: 0 0 4px 0;
-                        color: white;
-                        font-size: 9px;
-                        font-weight: 700;
-                    }
+    //                 .print-bank-details h4 {
+    //                     margin: 0 0 4px 0;
+    //                     color: white;
+    //                     font-size: 9px;
+    //                     font-weight: 700;
+    //                 }
                     
-                    .print-bank-details p {
-                        margin: 1px 0;
-                        font-size: 7px;
-                        opacity: 0.9;
-                    }
+    //                 .print-bank-details p {
+    //                     margin: 1px 0;
+    //                     font-size: 7px;
+    //                     opacity: 0.9;
+    //                 }
                     
-                    .print-signature {
-                        background: #f8f9fa;
-                        padding: 6px;
-                        border-radius: 4px;
-                        text-align: center;
-                    }
+    //                 .print-signature {
+    //                     background: #f8f9fa;
+    //                     padding: 6px;
+    //                     border-radius: 4px;
+    //                     text-align: center;
+    //                 }
                     
-                    .print-signature-line {
-                        width: 100px;
-                        height: 1px;
-                        background: #34495e;
-                        margin: 15px auto 3px auto;
-                    }
+    //                 .print-signature-line {
+    //                     width: 100px;
+    //                     height: 1px;
+    //                     background: #34495e;
+    //                     margin: 15px auto 3px auto;
+    //                 }
                     
-                    /* Ultra Compact Footer */
-                    .print-footer {
-                        margin-top: 8px;
-                        padding-top: 6px;
-                        border-top: 1px solid #e74c3c;
-                    }
+    //                 /* Ultra Compact Footer */
+    //                 .print-footer {
+    //                     margin-top: 8px;
+    //                     padding-top: 6px;
+    //                     border-top: 1px solid #e74c3c;
+    //                 }
                     
-                    .print-terms-container {
-                        display: grid;
-                        grid-template-columns: 2fr 1fr;
-                        gap: 8px;
-                        margin-bottom: 6px;
-                    }
+    //                 .print-terms-container {
+    //                     display: grid;
+    //                     grid-template-columns: 2fr 1fr;
+    //                     gap: 8px;
+    //                     margin-bottom: 6px;
+    //                 }
                     
-                    .print-terms {
-                        font-size: 6px;
-                        color: #666;
-                    }
+    //                 .print-terms {
+    //                     font-size: 6px;
+    //                     color: #666;
+    //                 }
                     
-                    .print-terms h4 {
-                        margin: 0 0 4px 0;
-                        color: #2c3e50;
-                        font-size: 8px;
-                        font-weight: 700;
-                    }
+    //                 .print-terms h4 {
+    //                     margin: 0 0 4px 0;
+    //                     color: #2c3e50;
+    //                     font-size: 8px;
+    //                     font-weight: 700;
+    //                 }
                     
-                    .print-terms ul {
-                        margin: 0;
-                        padding-left: 8px;
-                    }
+    //                 .print-terms ul {
+    //                     margin: 0;
+    //                     padding-left: 8px;
+    //                 }
                     
-                    .print-terms li {
-                        margin-bottom: 1px;
-                        line-height: 1.1;
-                    }
+    //                 .print-terms li {
+    //                     margin-bottom: 1px;
+    //                     line-height: 1.1;
+    //                 }
                     
-                    .print-qr-section {
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        background: #f8f9fa;
-                        padding: 4px;
-                        border-radius: 4px;
-                        text-align: center;
-                    }
+    //                 .print-qr-section {
+    //                     display: flex;
+    //                     flex-direction: column;
+    //                     align-items: center;
+    //                     justify-content: center;
+    //                     background: #f8f9fa;
+    //                     padding: 4px;
+    //                     border-radius: 4px;
+    //                     text-align: center;
+    //                 }
                     
-                    .print-qr-large {
-                        width: 50px;
-                        height: 50px;
-                        background: white;
-                        border: 1px solid #e74c3c;
-                        border-radius: 3px;
-                        margin-bottom: 2px;
-                    }
+    //                 .print-qr-large {
+    //                     width: 50px;
+    //                     height: 50px;
+    //                     background: white;
+    //                     border: 1px solid #e74c3c;
+    //                     border-radius: 3px;
+    //                     margin-bottom: 2px;
+    //                 }
                     
-                    .print-footer-note {
-                        text-align: center;
-                        padding: 4px;
-                        background: #2c3e50;
-                        color: white;
-                        border-radius: 3px;
-                        margin-top: 4px;
-                    }
+    //                 .print-footer-note {
+    //                     text-align: center;
+    //                     padding: 4px;
+    //                     background: #2c3e50;
+    //                     color: white;
+    //                     border-radius: 3px;
+    //                     margin-top: 4px;
+    //                 }
                     
-                    .print-footer-note p {
-                        margin: 1px 0;
-                        font-size: 7px;
-                        font-weight: 500;
-                    }
+    //                 .print-footer-note p {
+    //                     margin: 1px 0;
+    //                     font-size: 7px;
+    //                     font-weight: 500;
+    //                 }
                     
-                    /* Print-specific optimizations */
-                    @media print {
-                        body {
-                            margin: 0 !important;
-                            padding: 0 !important;
-                            background: white !important;
-                            font-size: 8px !important;
-                            width: 210mm !important;
-                            height: 297mm !important;
-                        }
+    //                 /* Print-specific optimizations */
+    //                 @media print {
+    //                     body {
+    //                         margin: 0 !important;
+    //                         padding: 0 !important;
+    //                         background: white !important;
+    //                         font-size: 8px !important;
+    //                         width: 210mm !important;
+    //                         height: 297mm !important;
+    //                     }
                         
-                        .invoice-print-container {
-                            padding: 15mm !important;
-                            margin: 0 !important;
-                            width: 210mm !important;
-                            min-height: 297mm !important;
-                            box-shadow: none !important;
-                            border: none !important;
-                        }
+    //                     .invoice-print-container {
+    //                         padding: 15mm !important;
+    //                         margin: 0 !important;
+    //                         width: 210mm !important;
+    //                         min-height: 297mm !important;
+    //                         box-shadow: none !important;
+    //                         border: none !important;
+    //                     }
                         
-                        /* Ensure everything fits on one page */
-                        .print-header,
-                        .print-customer-details,
-                        .print-products-section,
-                        .print-totals-section,
-                        .print-footer {
-                            page-break-inside: avoid;
-                        }
-                    }
+    //                     /* Ensure everything fits on one page */
+    //                     .print-header,
+    //                     .print-customer-details,
+    //                     .print-products-section,
+    //                     .print-totals-section,
+    //                     .print-footer {
+    //                         page-break-inside: avoid;
+    //                     }
+    //                 }
                     
-                    /* Hide unnecessary elements for print */
-                    .no-print {
-                        display: none !important;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="invoice-print-container">
-                    <div class="invoice-content">
-                        ${printContent}
-                    </div>
-                </div>
-                <script>
-                    window.onload = function() { 
-                        setTimeout(() => {
-                            window.print();
-                            setTimeout(() => {
-                                window.close();
-                            }, 500);
-                        }, 100);
-                    }
-                </script>
-            </body>
-            </html>
-        `);
-        printWindow.document.close();
-    };
+    //                 /* Hide unnecessary elements for print */
+    //                 .no-print {
+    //                     display: none !important;
+    //                 }
+    //             </style>
+    //         </head>
+    //         <body>
+    //             <div class="invoice-print-container">
+    //                 <div class="invoice-content">
+    //                     ${printContent}
+    //                 </div>
+    //             </div>
+    //             <script>
+    //                 window.onload = function() { 
+    //                     setTimeout(() => {
+    //                         window.print();
+    //                         setTimeout(() => {
+    //                             window.close();
+    //                         }, 500);
+    //                     }, 100);
+    //                 }
+    //             </script>
+    //         </body>
+    //         </html>
+    //     `);
+    //     printWindow.document.close();
+    // };
 
     const formatDate = (dateString) => {
         if (!dateString) return '-';
@@ -739,9 +742,9 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
 
                     {/* Action Buttons */}
                     <div className={styles.modalActions}>
-                        <button className={styles.printBtn} onClick={handlePrint}>
+                        {/* <button className={styles.printBtn} onClick={handlePrint}>
                             <FaPrint /> Print Invoice
-                        </button>
+                        </button> */}
                         <button className={styles.downloadBtn} onClick={downloadPdf}>
                             <FaDownload /> Download PDF
                         </button>
