@@ -90,34 +90,86 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         totalAmount 
     } = calculateProductTotals(orderData);
 
-    const downloadPdf = () => {
+    const downloadPdf = async () => {
         const input = invoiceRef.current;
-        const pdf = new jsPDF('p', 'mm', 'a4');
         
-        html2canvas(input, { 
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: '#ffffff',
-            width: input.scrollWidth,
-            height: input.scrollHeight,
-            windowWidth: input.scrollWidth,
-            windowHeight: input.scrollHeight
-        }).then((canvas) => {
-            const imgData = canvas.toDataURL('image/png', 1.0);
+        // Create a temporary clone for PDF generation
+        const tempElement = document.createElement('div');
+        tempElement.style.width = '210mm'; // A4 width
+        tempElement.style.padding = '15mm';
+        tempElement.style.background = 'white';
+        tempElement.style.fontFamily = "'Inter', sans-serif";
+        tempElement.style.fontSize = '10px';
+        tempElement.innerHTML = document.getElementById('invoice-print-content').innerHTML;
+        document.body.appendChild(tempElement);
+
+        try {
+            const canvas = await html2canvas(tempElement, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                width: tempElement.scrollWidth,
+                height: tempElement.scrollHeight,
+                windowWidth: tempElement.scrollWidth,
+                windowHeight: tempElement.scrollHeight,
+                onclone: (clonedDoc) => {
+                    // Ensure all styles are applied for PDF
+                    const clonedElement = clonedDoc.querySelector('div');
+                    if (clonedElement) {
+                        clonedElement.style.width = '210mm';
+                        clonedElement.style.padding = '15mm';
+                        clonedElement.style.background = 'white';
+                        clonedElement.style.fontFamily = "'Inter', sans-serif";
+                        clonedElement.style.fontSize = '10px';
+                    }
+                }
+            });
+
+            document.body.removeChild(tempElement);
+
+            const imgWidth = 210; // A4 width in mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+            
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            
+            // Check if content fits on one page
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            
+            if (imgHeight <= pageHeight) {
+                // Content fits on one page
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth, imgHeight);
+            } else {
+                // Content is too long - scale to fit one page
+                const scale = pageHeight / imgHeight;
+                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, imgWidth * scale, pageHeight);
+            }
+            
+            pdf.save(`invoice_${orderData.OrderID}.pdf`);
+            
+        } catch (error) {
+            console.error('Error generating PDF:', error);
+            document.body.removeChild(tempElement);
+            
+            // Fallback: Use original method
+            const canvas = await html2canvas(input, { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
-            
-            // Calculate dimensions to fit on one page
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
-            const ratio = Math.min((pdfWidth - 20) / imgWidth, (pdfHeight - 20) / imgHeight);
-            const imgX = (pdfWidth - imgWidth * ratio) / 2;
-            const imgY = 10;
-
-            pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            
+            pdf.addImage(imgData, 'PNG', 0, 0, imgWidth * ratio, imgHeight * ratio);
             pdf.save(`invoice_${orderData.OrderID}.pdf`);
-        });
+        }
     };
 
     const handlePrint = () => {
@@ -142,90 +194,80 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     body {
                         font-family: 'Inter', sans-serif;
                         background: white;
-                        padding: 10px;
+                        padding: 0;
                         margin: 0;
-                        font-size: 12px;
-                        line-height: 1.3;
+                        font-size: 10px;
+                        line-height: 1.2;
+                        width: 210mm;
+                        min-height: 297mm;
                     }
                     
                     .invoice-print-container {
-                        width: 100%;
-                        max-width: 100%;
+                        width: 210mm;
+                        min-height: 297mm;
                         margin: 0 auto;
                         background: white;
-                        padding: 15px;
+                        padding: 15mm;
+                        position: relative;
                     }
                     
-                    .invoice-content {
-                        padding: 0;
-                    }
-                    
-                    /* Compact Header Styles */
+                    /* Ultra Compact Header Styles */
                     .print-header {
                         display: flex;
                         justify-content: space-between;
                         align-items: flex-start;
-                        border-bottom: 2px solid #e74c3c;
-                        padding-bottom: 15px;
-                        margin-bottom: 15px;
-                        padding: 15px;
-                        background: #f8f9fa;
-                        border-radius: 8px;
+                        border-bottom: 1px solid #e74c3c;
+                        padding-bottom: 8px;
+                        margin-bottom: 8px;
                     }
                     
                     .print-company-info h2 {
                         color: #e74c3c;
-                        margin: 0 0 5px 0;
-                        font-size: 18px;
+                        margin: 0 0 3px 0;
+                        font-size: 12px;
                         font-weight: 700;
                     }
                     
                     .print-company-info .brand {
                         color: #2c3e50;
-                        font-size: 14px;
+                        font-size: 10px;
                         font-weight: 600;
-                        margin-bottom: 8px;
+                        margin-bottom: 4px;
                     }
                     
                     .print-company-info p {
-                        margin: 2px 0;
-                        font-size: 10px;
+                        margin: 1px 0;
+                        font-size: 8px;
                         color: #555;
-                        line-height: 1.2;
+                        line-height: 1.1;
                     }
                     
                     .print-logo-section {
                         display: flex;
                         align-items: center;
-                        gap: 15px;
-                        margin-bottom: 10px;
+                        gap: 8px;
+                        margin-bottom: 5px;
                     }
                     
                     .print-logo {
-                        width: 120px;
-                        height: 35px;
+                        width: 80px;
+                        height: 25px;
                         background: #e74c3c;
-                        border-radius: 6px;
+                        border-radius: 4px;
                         display: flex;
                         align-items: center;
                         justify-content: center;
                         color: white;
                         font-weight: bold;
-                        font-size: 10px;
+                        font-size: 8px;
                     }
                     
                     .print-qr {
-                        width: 50px;
-                        height: 50px;
+                        width: 35px;
+                        height: 35px;
                         background: #f8f9fa;
-                        border: 2px solid #e74c3c;
-                        border-radius: 6px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: #e74c3c;
-                        font-size: 8px;
-                        font-weight: 600;
+                        border: 1px solid #e74c3c;
+                        border-radius: 4px;
                     }
                     
                     .print-invoice-meta {
@@ -234,8 +276,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     
                     .print-invoice-meta h1 {
                         color: #e74c3c;
-                        margin: 0 0 10px 0;
-                        font-size: 20px;
+                        margin: 0 0 5px 0;
+                        font-size: 14px;
                         font-weight: 800;
                         text-transform: uppercase;
                     }
@@ -243,81 +285,81 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     .print-invoice-details {
                         background: #e74c3c;
                         color: white;
-                        padding: 12px;
-                        border-radius: 6px;
+                        padding: 6px;
+                        border-radius: 4px;
                     }
                     
                     .print-invoice-details p {
-                        margin: 4px 0;
-                        font-size: 10px;
+                        margin: 2px 0;
+                        font-size: 8px;
                         font-weight: 500;
                     }
                     
-                    /* Compact Customer Details */
+                    /* Ultra Compact Customer Details */
                     .print-customer-details {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        gap: 15px;
-                        margin-bottom: 15px;
+                        gap: 8px;
+                        margin-bottom: 8px;
                     }
                     
                     .print-detail-box {
                         background: #f8f9fa;
-                        padding: 12px;
-                        border-radius: 6px;
-                        border-left: 3px solid #e74c3c;
+                        padding: 6px;
+                        border-radius: 4px;
+                        border-left: 2px solid #e74c3c;
                     }
                     
                     .print-detail-box h3 {
-                        margin: 0 0 8px 0;
+                        margin: 0 0 4px 0;
                         color: #2c3e50;
-                        font-size: 12px;
+                        font-size: 9px;
                         font-weight: 700;
                     }
                     
                     .print-detail-box p {
-                        margin: 4px 0;
-                        font-size: 10px;
+                        margin: 2px 0;
+                        font-size: 8px;
                         color: #555;
-                        line-height: 1.2;
+                        line-height: 1.1;
                     }
                     
-                    /* Compact Products Table */
+                    /* Ultra Compact Products Table */
                     .print-products-section {
-                        margin-bottom: 15px;
+                        margin-bottom: 8px;
                     }
                     
                     .print-products-section h3 {
                         color: white;
-                        margin-bottom: 10px;
-                        font-size: 14px;
+                        margin-bottom: 5px;
+                        font-size: 10px;
                         font-weight: 700;
                         text-align: center;
                         background: #e74c3c;
-                        padding: 8px;
-                        border-radius: 5px;
+                        padding: 4px;
+                        border-radius: 3px;
                     }
                     
                     .print-products-table {
                         width: 100%;
                         border-collapse: collapse;
-                        font-size: 9px;
-                        border-radius: 4px;
+                        font-size: 7px;
+                        border-radius: 3px;
                         overflow: hidden;
                     }
                     
                     .print-products-table th {
                         background: #2c3e50;
                         color: white;
-                        padding: 6px 4px;
+                        padding: 3px 2px;
                         text-align: left;
                         font-weight: 600;
-                        font-size: 8px;
+                        font-size: 6px;
                         text-transform: uppercase;
                     }
                     
                     .print-products-table td {
-                        padding: 5px 4px;
+                        padding: 2px;
                         border-bottom: 1px solid #ecf0f1;
                         background: white;
                     }
@@ -326,27 +368,27 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         background: #f8f9fa;
                     }
                     
-                    /* Compact Totals Section */
+                    /* Ultra Compact Totals Section */
                     .print-totals-section {
                         display: grid;
                         grid-template-columns: 1fr 1fr;
-                        gap: 15px;
-                        margin-bottom: 15px;
+                        gap: 8px;
+                        margin-bottom: 8px;
                     }
                     
                     .print-amount-breakdown {
                         background: #f8f9fa;
-                        padding: 12px;
-                        border-radius: 6px;
+                        padding: 6px;
+                        border-radius: 4px;
                     }
                     
                     .print-total-row {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        padding: 4px 0;
+                        padding: 2px 0;
                         border-bottom: 1px solid #ddd;
-                        font-size: 10px;
+                        font-size: 8px;
                         font-weight: 500;
                     }
                     
@@ -354,10 +396,10 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         display: flex;
                         justify-content: space-between;
                         align-items: center;
-                        padding: 8px 0 0 0;
-                        margin-top: 8px;
-                        border-top: 2px solid #e74c3c;
-                        font-size: 12px;
+                        padding: 4px 0 0 0;
+                        margin-top: 4px;
+                        border-top: 1px solid #e74c3c;
+                        font-size: 9px;
                         font-weight: 700;
                         color: #e74c3c;
                     }
@@ -365,77 +407,77 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     .print-bank-signature {
                         display: flex;
                         flex-direction: column;
-                        gap: 10px;
+                        gap: 6px;
                     }
                     
                     .print-bank-details {
                         background: #667eea;
                         color: white;
-                        padding: 12px;
-                        border-radius: 6px;
+                        padding: 6px;
+                        border-radius: 4px;
                     }
                     
                     .print-bank-details h4 {
-                        margin: 0 0 8px 0;
+                        margin: 0 0 4px 0;
                         color: white;
-                        font-size: 12px;
+                        font-size: 9px;
                         font-weight: 700;
                     }
                     
                     .print-bank-details p {
-                        margin: 3px 0;
-                        font-size: 9px;
+                        margin: 1px 0;
+                        font-size: 7px;
                         opacity: 0.9;
                     }
                     
                     .print-signature {
                         background: #f8f9fa;
-                        padding: 12px;
-                        border-radius: 6px;
+                        padding: 6px;
+                        border-radius: 4px;
                         text-align: center;
                     }
                     
                     .print-signature-line {
-                        width: 150px;
+                        width: 100px;
                         height: 1px;
                         background: #34495e;
-                        margin: 20px auto 5px auto;
+                        margin: 15px auto 3px auto;
                     }
                     
-                    /* Compact Footer */
+                    /* Ultra Compact Footer */
                     .print-footer {
-                        margin-top: 15px;
-                        padding-top: 12px;
-                        border-top: 2px solid #e74c3c;
+                        margin-top: 8px;
+                        padding-top: 6px;
+                        border-top: 1px solid #e74c3c;
                     }
                     
                     .print-terms-container {
                         display: grid;
                         grid-template-columns: 2fr 1fr;
-                        gap: 15px;
-                        margin-bottom: 12px;
+                        gap: 8px;
+                        margin-bottom: 6px;
                     }
                     
                     .print-terms {
-                        font-size: 8px;
+                        font-size: 6px;
                         color: #666;
                     }
                     
                     .print-terms h4 {
-                        margin: 0 0 8px 0;
+                        margin: 0 0 4px 0;
                         color: #2c3e50;
-                        font-size: 10px;
+                        font-size: 8px;
                         font-weight: 700;
                     }
                     
                     .print-terms ul {
                         margin: 0;
-                        padding-left: 12px;
+                        padding-left: 8px;
                     }
                     
                     .print-terms li {
-                        margin-bottom: 3px;
-                        line-height: 1.2;
+                        margin-bottom: 1px;
+                        line-height: 1.1;
                     }
                     
                     .print-qr-section {
@@ -444,38 +486,32 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         align-items: center;
                         justify-content: center;
                         background: #f8f9fa;
-                        padding: 10px;
-                        border-radius: 6px;
+                        padding: 4px;
+                        border-radius: 4px;
                         text-align: center;
                     }
                     
                     .print-qr-large {
-                        width: 80px;
-                        height: 80px;
+                        width: 50px;
+                        height: 50px;
                         background: white;
-                        border: 2px solid #e74c3c;
-                        border-radius: 6px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        margin-bottom: 5px;
-                        font-weight: 600;
-                        color: #e74c3c;
-                        font-size: 8px;
+                        border: 1px solid #e74c3c;
+                        border-radius: 3px;
+                        margin-bottom: 2px;
                     }
                     
                     .print-footer-note {
                         text-align: center;
-                        padding: 10px;
+                        padding: 4px;
                         background: #2c3e50;
                         color: white;
-                        border-radius: 5px;
-                        margin-top: 10px;
+                        border-radius: 3px;
+                        margin-top: 4px;
                     }
                     
                     .print-footer-note p {
-                        margin: 2px 0;
-                        font-size: 9px;
+                        margin: 1px 0;
+                        font-size: 7px;
                         font-weight: 500;
                     }
                     
@@ -483,41 +519,29 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     @media print {
                         body {
                             margin: 0 !important;
-                            padding: 5px !important;
+                            padding: 0 !important;
                             background: white !important;
-                            font-size: 10px !important;
+                            font-size: 8px !important;
+                            width: 210mm !important;
+                            height: 297mm !important;
                         }
                         
                         .invoice-print-container {
-                            padding: 0 !important;
+                            padding: 15mm !important;
                             margin: 0 !important;
-                            width: 100% !important;
-                            max-width: 100% !important;
+                            width: 210mm !important;
+                            min-height: 297mm !important;
                             box-shadow: none !important;
                             border: none !important;
                         }
                         
-                        .print-header {
-                            page-break-inside: avoid;
-                            margin-bottom: 10px !important;
-                        }
-                        
-                        .print-products-table {
-                            page-break-inside: avoid;
-                        }
-                        
-                        .print-totals-section {
-                            page-break-inside: avoid;
-                        }
-                        
+                        /* Ensure everything fits on one page */
+                        .print-header,
+                        .print-customer-details,
+                        .print-products-section,
+                        .print-totals-section,
                         .print-footer {
-                            page-break-before: avoid;
-                        }
-                        
-                        /* Force single page */
-                        .invoice-content {
-                            height: auto !important;
-                            overflow: visible !important;
+                            page-break-inside: avoid;
                         }
                     }
                     
@@ -535,7 +559,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                 </div>
                 <script>
                     window.onload = function() { 
-                        // Add a small delay to ensure all content is rendered
                         setTimeout(() => {
                             window.print();
                             setTimeout(() => {
