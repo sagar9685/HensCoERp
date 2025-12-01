@@ -431,7 +431,7 @@ const handleStatusChange = (row, value) => {
        {formatPaymentSummary(row.PaymentSummary)}
         </span>
       </td>
-      <td className={styles.tableData}>{row.orderTakenBy}</td>
+      <td className={styles.tableData}>{row.OrderTakenBy}</td>
       <td className={styles.tableData}>{row.Remark}</td>
      
      {/* payment verify */}

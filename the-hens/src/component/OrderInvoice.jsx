@@ -42,6 +42,7 @@ const calculateProductTotals = (row) => {
     const weights = row.Weights ? row.Weights.split(",").map(s => s.trim()) : [];
     const quantities = row.Quantities ? row.Quantities.split(",").map(Number) : [];
     const rates = row.Rates ? row.Rates.split(",").map(Number) : [];
+   
 
     const productItems = names.map((name, i) => {
         const qty = quantities[i] || 0;
@@ -77,6 +78,8 @@ const calculateProductTotals = (row) => {
         totalAmount: totalAmount.toFixed(2),
     };
 };
+
+
 
 const InvoiceGenerator = ({ orderData, onClose }) => {
     const invoiceRef = useRef();
@@ -608,13 +611,13 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                             <div className={styles.logo}>
                                                 <img src="./img/logo.png" alt="The Hen's Co." className={styles.logoImage} />
                                             </div>
-                                            <div className={styles.qrCode}>
+                                            {/* <div className={styles.qrCode}>
                                                 <img src="./img/qr.png" alt="QR Code" className={styles.qrImage} />
-                                            </div>
+                                            </div> */}
                                         </div>
                                     </div>
                                     <h2>{COMPANY_INFO.name}</h2>
-                                    <p className={styles.brand}>({COMPANY_INFO.brand})</p>
+                                    {/* <p className={styles.brand}>({COMPANY_INFO.brand})</p> */}
                                     <div className={styles.companyDetails}>
                                         <p><strong>GSTIN:</strong> {COMPANY_INFO.gstin}</p>
                                         <p><strong>PAN:</strong> {COMPANY_INFO.pan}</p>
@@ -622,10 +625,10 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                     </div>
                                 </div>
                                 <div className={styles.invoiceMeta}>
-                                    <h1>TAX INVOICE</h1>
+                                    <h1>Bill of Supply/INVOICE </h1>
                                     <div className={styles.invoiceDetails}>
-                                        <p><strong>Invoice No:</strong> {orderData.OrderID}</p>
-                                        <p><strong>Date:</strong> {formatDate(orderData.OrderDate)}</p>
+                                        <p><strong>Invoice No:</strong> {orderData.InvoiceNo}</p>
+                                        <p><strong>Invoice Date:</strong> {formatDate(orderData.OrderDate)}</p>
                                         <p><strong>Delivery Date:</strong> {formatDate(orderData.DeliveryDate)}</p>
                                     </div>
                                 </div>
@@ -644,7 +647,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                     <h3>Ship To</h3>
                                     <p>Same as billing address</p>
                                     <p><strong>Payment Terms:</strong> On Delivery</p>
-                                    <p><strong>Order Taken By:</strong> {orderData.orderTakenBy || 'N/A'}</p>
+                               <p><strong>Order Taken By:</strong> {orderData.OrderTakenBy || 'N/A'}</p>
+
                                 </div>
                             </div>
 
@@ -654,7 +658,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                 <table className={styles.productsTable}>
                                     <thead>
                                         <tr>
-                                            <th>#</th>
+                                            <th>SNo.</th>
                                             <th>HSN</th>
                                             <th>Product Description</th>
                                             <th>GST %</th>
@@ -688,7 +692,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                         <span>₹{subTotal}</span>
                                     </div>
                                     <div className={styles.totalRow}>
-                                        <span>Delivery Charge:</span>
+                                        <span>Packing:</span>
                                         <span>₹{deliveryCharge}</span>
                                     </div>
                                    

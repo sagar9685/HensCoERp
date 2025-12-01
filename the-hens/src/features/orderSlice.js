@@ -7,6 +7,7 @@ const initialState = {
     loading : false,
     data : [],
     record : [],
+     takenByList: [],
     error : null
 }
 
@@ -33,6 +34,20 @@ export const fetchOrder = createAsyncThunk('fetchOrder', async (_, thunkAPI) => 
     return thunkAPI.rejectWithValue(err.response?.data || 'Failed to fetch orders');
   }
 });
+
+
+// FETCH ORDER TAKEN BY NAME LIST
+export const fetchOrderTakenBy = createAsyncThunk(
+  "order/fetchOrderTakenBy",
+  async (_, thunkAPI) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/orders/ordername`);
+      return res.data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.response?.data || "Failed to load names");
+    }
+  }
+);
 
 
  
@@ -66,6 +81,23 @@ export const orderSlice = createSlice({
             state.loading = false;
             state.error = action.payload
         })
+        builder.addCase(fetchOrderTakenBy.pending, (state) => {
+                state.loading = true;
+                });
+
+                builder.addCase(fetchOrderTakenBy.fulfilled, (state, action) => {
+                state.loading = false;
+             state.takenByList = Array.isArray(action.payload)
+                    ? action.payload
+                    : action.payload?.data || [];
+
+                });
+
+                builder.addCase(fetchOrderTakenBy.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+                });
+
     }
 
 })

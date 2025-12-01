@@ -4,5 +4,6 @@ const orderController = require('../controller/orderController');
 
 router.post('/add', orderController.addOrder);
 router.get('/',orderController.getAllorder)
+router.get('/ordername',orderController.getOrderTakenByList)
 
 module.exports = router;

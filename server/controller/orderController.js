@@ -9,6 +9,7 @@ exports.addOrder = async (req, res) => {
       ContactNo,
       DeliveryCharge,
       OrderDate,
+      OrderTakenBy,
       Items
     } = req.body;
 
@@ -18,11 +19,58 @@ exports.addOrder = async (req, res) => {
 
     const pool = await poolPromise;
 
-    // Insert into Orders table
+    // -------------------------------------------------------
+    // 1️⃣ DETECT CURRENT FINANCIAL YEAR
+    // -------------------------------------------------------
+    const orderDt = new Date(OrderDate);
+    const year = orderDt.getFullYear();
+    const month = orderDt.getMonth() + 1;
+
+    let fyStart, fyEnd;
+
+    if (month >= 4) {
+      // April to December → current FY
+      fyStart = year;
+      fyEnd = year + 1;
+    } else {
+      // January to March → previous FY
+      fyStart = year - 1;
+      fyEnd = year;
+    }
+
+    const fyString = `${fyStart % 100}-${fyEnd % 100}`;  // Example: 25-26
+
+    // -------------------------------------------------------
+    // 2️⃣ GET LAST INVOICE OF THIS FY
+    // -------------------------------------------------------
+    const lastInvoiceQuery = `
+      SELECT TOP 1 InvoiceNo 
+      FROM OrdersTemp
+      WHERE InvoiceNo LIKE '${fyString}/%'
+      ORDER BY OrderID DESC;
+    `;
+
+    const lastInvoiceResult = await pool.request().query(lastInvoiceQuery);
+
+    let nextSequence = 1;
+
+    if (lastInvoiceResult.recordset.length > 0) {
+      const lastInvoice = lastInvoiceResult.recordset[0].InvoiceNo;  // Example: 25-26/07
+      const lastSeq = parseInt(lastInvoice.split("/")[1]);
+      nextSequence = lastSeq + 1;
+    }
+
+    const invoiceNo = `${fyString}/${String(nextSequence).padStart(2, "0")}`;
+
+    // -------------------------------------------------------
+    // 3️⃣ INSERT INTO ORDERTEMP WITH INVOICE NO
+    // -------------------------------------------------------
     const orderQuery = `
-      INSERT INTO OrdersTemp (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate)
+      INSERT INTO OrdersTemp 
+      (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo)
       OUTPUT INSERTED.OrderID
-      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate);
+      VALUES 
+      (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo);
     `;
 
     const orderRequest = pool.request();
@@ -32,15 +80,21 @@ exports.addOrder = async (req, res) => {
     orderRequest.input("ContactNo", sql.VarChar, ContactNo);
     orderRequest.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
     orderRequest.input("OrderDate", sql.Date, OrderDate);
+    orderRequest.input("OrderTakenBy", sql.NVarChar, OrderTakenBy);
+    orderRequest.input("InvoiceNo", sql.NVarChar, invoiceNo);
 
     const result = await orderRequest.query(orderQuery);
     const orderId = result.recordset[0].OrderID;
 
-    // Insert multiple items
+    // -------------------------------------------------------
+    // 4️⃣ INSERT ORDER ITEMS
+    // -------------------------------------------------------
     for (let item of Items) {
       const itemQuery = `
-        INSERT INTO OrderItems (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
-        VALUES (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+        INSERT INTO OrderItems 
+        (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+        VALUES 
+        (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
       `;
 
       const itemReq = pool.request();
@@ -56,8 +110,9 @@ exports.addOrder = async (req, res) => {
     }
 
     res.status(200).json({
-      message: "Order added successfully with multiple items!",
-      orderId
+      message: "Order + Invoice Generated!",
+      orderId,
+      invoiceNo
     });
 
   } catch (error) {
@@ -68,6 +123,8 @@ exports.addOrder = async (req, res) => {
     });
   }
 };
+
+
 
 exports.getAllorder = async (req, res) => {
   try {
@@ -83,6 +140,8 @@ SELECT
     O.Area,
     O.DeliveryCharge,
     O.OrderDate,
+    O.OrderTakenBy,
+       O.InvoiceNo,
 
     -- Assignment
     A.AssignID,
@@ -166,8 +225,7 @@ OUTER APPLY (
 
 
 
-ORDER BY O.OrderID DESC;
-
+ORDER BY O.OrderID DESC
 
 
     `);
@@ -176,5 +234,19 @@ ORDER BY O.OrderID DESC;
 
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+
+exports.getOrderTakenByList = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const result = await pool.request().query(`
+      SELECT Name FROM OrderTakenByList
+    `);
+
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch names" });
   }
 };

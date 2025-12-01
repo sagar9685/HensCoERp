@@ -7,7 +7,7 @@ import {
   fetchProductTypes, 
   fetchRateByProductType 
 } from "../../features/productTypeSlice";
-import { addOrder } from '../../features/orderSlice';
+import { addOrder, fetchOrderTakenBy } from '../../features/orderSlice';
 import { toast } from 'react-toastify';
 import CustomerSearch from './CustomerSearch';
 import OrderFormModal from './OrderFormModal';
@@ -30,7 +30,9 @@ const OrderForm = ({ onClose }) => {
     area: '',
     contactNo: '',
     deliveryCharge: '',
-    orderDate: ''
+    orderDate: '',
+     orderTakenBy: '' ,
+     
   });
 
   // State to handle multiple order items
@@ -44,6 +46,15 @@ const OrderForm = ({ onClose }) => {
   const productTypes = useSelector((state) => state.product.types || []);
   const [fetchedData, setFetchedData] = useState({});
   const [isSubmitting,setIsSubmitting] = useState(false);
+  
+ 
+    const takenByList = useSelector((state) => state.order.takenByList);
+    console.log(takenByList,"name")
+
+    useEffect(() => {
+      dispatch(fetchOrderTakenBy());
+    }, [dispatch]);
+      
 
   // Fetch product types on component mount
   useEffect(() => {
@@ -204,6 +215,7 @@ const OrderForm = ({ onClose }) => {
         ContactNo: formData.contactNo,
         DeliveryCharge: Number(formData.deliveryCharge),
         OrderDate: formData.orderDate,
+          OrderTakenBy: formData.orderTakenBy, 
         Items: formattedItems
       };
 
@@ -337,6 +349,31 @@ const getTotalAmount = () => {
               />
               {errors.orderDate && <span className={styles.error}>{errors.orderDate}</span>}
             </div>
+
+            <div className={styles.inputGroup}>
+            <label className={styles.inputLabel}>
+              Order Taken By <span className={styles.required}>*</span>
+            </label>
+                  <select
+              name="orderTakenBy"
+              value={formData.orderTakenBy}
+              onChange={handleChange}
+              className={styles.inputField}
+            >
+              <option value="">Select Name</option>
+
+              {Array.isArray(takenByList) &&
+                takenByList.map((d, idx) => (
+                  <option key={idx} value={d.Name || d.name}>
+                    {d.Name || d.name}
+                  </option>
+                ))}
+            </select>
+
+
+            {errors.orderTakenBy && <span className={styles.error}>{errors.orderTakenBy}</span>}
+          </div>
+
             
           </div>
         </section>
