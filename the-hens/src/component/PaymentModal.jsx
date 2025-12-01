@@ -147,32 +147,17 @@ const getOnlineAmount = (summaryText) => {
         )}
 
         {/* Modal Actions */}
-        <div className={styles.modalActions}>
-          <button
-            className={styles.cancelButton}
-            onClick={onClose}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            className={styles.submitButton}
-            onClick={handleSubmit}
-            disabled={
-              loading ||
-              !receivedAmount ||
-              receivedAmount <= 0 ||
-              receivedAmount > selectedPayment?.Amount
-            }
-          >
-            {loading ? (
-              <div className={styles.loadingSpinner}></div>
-            ) : (
-              <FaCheck className={styles.submitIcon} />
-            )}
-            {loading ? "Processing..." : "Verify Payment"}
-          </button>
-        </div>
+     <div className={styles.modalActions}>
+  <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
+    <FaPrint /> Print
+  </button>
+  <button className={`${styles.btn} ${styles.btnDownload}`} onClick={downloadPdf}>
+    <FaDownload /> Download PDF
+  </button>
+  <button className={`${styles.btn} ${styles.btnCloseAction}`} onClick={onClose}>
+    <FaTimes /> Close
+  </button>
+</div>
       </div>
     </div>
   );
