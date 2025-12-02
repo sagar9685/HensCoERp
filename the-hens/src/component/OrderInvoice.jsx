@@ -49,77 +49,59 @@ const TERMS_CONDITIONS = [
 
 // --- Main Component ---
 const InvoiceGenerator = ({ orderData, onClose }) => {
-    
-    const downloadPdf = async () => {
-        const element = document.getElementById('invoice-print-content');
-        const clone = element.cloneNode(true);
-        
-        // Add print-specific classes
-        clone.classList.add(styles.printMode);
-        
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.top = '-9999px';
-        container.style.left = '-9999px';
-        container.style.width = '210mm';
-        container.style.height = '297mm';
-        container.style.padding = '0';
-        container.style.margin = '0';
-        container.style.background = '#ffffff';
-        container.appendChild(clone);
-        document.body.appendChild(container);
 
-        try {
-            // Wait for images to load
-            const images = clone.querySelectorAll('img');
-            await Promise.all(Array.from(images).map(img => {
-                if (img.complete) return Promise.resolve();
-                return new Promise(resolve => { 
-                    img.onload = resolve; 
-                    img.onerror = resolve; 
-                });
-            }));
+ const downloadPdf = async () => {
+    const element = document.getElementById('invoice-print-content');
+    const clone = element.cloneNode(true);
 
-            const canvas = await html2canvas(clone, {
-                scale: 3,
-                useCORS: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                width: clone.offsetWidth,
-                height: clone.offsetHeight,
-                windowWidth: clone.scrollWidth,
-                windowHeight: clone.scrollHeight
-            });
+    clone.classList.add(styles.printMode);
 
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgProps = pdf.getImageProperties(imgData);
-            const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
-            // Add multiple pages if content is longer than page height
-            let heightLeft = imgHeight;
-            let position = 0;
-            
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-            heightLeft -= pdfHeight;
-            
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-                heightLeft -= pdfHeight;
-            }
-            
-            pdf.save(`Invoice_${orderData?.InvoiceNo || orderData?.OrderID || 'invoice'}.pdf`);
-        } catch (err) {
-            console.error('Error generating PDF:', err);
-            alert('Error generating PDF. Please try again.');
-        } finally {
-            document.body.removeChild(container);
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.top = '-9999px';
+    container.style.left = '-9999px';
+    container.style.width = '210mm';
+    container.style.minHeight = '297mm';
+    container.style.background = '#ffffff';
+    container.appendChild(clone);
+    document.body.appendChild(container);
+
+    try {
+        const canvas = await html2canvas(clone, {
+            scale: 3,
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            logging: false,
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF('p', 'mm', 'a4');
+
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        let imgProps = pdf.getImageProperties(imgData);
+        let imgWidth = pageWidth;
+        let imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+        // ⭐ AUTO SCALE TO FIT INTO ONE PAGE ⭐
+        if (imgHeight > pageHeight) {
+            const scaleFactor = pageHeight / imgHeight;
+            imgHeight = imgHeight * scaleFactor;
+            imgWidth = imgWidth * scaleFactor;
         }
-    };
+
+        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+        pdf.save(`Invoice_${orderData?.InvoiceNo || orderData?.OrderID || 'invoice'}.pdf`);
+
+    } catch (err) {
+        console.error("PDF Error:", err);
+        alert("Error generating PDF");
+    } finally {
+        document.body.removeChild(container);
+    }
+};
+
 
     const handlePrint = () => {
         window.print();
