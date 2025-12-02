@@ -1,840 +1,631 @@
-/* --- Base Modal Styles --- */
+/*
+*** General Page and Container Styling ***
+Ensures the invoice content is contained within an A4-like structure in print/PDF mode,
+and uses a modal for on-screen preview.
+*/
+
+:root {
+    --primary-color: #007bff; /* Blue for highlights and buttons */
+    --secondary-color: #6c757d; /* Grey for borders and secondary text */
+    --accent-color: #28a745; /* Green for success/download */
+    --text-dark: #343a40;
+    --text-light: #6a6f74;
+    --border-light: #dee2e6;
+    --background-light: #f8f9fa;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+    -webkit-print-color-adjust: exact !important; /* Forces background/colors to print */
+    print-color-adjust: exact !important;
+}
+
+/* Modal Overlay and Content for Preview */
 .modalOverlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.7); /* Darker overlay for focus */
+    background-color: rgba(0, 0, 0, 0.6);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    padding: 20px;
-    font-family: 'Arial', sans-serif;
 }
 
 .modalContent {
-    background: #FFFFFF;
-    border-radius: 12px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.1);
-    width: 95%;
-    max-width: 900px;
-    max-height: 95vh;
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    width: 90%;
+    max-width: 900px; /* Max width for comfortable preview */
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    position: relative;
 }
 
-/* --- Modal Header & Actions --- */
 .modalHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 15px 25px;
-    background-color: #1A237E; /* Deep Navy Blue */
-    color: #FFFFFF;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px 20px;
+    background-color: var(--primary-color);
+    color: #ffffff;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    flex-shrink: 0; /* Prevents header from shrinking */
 }
 
 .modalHeader h2 {
     margin: 0;
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 600;
     display: flex;
     align-items: center;
-}
-
-.modalHeader svg {
-    margin-right: 10px;
-    color: #FFC107; /* Brand Accent Yellow */
+    gap: 10px;
 }
 
 .btnClose {
     background: none;
     border: none;
-    color: #FFFFFF;
+    color: #ffffff;
     font-size: 1.5rem;
     cursor: pointer;
-    transition: color 0.2s;
+    opacity: 0.8;
+    transition: opacity 0.2s;
 }
 
 .btnClose:hover {
-    color: #FFC107;
+    opacity: 1;
 }
 
-.modalActions {
-    padding: 15px 25px;
-    background-color: #F9F9F9;
-    border-top: 1px solid #EEEEEE;
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-}
-
-.btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    border: 2px solid;
-}
-
-.btnDownload {
-    background-color: #FFC107; /* Yellow Primary Action */
-    color: #1A237E;
-    border-color: #FFC107;
-}
-
-.btnDownload:hover {
-    background-color: #f5b700;
-    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
-}
-
-.btnPrint {
-    background-color: #1A237E;
-    color: #FFFFFF;
-    border-color: #1A237E;
-}
-
-.btnPrint:hover {
-    background-color: #273491;
-    border-color: #273491;
-}
-
-.btnClose {
-    color: #555555;
-    border-color: #DDDDDD;
-    background-color: #FFFFFF;
-}
-
-.btnClose:hover {
-    color: #1A237E;
-    border-color: #1A237E;
-}
-
-/* --- Invoice Wrapper & Body (Scrollable Area) --- */
 .invoiceWrapper {
-    overflow-y: auto;
-    padding: 0 25px;
-    background-color: #FFFFFF;
+    overflow-y: auto; /* Allows scrolling if content exceeds modal height */
+    padding: 20px;
     flex-grow: 1;
 }
 
 .invoiceBody {
-    margin: 0 auto;
-    max-width: 850px; /* Constrain internal invoice size */
+    background: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    min-height: 297mm; /* Simulate A4 height */
 }
 
+/*
+*** Base Invoice Content Styles (for Preview) ***
+*/
 .invoiceContainer {
-    padding: 20px 0;
-    color: #333333;
-    min-height: 842px; /* Approx A4 height for better PDF simulation */
+    padding: 20px;
+    color: var(--text-dark);
+    font-family: var(--font-family);
+    font-size: 10px; /* Smaller base font for compact layout */
+    line-height: 1.4;
 }
 
-/* --- 1. Header Section --- */
+/*
+*** Print/PDF Specific Styles ***
+This is the most critical section to ensure a single-page A4 print/PDF.
+We force a smaller font size and tighter padding.
+*/
+.printMode {
+    width: 210mm; /* A4 width */
+    height: 297mm; /* A4 height - Important for single-page rendering */
+    max-height: 297mm;
+    overflow: hidden; /* Crucial to prevent content from overflowing to a second page */
+    box-sizing: border-box;
+    padding: 5mm;
+    margin: 0;
+    font-size: 9pt; /* Smaller font for maximum content density */
+}
+
+/* Utility classes for alignment */
+.textCenter { text-align: center !important; }
+.textRight { text-align: right !important; }
+
+/*
+*** Header Section ***
+*/
 .header {
-    border-bottom: 4px solid #FFC107; /* Bold brand line */
-    padding-bottom: 10px;
-    margin-bottom: 20px;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    border-bottom: 3px solid var(--primary-color);
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
 }
 
 .companyInfo {
     display: flex;
+    gap: 15px;
     align-items: center;
-    gap: 20px;
+    width: 65%; /* Allocate more space for company details */
 }
 
 .logoContainer {
+    width: 50px; /* Small logo size to save space */
+    height: 50px;
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border-radius: 12px;
-    box-shadow: 
-        0 4px 6px rgba(0, 0, 0, 0.1),
-        0 1px 3px rgba(0, 0, 0, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.5);
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.logoContainer:hover {
-    transform: translateY(-2px);
-    box-shadow: 
-        0 8px 15px rgba(0, 0, 0, 0.1),
-        0 3px 6px rgba(0, 0, 0, 0.08);
-    background: linear-gradient(135deg, #ffffff 0%, #e4eaf7 100%);
-}
-
-.logoContainer::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, #1A237E, #3949AB);
 }
 
 .logoImage {
-    width: 60px;
-    height: 60px;
+    width: 100%;
+    height: 100%;
     object-fit: contain;
-    border: 3px solid #1A237E;
-    border-radius: 8px;
-    padding: 4px;
-    background: white;
-    filter: drop-shadow(0 2px 4px rgba(26, 35, 126, 0.2));
-    transition: all 0.3s ease;
-    position: relative;
-    z-index: 1;
 }
 
 .brandInfo {
-    line-height: 1.4;
-}
-
-.brandInfo strong {
-    font-size: 1.3rem;
-    color: #1A237E;
-}
-
-.companyDetails {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px;
-    background: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    border-left: 4px solid #1A237E;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.3;
 }
 
 .companyDetails p {
-    margin: 0;
-    color: #333;
-    font-size: 14px;
-    line-height: 1.5;
+    margin: 2px 0;
+    font-size: 0.9em;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
-.companyDetails p:first-child {
-    font-size: 18px;
-    color: #1A237E;
-    margin-bottom: 4px;
-}
-
-.companyDetails p:first-child strong {
-    font-weight: 600;
-    color: #1A237E;
-}
-
-.companyDetails svg {
-    color: #1A237E;
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    opacity: 0.8;
-}
-
-.companyDetails p:nth-child(4) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 4px;
-    padding-top: 8px;
-    border-top: 1px solid #eaeaea;
-}
-
-.companyDetails p:nth-child(4) strong {
-    color: #1A237E;
-    font-weight: 600;
-    min-width: 50px;
-}
-
-.companyDetails p:nth-child(4) span {
-    color: #666;
-}
-
-/* Alternative: Display GSTIN and PAN side by side */
-.companyDetails p:nth-child(4) {
-    display: grid;
-    grid-template-columns: auto 1fr auto 1fr;
-    gap: 8px 16px;
-    align-items: center;
-}
-
-/* Hover effect for the entire container */
-.companyDetails {
-    transition: all 0.3s ease;
-}
-
-.companyDetails:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-}
-
-/* Responsive design */
-@media (max-width: 768px) {
-    .companyDetails {
-        padding: 16px;
-        gap: 6px;
-    }
-    
-    .companyDetails p {
-        font-size: 13px;
-    }
-    
-    .companyDetails p:first-child {
-        font-size: 16px;
-    }
-    
-    .companyDetails p:nth-child(4) {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        align-items: flex-start;
-    }
-    
-    .companyDetails p:nth-child(4) strong {
-        min-width: 45px;
-    }
-}
-
-/* For very small screens */
-@media (max-width: 480px) {
-    .companyDetails {
-        padding: 12px;
-    }
-    
-    .companyDetails p {
-        font-size: 12px;
-    }
-    
-    .companyDetails p:first-child {
-        font-size: 15px;
-    }
+.companyDetails strong {
+    font-size: 1.1em;
+    color: var(--primary-color);
 }
 
 .invoiceMeta {
     text-align: right;
-    line-height: 1.4;
+    width: 30%;
+    flex-shrink: 0;
 }
 
 .invoiceMeta h1 {
-    font-size: 1rem;
-    color: #1A237E;
-    margin: 0 0 10px 0;
-    letter-spacing: 1px;
-    font-weight: 800;
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin: 0 0 5px 0;
+    font-weight: 700;
 }
 
 .invoiceDetails p {
-    font-size: 0.9rem;
     margin: 2px 0;
+    font-size: 0.9em;
 }
 
-.invoiceDetails strong {
-    color: #1A237E;
-}
 
-/* --- 2. Customer & Order Details --- */
+/*
+*** Customer & Order Details Section ***
+Uses flexbox for side-by-side layout.
+*/
 .customerDetails {
     display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 10px;
 }
 
 .detailBox {
-    flex: 1;
-    border: 1px solid #DDDDDD;
-    padding: 15px;
-    border-radius: 8px;
-    background-color: #F9F9F9; /* Light background for detail boxes */
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--border-light);
+    padding: 8px 12px;
+    border-radius: 4px;
+    width: 49%;
 }
 
 .detailBox h3 {
-    margin-top: 0;
-    font-size: 1.1rem;
-    color: #1A237E;
-    border-bottom: 2px solid #FFC107;
-    padding-bottom: 5px;
-    margin-bottom: 10px;
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    color: var(--secondary-color);
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
 }
 
-.customerInfo, .orderInfo {
-    font-size: 0.9rem;
-    line-height: 1.6;
+.customerInfo p, .orderInfo p {
+    margin: 1px 0;
+    font-size: 0.9em;
 }
 
 .customerName {
-    font-size: 1.1rem;
+    font-size: 1.1em;
     font-weight: 700;
-    color: #333333;
-    margin-bottom: 5px !important;
+    color: var(--text-dark);
 }
 
-.customerInfo svg, .orderInfo svg {
-    color: #1A237E;
-    margin-right: 5px;
+.customerAddress, .customerContact {
+    color: var(--text-light);
 }
 
-/* --- 3. Products Table --- */
+/*
+*** Products Table Section ***
+Critical area for space saving.
+*/
 .tableContainer {
-    margin-bottom: 20px;
-    border: 1px solid #DDDDDD;
-    border-radius: 8px;
-    overflow: hidden;
+    margin-bottom: 10px;
 }
 
 .productsTable {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 0.9em;
 }
 
-.productsTable thead {
-    background-color: #1A237E;
-    color: #FFFFFF;
+.productsTable thead tr {
+    background-color: var(--primary-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.productsTable th, .productsTable td {
+    padding: 4px 6px; /* Reduced padding for more rows */
+    border: 1px solid var(--border-light);
+    vertical-align: middle;
 }
 
 .productsTable th {
-    padding: 12px 10px;
-    text-align: left;
-    font-weight: 600;
-    border: none;
-}
-
-.productsTable tbody tr {
-    border-bottom: 1px solid #EEEEEE;
-    transition: background-color 0.2s;
+    font-size: 0.95em;
+    white-space: nowrap;
 }
 
 .productsTable tbody tr:nth-child(even) {
-    background-color: #F9F9F9;
+    background-color: var(--background-light);
 }
 
-.productsTable tbody tr:hover {
-    background-color: #FFFBEA; /* Light yellow hover for elegance */
-}
-
-.productsTable td {
-    padding: 10px;
-    vertical-align: top;
+.productsTable td strong {
+    font-weight: 600;
 }
 
 .productsTable td small {
-    color: #666666;
-    font-style: italic;
+    display: block;
+    font-size: 0.8em;
+    color: var(--text-light);
 }
 
-.textCenter {
-    text-align: center;
-}
-
-.textRight {
-    text-align: right;
-}
-
-
-/* --- 4. Footer Section (Grid Layout) --- */
+/*
+*** Footer Grid Section ***
+Uses CSS Grid to manage three columns for optimal use of horizontal space.
+*/
 .footerSection {
-    display: flex;
-    gap: 20px;
-    margin-top: 20px;
+    display: grid;
+    grid-template-columns: 35% 35% 30%; /* Balanced columns */
+    gap: 10px;
+    border: 1px solid var(--border-light);
+    padding: 8px;
 }
 
 .footerColumn {
-    flex: 1;
     display: flex;
     flex-direction: column;
+    justify-content: space-between; /* Space for alignment */
 }
 
-/* --- Amount in Words & Terms (Column 1) --- */
+/* Column 1: Amount in Words & Terms */
 .amountInWords {
-    border: 1px dashed #FFC107;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 5px;
-    background-color: #FFFBEA;
-    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 5px;
+    margin-bottom: 5px;
 }
 
-.amountInWords span:first-child {
-    font-weight: 700;
-    color: #1A237E;
+.amountInWords span {
     display: flex;
     align-items: center;
     gap: 5px;
-    margin-bottom: 5px;
+    font-weight: 700;
+    color: var(--primary-color);
+    font-size: 1em;
 }
 
 .amountInWords p {
+    margin: 5px 0 0 0;
     font-style: italic;
+    font-size: 0.95em;
     font-weight: 600;
-    color: #333;
-    margin: 0;
-}
-
-.termsBox {
-    flex-grow: 1;
-    border: 1px solid #DDDDDD;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    line-height: 1.5;
-    background-color: #F9F9F9;
-    overflow: hi;
+    text-transform: capitalize;
 }
 
 .termsBox h4 {
-    margin: 0 0 10px 0;
-    font-size: 0.9rem;
-    color: #1A237E;
+    margin: 0 0 5px 0;
+    font-size: 1em;
+    color: var(--secondary-color);
     display: flex;
     align-items: center;
     gap: 5px;
-    border-bottom: 1px solid #FFC107;
-    padding-bottom: 3px;
 }
 
 .termsBox ul {
-    margin: 0;
-    padding-left: 15px;
-    list-style-type: disc;
+    list-style: none;
+    padding-left: 0;
+    margin: 0 0 5px 0;
 }
 
 .termsBox li {
-    margin-bottom: 5px;
+    font-size: 0.85em;
+    margin-bottom: 2px;
 }
 
 .qrTermContainer {
     display: flex;
     align-items: center;
-    margin-top: 10px;
-    gap: 10px;
-    padding-top: 5px;
-    border-top: 1px solid #DDDDDD;
+    gap: 8px;
+    margin-top: 5px;
 }
 
 .qrSmall {
-    width: 35px;
-    height: 35px;
-    border: 1px solid #1A237E;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--border-light);
+    padding: 2px;
 }
 
 .qrText p {
     margin: 0;
-    font-size: 0.7rem;
-    line-height: 1.2;
-    color: #555555;
+    font-size: 0.8em;
+    line-height: 1;
 }
 
-
-/* --- Payment Details (Column 2) --- */
+/* Column 2: Payment Details & QR */
 .paymentInfo {
-    border: 2px solid #1A237E; /* Strong border for importance */
-    padding: 15px;
-    border-radius: 8px;
-    background-color: #FFFFFF;
-    box-shadow: 0 0 10px rgba(26, 35, 126, 0.1);
+    border-right: 1px dashed var(--border-light);
+    padding-right: 8px;
+    height: 100%;
 }
 
 .paymentInfo h4 {
-    margin: 0 0 10px 0;
-    font-size: 1.1rem;
-    color: #FFC107;
-    text-align: center;
-    border-bottom: 2px solid #FFC107;
-    padding-bottom: 5px;
+    margin: 0 0 5px 0;
+    font-size: 1.1em;
+    color: var(--primary-color);
+    font-weight: 700;
 }
 
 .payQrBox {
     display: flex;
-    gap: 15px;
-    align-items: center;
-    margin-bottom: 10px;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 5px;
 }
 
 .qrPaymentImg {
-    width: 100px;
-    height: 100px;
-    object-fit: contain;
-    border: 2px solid #DDDDDD;
-    padding: 5px;
+    width: 60px; /* Small QR for space saving */
+    height: 60px;
+    border: 1px solid var(--border-light);
+    padding: 3px;
+    flex-shrink: 0;
 }
 
 .bankDetailsText p {
-    margin: 2px 0;
-    font-size: 0.85rem;
-    line-height: 1.4;
-    color: #555555;
+    margin: 1px 0;
+    font-size: 0.85em;
+    line-height: 1.2;
 }
 
 .bankDetailsText strong {
-    color: #1A237E;
-    min-width: 80px;
+    font-weight: 600;
+    width: 70px; /* Align text vertically */
     display: inline-block;
-}
-
-.noQrMessage {
-    padding: 20px;
-    text-align: center;
-    border: 1px dashed #CC0000;
-    border-radius: 5px;
-    background-color: #FFEEEE;
-}
-
-.noQrMessage h4 {
-    color: #CC0000;
-    font-size: 1rem;
-    border: none;
+    color: var(--text-dark);
 }
 
 .paymentNote {
-    margin-top: 10px;
-    padding-top: 5px;
-    border-top: 1px dashed #DDDDDD;
-    font-size: 0.75rem;
-    color: #666666;
-    text-align: center;
+    font-size: 0.8em;
+    color: #dc3545; /* Alert color for note */
+    margin-top: 5px;
+    font-weight: 500;
 }
 
+.noQrMessage {
+    text-align: center;
+    padding: 10px 5px;
+    background-color: var(--background-light);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    width: 100%;
+    font-size: 0.8em;
+}
 
-/* --- Totals & Signature (Column 3) --- */
+/* Column 3: Totals & Signature */
 .totalsBox {
-    border: 2px solid #1A237E;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 20px;
-    background-color: #F9F9F9;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    border: 2px solid var(--accent-color);
+    padding: 5px;
+    margin-bottom: 10px;
+    background-color: #e6f7ed; /* Light green background */
+    border-radius: 4px;
 }
 
 .totalRow {
     display: flex;
     justify-content: space-between;
-    font-size: 1rem;
-    margin-bottom: 8px;
-    padding-bottom: 5px;
-    border-bottom: 1px dashed #DDDDDD;
-}
-
-.totalRow span:first-child {
+    margin: 1px 0;
+    font-size: 0.95em;
     font-weight: 500;
-    color: #555555;
-}
-
-.totalRow span:last-child {
-    font-weight: 600;
-    color: #333333;
+    padding: 1px 0;
 }
 
 .grandTotalRow {
     display: flex;
     justify-content: space-between;
-    font-size: 1.2rem;
+    font-size: 1.1em;
     font-weight: 700;
-    color: #1A237E;
-    padding-top: 10px;
-    border-top: 2px solid #FFC107; /* Highlight Grand Total */
-    margin-top: 10px;
+    color: var(--accent-color);
+    border-top: 1px solid var(--accent-color);
+    padding-top: 5px;
+    margin-top: 5px;
 }
 
 .signatureSection {
     text-align: center;
-    padding: 10px;
-    border: 1px solid #DDDDDD;
-    border-radius: 8px;
-    background-color: #FFFFFF;
+    padding-top: 5px;
 }
 
 .signatureContainer {
     position: relative;
-    height: 80px;
+    display: inline-block;
+    padding-bottom: 10px;
     margin-bottom: 5px;
 }
 
-.signatureLine {
-    position: absolute;
-    bottom: 5px;
-    left: 10%;
-    right: 10%;
-    height: 1px;
-    background-color: #1A237E;
-}
-
 .signImg {
-    max-width: 120px;
-    max-height: 70px;
+    height: 30px; /* Small height for signature image */
+    width: auto;
     object-fit: contain;
-    position: absolute;
-    top: 5px;
-    left: 50%;
-    transform: translateX(-50%);
+    margin-bottom: -5px;
     opacity: 0.8;
 }
 
+.signatureLine {
+    border-top: 1px solid var(--text-dark);
+    width: 150px;
+    margin: 0 auto;
+}
+
 .authText {
-    position: absolute;
-    bottom: -15px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #1A237E;
     display: flex;
     align-items: center;
     gap: 5px;
-}
-
-.companyStamp {
-    margin-top: 30px;
-    font-size: 0.9rem;
-    line-height: 1.2;
-    color: #555555;
+    font-weight: 600;
+    font-size: 0.9em;
+    margin-top: 2px;
+    color: var(--primary-color);
+    justify-content: center;
 }
 
 .companyStamp p {
-    margin: 2px 0;
-}
-
-.companyStamp p:first-child {
-    font-weight: 700;
-    color: #1A237E;
-}
-
-
-/* --- 5. Footer Notes --- */
-.footerNotes {
-    margin-top: 20px;
-    width: 100%;
-}
-
-.noteBox {
-    background: #f8f9fa;
-    border-left: 4px solid #1A237E;
-    padding: 12px 16px;
-    border-radius: 4px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.noteBox p {
     margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: 14px;
-    color: #333;
+    font-size: 0.9em;
+    font-style: italic;
+    color: var(--text-light);
 }
 
-.noteBox strong {
-    color: #1A237E;
+
+/*
+*** Footer Notes ***
+*/
+.footerNotes {
+    margin-top: 10px;
+    border-top: 1px solid var(--border-light);
+    padding-top: 5px;
+    text-align: center;
 }
 
-/* Alternative with flexbox for better control */
 .noteBox p {
+    font-size: 0.8em;
+    margin: 0;
+    color: var(--secondary-color);
+    font-style: italic;
+}
+
+
+/*
+*** Modal Action Buttons ***
+*/
+.modalActions {
+    padding: 15px 20px;
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    background-color: var(--background-light);
+    flex-shrink: 0;
+}
+
+.btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: 600;
     display: flex;
     align-items: center;
-    margin: 0;
     gap: 8px;
-    font-size: 14px;
-    color: #333;
+    transition: background-color 0.2s, opacity 0.2s;
 }
 
-/* Or if you want it truly forced on one line without ellipsis */
-.noteBox p {
-    white-space: nowrap;
-    overflow: visible;
-    margin: 0;
-    font-size: 14px;
-    color: #333;
+.btnDownload {
+    background-color: var(--accent-color);
+    color: #ffffff;
 }
 
-/* Responsive: show ellipsis on smaller screens */
-@media (max-width: 768px) {
-    .noteBox p {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-}
-.pageInfo {
-    text-align: right;
-    flex-basis: 30%;
+.btnDownload:hover {
+    background-color: #1e7e34;
 }
 
+.btnPrint {
+    background-color: var(--primary-color);
+    color: #ffffff;
+}
 
-/* --- PDF Download Print Mode (Ensures White Background and Full View) --- */
+.btnPrint:hover {
+    background-color: #0056b3;
+}
+
+.modalActions .btnClose {
+    background-color: var(--secondary-color);
+    color: #ffffff;
+    font-size: 1em;
+    padding: 8px 15px;
+    border-radius: 4px;
+}
+
+.modalActions .btnClose:hover {
+    background-color: #5a6268;
+    opacity: 1;
+}
+
+/*
+*** PRINT MEDIA QUERY FOR PAGE BREAK CONTROL ***
+This is the final, crucial step to try and enforce a single page.
+*/
 @media print {
-    /* Hide the modal overlay/actions in print mode */
-    .modalOverlay, .modalActions {
+    /* Hide the modal overlay and action buttons for printing */
+    body > div:first-child:not(#invoice-print-content) {
         display: none !important;
     }
     
-    /* Make the invoice container take over the full viewport/page */
-    .invoiceWrapper {
-        overflow: visible;
-        padding: 0;
+    /* Ensure only the invoice content is visible and takes full page */
+    .modalOverlay, .modalActions {
+        display: none !important;
+    }
+
+    /* Print styling on the actual invoice content */
+    .invoiceContainer {
+        width: 100%;
+        max-width: 210mm; /* A4 width */
+        margin: 0;
+        box-shadow: none;
+        padding: 0 !important;
+        font-size: 9pt !important; /* Force small font for density */
+    }
+
+    /* Override print background color for print */
+    .productsTable thead tr {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        background-color: var(--primary-color) !important;
+        color: #ffffff !important;
+    }
+    
+    .totalsBox {
+         -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        background-color: #e6f7ed !important;
+        border-color: var(--accent-color) !important;
+    }
+
+    /* Enforce single page. html2canvas uses the .printMode, but this helps the native print dialog too */
+    @page {
+        size: A4;
+        margin: 0; /* Minimal margins for maximum content space */
+    }
+    
+    html, body {
+        height: 297mm;
+        width: 210mm;
         margin: 0;
     }
-
-    .invoiceContent, .invoiceBody {
-        width: 100%;
-        max-width: none;
-    }
-
-    /* Print mode adjustments for elements that might get cut off */
-    .footerSection {
-        page-break-inside: avoid;
-    }
-
-    /* Important: Ensure elements have white background for clean printing */
-    * {
-        background: transparent !important;
-        box-shadow: none !important;
-    }
     
-    .invoiceContainer {
-        border: none;
-        padding: 0;
+    .invoiceBody {
+        min-height: auto;
+        height: 297mm;
+        max-height: 297mm;
+        overflow: hidden; /* Prevent native print from adding pages */
     }
-    
-    .productsTable thead {
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-        background-color: #1A237E !important;
-    }
-}
-
-/* This class is added temporarily for html2canvas to simulate print style */
-.printMode {
-    width: 210mm !important; 
-    padding: 10mm !important;
-    box-sizing: border-box !important;
-    background-color: #FFFFFF !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
 }
