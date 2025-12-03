@@ -4,11 +4,11 @@ import Login from "./component/Login";
 import Dashboard from "./pages/DashBoard";
 import UserPage from "./pages/HomePage"; //
 import ProtectedRoute from "./component/ProtectedRoute";
- 
+ import 'react-toastify/dist/ReactToastify.css';
 import UserDataTable from "./component/user/UserDataCash/UserDataTable";
 import UserForm from "./component/user/UserForm";
 import UserChart from "./component/user/UserChart";
-import Purchase from "./component/Purchase";
+import Purchase from "./component/AdminPurchase/Purchase";
 
 function App() {
   return (

@@ -186,3 +186,6 @@
   margin-right: 0.5em;
   opacity: 0.8;
 }
+.Toastify__toast-container {
+  z-index: 999999 !important;
+}
