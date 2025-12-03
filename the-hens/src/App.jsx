@@ -8,6 +8,7 @@ import ProtectedRoute from "./component/ProtectedRoute";
 import UserDataTable from "./component/user/UserDataCash/UserDataTable";
 import UserForm from "./component/user/UserForm";
 import UserChart from "./component/user/UserChart";
+import Purchase from "./component/Purchase";
 
 function App() {
   return (
@@ -25,6 +26,16 @@ function App() {
             </ProtectedRoute>
           } 
         />
+
+           <Route 
+          path="/purchase" 
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <Purchase/>
+            </ProtectedRoute>
+          } 
+        />
+
 
         {/* Normal user page */}
         <Route 

@@ -103,9 +103,9 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
 };
 
 
-    const handlePrint = () => {
-        window.print();
-    };
+    // const handlePrint = () => {
+    //     window.print();
+    // };
 
     if (!orderData) {
         return (
@@ -408,9 +408,9 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                 </div>
 
                 <div className={styles.modalActions}>
-                    <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
+                    {/* <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
                         <FaPrint /> Print
-                    </button>
+                    </button> */}
                     <button className={`${styles.btn} ${styles.btnDownload}`} onClick={downloadPdf}>
                         <FaDownload /> Download PDF
                     </button>

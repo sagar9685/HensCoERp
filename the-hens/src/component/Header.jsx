@@ -24,6 +24,8 @@ import { FaPhoenixFramework } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import {logout} from '../features/authSlice'
 import { useNavigate } from "react-router";
+ import { useLocation } from "react-router";
+
 
 const Header = () => {
   const [open, setOpen] = useState(false);
@@ -35,6 +37,7 @@ const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation();
 
   const user = useSelector((state)=> state.auth.data);
   console.log(user,"user Data")
@@ -47,6 +50,12 @@ const Header = () => {
   const dropdownRef = useRef(null);
   // const notificationRef = useRef(null);
   const mobileMenuRef = useRef(null);
+
+  useEffect(() => {
+  const path = location.pathname.replace("/", ""); 
+  setActiveMenu(path || "dashboard");
+}, [location.pathname]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -64,8 +73,8 @@ const Header = () => {
   }, []);
 
   const menuItems = [
-    { key: "dashboard", icon: <MdDashboard />, label: "Dashboard" },
-    { key: "flocks", icon: <FaLayerGroup />, label: "Purchase" },
+    { key: "dashboard", icon: <MdDashboard />, label: "Dashboard", path: '/dashboard' },
+    { key: "purchase", icon: <FaLayerGroup />, label: "Purchase", path: '/purchase' },
     { key: "problems", icon: <FaBug />, label: "Issues" },
     { key: "users", icon: <FaUsers />, label: "Users" },
     { key: "analytics", icon: <FaChartBar />, label: "Analytics" },
@@ -73,13 +82,7 @@ const Header = () => {
     { key: "settings", icon: <FaCog />, label: "Settings" }
   ];
 
-  // const notifications = [
-  //   { id: 1, text: "New flock added successfully", time: "2 min ago", unread: true, type: "success" },
-  //   { id: 2, text: "Vaccination schedule updated", time: "1 hour ago", unread: true, type: "info" },
-  //   { id: 3, text: "System backup completed", time: "3 hours ago", unread: false, type: "success" },
-  //   { id: 4, text: "Performance report generated", time: "5 hours ago", unread: false, type: "info" }
-  // ];
-
+ 
 
   const handleLogot = () => {
       dispatch(logout());
@@ -133,14 +136,16 @@ const Header = () => {
           </button>
         </div>
         {menuItems.map((item) => (
-          <button
-            key={item.key}
-            className={`${styles.navItem} ${activeMenu === item.key ? styles.navItemActive : ''}`}
-            onClick={() => {
-              setActiveMenu(item.key);
-              setMobileMenuOpen(false);
-            }}
-          >
+        <button
+              key={item.key}
+              className={`${styles.navItem} ${activeMenu === item.key ? styles.navItemActive : ''}`}
+              onClick={() => {
+                setActiveMenu(item.key);
+                setMobileMenuOpen(false);
+                if (item.path) navigate(item.path);
+              }}
+            >
+
             <span className={styles.navIcon}>{item.icon}</span>
             <span className={styles.navLabel}>{item.label}</span>
             <div className={styles.navIndicator}></div>
