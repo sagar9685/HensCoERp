@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FaBox, FaDownload, FaTrash, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import styles from './Purchase.module.css';
 
-const PurchaseTable = ({ purchases, formatDate, downloadPurchaseOrder, onDelete }) => {
+const PurchaseTable = ({ purchases, formatDate, downloadPurchaseOrder }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Adjust this value as needed
 

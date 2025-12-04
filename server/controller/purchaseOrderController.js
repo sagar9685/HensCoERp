@@ -2,11 +2,29 @@ const { sql, poolPromise } = require('../utils/db'); // import poolPromise
 
 // Generate PO Number
 const generatePONumber = async () => {
-    const pool = await poolPromise; // reuse connected pool
+    const pool = await poolPromise;
 
-    const year = new Date().getFullYear();
-    const prefix = `PO-${year}-`;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1; // 1–12
 
+    // ---- Calculate Financial Year ----
+    let fyStart, fyEnd;
+
+    if (month >= 4) {
+        // From April to December → current FY = year-year+1
+        fyStart = year % 100; 
+        fyEnd = (year + 1) % 100;
+    } else {
+        // From Jan to March → previousYear-currentYear
+        fyStart = (year - 1) % 100;
+        fyEnd = year % 100;
+    }
+
+    const fyString = `${String(fyStart).padStart(2, "0")}-${String(fyEnd).padStart(2, "0")}`;
+    const prefix = `PO-${fyString}-`;
+
+    // ---- Get Last PO Number ----
     const result = await pool.request()
         .input("prefix", sql.VarChar, prefix + '%')
         .query(`
@@ -21,11 +39,12 @@ const generatePONumber = async () => {
     if (result.recordset.length > 0) {
         const lastPONo = result.recordset[0].po_number;
         const parts = lastPONo.split('-');
-        nextNumber = parseInt(parts[2]) + 1;
+        nextNumber = parseInt(parts[3]) + 1; 
     }
 
-    return `${prefix}${String(nextNumber).padStart(2, '0')}`;
+    return `${prefix}${String(nextNumber).padStart(2, "0")}`;
 };
+
 
 // Create Purchase Order
 exports.createPurchaseOrder = async (req, res) => {

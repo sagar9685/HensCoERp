@@ -120,11 +120,26 @@ console.log(grouped,"group")
    }
  };
 
+ const formatShortDate = (date) => {
+  const d = new Date(date);
+  const day = d.getDate();
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2); // last 2 digits
+  return `${day}-${month}-${year}`;
+};
+
+
 
   const downloadPurchaseOrder = (purchase) => {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
 
   let y = 40; // start position
+
+  // TITLE
+  doc.setFontSize(18);
+  doc.text("Phoenix Poultry", 220, y);
+  y += 30;
 
   // TITLE
   doc.setFontSize(18);
@@ -136,7 +151,8 @@ console.log(grouped,"group")
   doc.text(`PO Number: ${purchase.po_number}`, 40, y);  
   y += 20;
 
-  doc.text(`Order Date: ${new Date(purchase.order_date).toLocaleDateString()}`, 40, y);
+  doc.text(`Order Date: ${formatShortDate(purchase.order_date)}`, 40, y);
+
   y += 20;
 
   doc.text(`Total Quantity: ${purchase.total_qty}`, 40, y);
