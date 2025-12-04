@@ -227,13 +227,7 @@ const Purchase = () => {
     doc.save(`PurchaseOrders_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const handleDeletePurchase = (purchaseId) => {
-    if (window.confirm('Are you sure you want to delete this purchase order?')) {
-      // Handle delete logic here
-      // You'll need to dispatch a delete action
-      toast.info('Delete functionality to be implemented');
-    }
-  };
+  
 
   return (
     <>
@@ -277,7 +271,6 @@ const Purchase = () => {
           purchases={sortedPurchases}
           formatDate={formatDate}
           downloadPurchaseOrder={downloadPurchaseOrder}
-          onDelete={handleDeletePurchase}
         />
 
         {/* Add Purchase Modal */}
