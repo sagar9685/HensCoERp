@@ -1035,3 +1035,31 @@
   font-size: 14px;
   font-weight: 500;
 }
+/* In Purchase.module.css */
+.statusBadge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.statusBadge.pending {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.statusBadge.processing {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.statusBadge.completed {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.statusBadge.cancelled {
+  background-color: #f8d7da;
+  color: #721c24;
+}

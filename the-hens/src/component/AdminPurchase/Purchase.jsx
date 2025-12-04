@@ -4,16 +4,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchProductTypes } from '../../features/productTypeSlice';
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
+import { toast } from 'react-toastify';
 import styles from './Purchase.module.css';
 import Header from '../Header';
 import PurchaseModal from './PurchaseModal';
 import PurchaseTable from './PurchaseTable';
 import StatsCards from './StatsCard';
 import FilterSection from './FilterSection';
+import { fetchPurchaseOrders, createPurchaseOrder } from '../../features/purchaseOrderSlice';
 
-import { fetchPurchaseOrders,createPurchaseOrder } from '../../features/purchaseOrderSlice';
 const Purchase = () => {
-   
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -22,58 +22,41 @@ const Purchase = () => {
 
   const dispatch = useDispatch();
   const productTypes = useSelector((state) => state.product?.types || []);
+  
+  // Get purchases from Redux store
+  const { orders: purchases } = useSelector(state => state.purchaseOrder);
 
-  // Mock data - in real app, this would come from API
-  const { orders: purchases  } = useSelector(state => state.purchaseOrder);
-  console.log(purchases,"cooo")
-
-   const groupByPONumber = (purchases) => {
+  // Group purchases by PO number
+  const groupByPO = (purchases) => {
     const map = {};
-    purchases.forEach(p => {
-      if (!map[p.po_number]) {
-        map[p.po_number] = [];
+    
+    purchases.forEach(item => {
+      if (!map[item.po_number]) {
+        map[item.po_number] = {
+          po_number: item.po_number,
+          order_date: item.order_date,
+          status: item.status || 'pending', // Make sure status is included
+          items: [],
+          total_qty: 0,
+          id: item.id
+        };
       }
-      map[p.po_number].push(p);
+      
+      map[item.po_number].items.push({
+        item_name: item.item_name || item.itemName,
+        weight: item.weight,
+        qty: item.quantity
+      });
+      
+      map[item.po_number].total_qty += parseInt(item.quantity) || 0;
     });
-    return Object.values(map); // array of arrays
+    
+    return Object.values(map);
   };
 
-  // --- Then process purchases for table ---
- // Purchase.jsx
-const groupByPO = (purchases) => {
-  const map = {};
-
-  purchases.forEach(item => {
-    if (!map[item.po_number]) {
-      map[item.po_number] = {
-        po_number: item.po_number,
-        order_date: item.order_date,
-        items: [],
-        total_qty: 0,
-        id: item.id
-      };
-    }
-
-    map[item.po_number].items.push({
-      item_name: item.item_name,
-      weight: item.weight,
-      qty: item.quantity
-    });
-
-    map[item.po_number].total_qty += item.quantity;
-  });
-
-  return Object.values(map);
-};
-
-const grouped = groupByPO(purchases);
-console.log(grouped,"group")
-
-
-
-   useEffect(() => {
-     dispatch(fetchPurchaseOrders());
-   }, [dispatch]);
+  useEffect(() => {
+    dispatch(fetchPurchaseOrders());
+  }, [dispatch]);
 
   useEffect(() => {
     if (showAddModal) {
@@ -81,26 +64,61 @@ console.log(grouped,"group")
     }
   }, [showAddModal]);
 
-  const filteredPurchases = purchases.filter(purchase => {
-    const matchesSearch = 
-  (purchase.itemName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-  (purchase.supplier || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-  (purchase.id || '').toLowerCase().includes(searchTerm.toLowerCase());
+  // Group purchases first, then filter the grouped data
+  const groupedPurchases = groupByPO(purchases);
+  
+  // Filter grouped purchases
+  const filteredPurchases = groupedPurchases.filter(purchase => {
+    // Search filter - check PO number and item names
+    let matchesSearch = false;
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      
+      // Check PO number
+      matchesSearch = (purchase.po_number || '').toLowerCase().includes(searchLower);
+      
+      // Check item names if PO number doesn't match
+      if (!matchesSearch) {
+        matchesSearch = purchase.items.some(item => 
+          (item.item_name || '').toLowerCase().includes(searchLower)
+        );
+      }
+    } else {
+      matchesSearch = true;
+    }
 
-    const matchesDate = dateFilter ? purchase.date === dateFilter : true;
-    const matchesStatus = selectedStatus === 'all' || purchase.status === selectedStatus;
+    // Date filter - compare date strings
+    let matchesDate = true;
+    if (dateFilter) {
+      const filterDate = new Date(dateFilter).toISOString().split('T')[0];
+      const purchaseDate = purchase.order_date ? 
+        new Date(purchase.order_date).toISOString().split('T')[0] : '';
+      matchesDate = purchaseDate === filterDate;
+    }
+
+    // Status filter
+    let matchesStatus = true;
+    if (selectedStatus !== 'all') {
+      matchesStatus = (purchase.status || '').toLowerCase() === selectedStatus.toLowerCase();
+    }
     
     return matchesSearch && matchesDate && matchesStatus;
   });
 
+  // Sort filtered purchases
   const sortedPurchases = [...filteredPurchases].sort((a, b) => {
+    const dateA = new Date(a.order_date || 0);
+    const dateB = new Date(b.order_date || 0);
+    
     if (sortOrder === 'desc') {
-      return new Date(b.date) - new Date(a.date);
+      return dateB - dateA;
     }
-    return new Date(a.date) - new Date(b.date);
+    return dateA - dateB;
   });
 
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
     return new Date(dateString).toLocaleDateString('en-US', {
       weekday: 'short',
       year: 'numeric',
@@ -108,90 +126,112 @@ console.log(grouped,"group")
       day: 'numeric'
     });
   };
- 
- const handleSubmitPurchase = async (newPurchaseData) => {
-   try {
-     await dispatch(createPurchaseOrder(newPurchaseData)).unwrap();
-     toast.success('Purchase Order Created Successfully');
-     setShowAddModal(false);
-     dispatch(fetchPurchaseOrders()); // refresh table
-   } catch (err) {
-     toast.error(err?.error || 'Failed to create purchase order');
-   }
- };
 
- const formatShortDate = (date) => {
-  const d = new Date(date);
-  const day = d.getDate();
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const month = months[d.getMonth()];
-  const year = String(d.getFullYear()).slice(-2); // last 2 digits
-  return `${day}-${month}-${year}`;
-};
+  const handleSubmitPurchase = async (newPurchaseData) => {
+    try {
+      await dispatch(createPurchaseOrder(newPurchaseData)).unwrap();
+      toast.success('Purchase Order Created Successfully');
+      setShowAddModal(false);
+      dispatch(fetchPurchaseOrders());
+    } catch (err) {
+      toast.error(err?.error || 'Failed to create purchase order');
+    }
+  };
 
-
+  const formatShortDate = (date) => {
+    if (!date) return 'N/A';
+    
+    const d = new Date(date);
+    const day = d.getDate();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    return `${day}-${month}-${year}`;
+  };
 
   const downloadPurchaseOrder = (purchase) => {
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-
-  let y = 40; // start position
-
-  // TITLE
-  doc.setFontSize(18);
-  doc.text("Phoenix Poultry", 220, y);
-  y += 30;
-
-  // TITLE
-  doc.setFontSize(18);
-  doc.text("Purchase Order", 220, y);
-  y += 30;
-
-  // PO DETAILS
-  doc.setFontSize(12);
-  doc.text(`PO Number: ${purchase.po_number}`, 40, y);  
-  y += 20;
-
-  doc.text(`Order Date: ${formatShortDate(purchase.order_date)}`, 40, y);
-
-  y += 20;
-
-  doc.text(`Total Quantity: ${purchase.total_qty}`, 40, y);
-  y += 30;
-
-  // LINE
-  doc.line(40, y, 550, y);
-  y += 25;
-
-  // ITEMS TABLE HEADER
-  doc.setFontSize(14);
-  doc.text("Items", 40, y);
-  y += 25;
-
-  doc.setFontSize(12);
-
-  purchase.items.forEach((item, index) => {
-    doc.text(`${index + 1}. ${item.item_name}`, 40, y);
-    doc.text(`Weight: ${item.weight}`, 220, y);
-    doc.text(`Qty: ${item.qty}`, 400, y);
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    
+    let y = 40;
+    
+    doc.setFontSize(18);
+    doc.text("Phoenix Poultry", 220, y);
+    y += 30;
+    
+    doc.setFontSize(18);
+    doc.text("Purchase Order", 220, y);
+    y += 30;
+    
+    doc.setFontSize(12);
+    doc.text(`PO Number: ${purchase.po_number}`, 40, y);  
     y += 20;
-  });
-
-  // SAVE PDF
-  doc.save(`PurchaseOrder_${purchase.po_number}.pdf`);
-};
-
+    
+    doc.text(`Order Date: ${formatShortDate(purchase.order_date)}`, 40, y);
+    y += 20;
+    
+    doc.text(`Total Quantity: ${purchase.total_qty}`, 40, y);
+    y += 30;
+    
+    doc.line(40, y, 550, y);
+    y += 25;
+    
+    doc.setFontSize(14);
+    doc.text("Items", 40, y);
+    y += 25;
+    
+    doc.setFontSize(12);
+    
+    purchase.items.forEach((item, index) => {
+      doc.text(`${index + 1}. ${item.item_name}`, 40, y);
+      doc.text(`Weight: ${item.weight}`, 220, y);
+      doc.text(`Qty: ${item.qty}`, 400, y);
+      y += 20;
+    });
+    
+    doc.save(`PurchaseOrder_${purchase.po_number}.pdf`);
+  };
 
   const exportAllPurchases = () => {
-    const doc = new jsPDF();
+    if (sortedPurchases.length === 0) {
+      toast.warning('No purchase orders to export');
+      return;
+    }
     
-    // ... (same export code as before)
+    const doc = new jsPDF();
+    let y = 20;
+    
+    doc.setFontSize(20);
+    doc.text("All Purchase Orders", 105, y);
+    y += 20;
+    
+    doc.setFontSize(12);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 105, y);
+    y += 20;
+    
+    const tableData = sortedPurchases.map(purchase => [
+      purchase.po_number,
+      purchase.items.map(i => i.item_name).join(', '),
+      formatShortDate(purchase.order_date),
+      purchase.total_qty,
+      purchase.status || 'N/A'
+    ]);
+    
+    autoTable(doc, {
+      startY: y,
+      head: [['PO Number', 'Items', 'Date', 'Total Qty', 'Status']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [41, 128, 185] }
+    });
     
     doc.save(`PurchaseOrders_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const handleDeletePurchase = (purchaseId) => {
     if (window.confirm('Are you sure you want to delete this purchase order?')) {
-      setPurchases(prev => prev.filter(p => p.id !== purchaseId));
+      // Handle delete logic here
+      // You'll need to dispatch a delete action
+      toast.info('Delete functionality to be implemented');
     }
   };
 
@@ -216,8 +256,8 @@ console.log(grouped,"group")
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <StatsCards purchases={filteredPurchases} />
+        {/* Stats Cards - passing grouped purchases for accurate stats */}
+        <StatsCards purchases={sortedPurchases} />
 
         {/* Filters */}
         <FilterSection
@@ -234,7 +274,7 @@ console.log(grouped,"group")
 
         {/* Purchases Table */}
         <PurchaseTable
-          purchases={grouped}
+          purchases={sortedPurchases}
           formatDate={formatDate}
           downloadPurchaseOrder={downloadPurchaseOrder}
           onDelete={handleDeletePurchase}

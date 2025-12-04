@@ -14,8 +14,6 @@ const FilterSection = ({
   setSearchTerm,
   dateFilter,
   setDateFilter,
-  selectedStatus,
-  setSelectedStatus,
   sortOrder,
   setSortOrder,
   onExport,
@@ -66,7 +64,7 @@ const FilterSection = ({
         </div>
 
         {/* Status Dropdown */}
-        <div className={styles.filterGroup}>
+        {/* <div className={styles.filterGroup}>
           <FaFilter className={styles.filterIcon} />
           <select
             value={selectedStatus}
@@ -79,7 +77,7 @@ const FilterSection = ({
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
-        </div>
+        </div> */}
 
         {/* Sort Button */}
         <button

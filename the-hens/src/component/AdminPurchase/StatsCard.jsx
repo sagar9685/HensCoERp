@@ -3,7 +3,9 @@ import { FaShoppingCart, FaBox, FaTruck } from 'react-icons/fa';
 import styles from './Purchase.module.css';
 
 const StatsCards = ({ purchases }) => {
-  const totalItems = purchases.reduce((sum, item) => sum + item.quantity, 0);
+   const totalItems = purchases.reduce((sum, purchase) => {
+    return sum + (purchase.total_qty || 0);
+  }, 0);
   
   return (
     <div className={styles.statsContainer}>
