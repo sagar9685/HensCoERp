@@ -35,32 +35,71 @@ const generateInwardNo = async () => {
 };
 
 
+// exports.addStock = async (req, res) => {
+//   const { item_name, quantity, weight } = req.body;
+
+//   try {
+//     const inwardNo = await generateInwardNo();
+
+//     const pool = await poolPromise;   // ✅ FIX: use pool
+
+//     const query = `
+//       INSERT INTO Stock (inward_no, item_name, quantity, weight)
+//       VALUES (@inward_no, @item_name, @quantity, @weight)
+//     `;
+
+//     const request = pool.request();   // ❗ Correct
+
+//     request.input("inward_no", sql.VarChar, inwardNo);
+//     request.input("item_name", sql.VarChar, item_name);
+//     request.input("quantity", sql.Int, quantity);
+//     request.input("weight", sql.VarChar, weight);
+
+//     await request.query(query);
+
+//     res.json({
+//       message: "Stock added successfully",
+//       inward_no: inwardNo
+//     });
+
+//   } catch (error) {
+//     console.error("Stock Add Error:", error);
+//     res.status(500).json({ error: "Error adding stock" });
+//   }
+// };
+
+
 exports.addStock = async (req, res) => {
   const { item_name, quantity, weight } = req.body;
 
   try {
     const inwardNo = await generateInwardNo();
+    const pool = await poolPromise;
 
-    const pool = await poolPromise;   // ✅ FIX: use pool
+    // 1️⃣ Insert into Stock
+    await pool.request()
+      .input("inward_no", sql.VarChar, inwardNo)
+      .input("item_name", sql.VarChar, item_name)
+      .input("quantity", sql.Int, quantity)
+      .input("weight", sql.VarChar, weight || "")
+      .query(`
+        INSERT INTO Stock (inward_no, item_name, quantity, weight)
+        VALUES (@inward_no, @item_name, @quantity, @weight)
+      `);
 
-    const query = `
-      INSERT INTO Stock (inward_no, item_name, quantity, weight)
-      VALUES (@inward_no, @item_name, @quantity, @weight)
-    `;
+    // 2️⃣ Insert into StockHistory
+    await pool.request()
+      .input("item_name", sql.VarChar, item_name)
+      .input("weight", sql.VarChar, weight || "")
+      .input("quantity", sql.Int, quantity)
+      .input("type", sql.VarChar, 'IN')
+      .input("ref_no", sql.VarChar, inwardNo)
+      .query(`
+        INSERT INTO StockHistory (item_name, weight, quantity, type, ref_no)
+        VALUES (@item_name, @weight, @quantity, @type, @ref_no)
+      `);
 
-    const request = pool.request();   // ❗ Correct
-
-    request.input("inward_no", sql.VarChar, inwardNo);
-    request.input("item_name", sql.VarChar, item_name);
-    request.input("quantity", sql.Int, quantity);
-    request.input("weight", sql.VarChar, weight);
-
-    await request.query(query);
-
-    res.json({
-      message: "Stock added successfully",
-      inward_no: inwardNo
-    });
+    res.json({ message: "Stock added successfully", inward_no: inwardNo });
 
   } catch (error) {
     console.error("Stock Add Error:", error);
