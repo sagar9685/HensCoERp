@@ -132,33 +132,85 @@ const OrderForm = ({ onClose }) => {
     }
   };
 
-  const saveItem = () => {
-    // Validate item
-    const itemErrors = {};
-    if (!currentItem.productName.trim()) itemErrors.productName = 'Product name is required';
-    if (!currentItem.productType) itemErrors.productType = 'Product type is required';
-    if (!currentItem.quantity || Number(currentItem.quantity) <= 0) itemErrors.quantity = 'Valid quantity is required';
-    if (!currentItem.rate || Number(currentItem.rate) <= 0) itemErrors.rate = 'Valid rate is required';
+  // const saveItem = () => {
+  //   // Validate item
+  //   const itemErrors = {};
+  //   if (!currentItem.productName.trim()) itemErrors.productName = 'Product name is required';
+  //   if (!currentItem.productType) itemErrors.productType = 'Product type is required';
+  //   if (!currentItem.quantity || Number(currentItem.quantity) <= 0) itemErrors.quantity = 'Valid quantity is required';
+  //   if (!currentItem.rate || Number(currentItem.rate) <= 0) itemErrors.rate = 'Valid rate is required';
 
-    if (Object.keys(itemErrors).length > 0) {
-      setErrors(itemErrors);
-      return;
-    }
+  //   if (Object.keys(itemErrors).length > 0) {
+  //     setErrors(itemErrors);
+  //     return;
+  //   }
 
-    if (editingIndex !== null) {
-      // Update existing item
-      setOrderItems(prev => prev.map((item, index) => 
-        index === editingIndex ? currentItem : item
-      ));
-      toast.success('Item updated successfully!');
-    } else {
-      // Add new item
-      setOrderItems(prev => [...prev, currentItem]);
-      toast.success('Item added successfully!');
-    }
+  //   if (editingIndex !== null) {
+  //     // Update existing item
+  //     setOrderItems(prev => prev.map((item, index) => 
+  //       index === editingIndex ? currentItem : item
+  //     ));
+  //     toast.success('Item updated successfully!');
+  //   } else {
+  //     // Add new item
+  //     setOrderItems(prev => [...prev, currentItem]);
+  //     toast.success('Item added successfully!');
+  //   }
     
-    closeItemModal();
-  };
+  //   closeItemModal();
+  // };
+
+const saveItem = () => {
+  const itemErrors = {};
+  if (!currentItem.productName.trim()) itemErrors.productName = 'Product name is required';
+  if (!currentItem.productType) itemErrors.productType = 'Product type is required';
+  if (!currentItem.quantity || Number(currentItem.quantity) <= 0) itemErrors.quantity = 'Valid quantity is required';
+  if (!currentItem.rate || Number(currentItem.rate) <= 0) itemErrors.rate = 'Valid rate is required';
+
+  if (Object.keys(itemErrors).length > 0) {
+    setErrors(itemErrors);
+    return;
+  }
+
+  // ✅ Sum total stock for this product + weight
+  const totalStock = stockList
+    ?.filter(s => s.item_name === currentItem.productType && s.weight === currentItem.weight)
+    .reduce((sum, s) => sum + Number(s.quantity), 0) || 0;
+
+  // ✅ Subtract already added in this order
+  const alreadyAddedQty = orderItems
+    .filter(i => i.productType === currentItem.productType && i.weight === currentItem.weight)
+    .reduce((sum, i) => sum + Number(i.quantity), 0);
+
+  const availableQty = totalStock - alreadyAddedQty;
+
+  // Check stock
+  if (availableQty <= 0) {
+    toast.error(`Item "${currentItem.productType}" is out of stock!`);
+    return; // don’t auto-fill, just show error
+  }
+
+  // Add item with requested quantity (do not auto-fill)
+  if (Number(currentItem.quantity) > availableQty) {
+    toast.error(`Only ${availableQty} available for "${currentItem.productType}"!`);
+    return;
+  }
+
+  // ✅ Add or update item in order
+  if (editingIndex !== null) {
+    setOrderItems(prev =>
+      prev.map((item, index) =>
+        index === editingIndex ? { ...currentItem } : item
+      )
+    );
+    toast.success('Item updated successfully!');
+  } else {
+    setOrderItems(prev => [...prev, { ...currentItem }]);
+    toast.success('Item added successfully!');
+  }
+
+  closeItemModal();
+};
 
 
 
