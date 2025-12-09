@@ -13,6 +13,8 @@ import CustomerSearch from './CustomerSearch';
 import OrderFormModal from './OrderFormModal';
 import OrderItemsSection from './OrderItemsSection';
 
+  import { fetchStock } from '../../features/stockSlice';
+
 // Define the initial state for a single item
 const initialItemState = {
   productName: '',
@@ -157,6 +159,21 @@ const OrderForm = ({ onClose }) => {
     
     closeItemModal();
   };
+
+
+
+useEffect(() => {
+  dispatch(fetchStock()); // fetch stock on mount
+}, [dispatch]);
+
+const stockList = useSelector(state => state.stock.items);
+console.log(stockList, "stovk");
+
+
+
+ 
+  
+
 
   const removeItem = (index) => {
     setOrderItems(prev => prev.filter((_, i) => i !== index));

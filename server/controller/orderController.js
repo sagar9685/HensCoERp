@@ -1,6 +1,15 @@
 const { sql, poolPromise } = require('../utils/db');
 
+ 
+
+
+
+ 
+
 exports.addOrder = async (req, res) => {
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
   try {
     const {
       CustomerName,
@@ -17,109 +26,118 @@ exports.addOrder = async (req, res) => {
       return res.status(400).json({ message: "Order must contain at least one item." });
     }
 
-    const pool = await poolPromise;
+    await transaction.begin();
 
-    // -------------------------------------------------------
-    // 1️⃣ DETECT CURRENT FINANCIAL YEAR
-    // -------------------------------------------------------
+    const request = new sql.Request(transaction);
+
+    // ----------------- 1️⃣ FINANCIAL YEAR -----------------
     const orderDt = new Date(OrderDate);
     const year = orderDt.getFullYear();
     const month = orderDt.getMonth() + 1;
+    const fyStart = month >= 4 ? year : year - 1;
+    const fyEnd = month >= 4 ? year + 1 : year;
+    const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
-    let fyStart, fyEnd;
-
-    if (month >= 4) {
-      // April to December → current FY
-      fyStart = year;
-      fyEnd = year + 1;
-    } else {
-      // January to March → previous FY
-      fyStart = year - 1;
-      fyEnd = year;
-    }
-
-    const fyString = `${fyStart % 100}-${fyEnd % 100}`;  // Example: 25-26
-
-    // -------------------------------------------------------
-    // 2️⃣ GET LAST INVOICE OF THIS FY
-    // -------------------------------------------------------
-    const lastInvoiceQuery = `
+    // ----------------- 2️⃣ GET LAST INVOICE -----------------
+    const lastInvoiceResult = await request.query(`
       SELECT TOP 1 InvoiceNo 
       FROM OrdersTemp
       WHERE InvoiceNo LIKE '${fyString}/%'
       ORDER BY OrderID DESC;
-    `;
-
-    const lastInvoiceResult = await pool.request().query(lastInvoiceQuery);
-
+    `);
     let nextSequence = 1;
-
     if (lastInvoiceResult.recordset.length > 0) {
-      const lastInvoice = lastInvoiceResult.recordset[0].InvoiceNo;  // Example: 25-26/07
+      const lastInvoice = lastInvoiceResult.recordset[0].InvoiceNo;
       const lastSeq = parseInt(lastInvoice.split("/")[1]);
       nextSequence = lastSeq + 1;
     }
-
     const invoiceNo = `${fyString}/${String(nextSequence).padStart(2, "0")}`;
 
-    // -------------------------------------------------------
-    // 3️⃣ INSERT INTO ORDERTEMP WITH INVOICE NO
-    // -------------------------------------------------------
-    const orderQuery = `
+    // ----------------- 3️⃣ INSERT ORDER -----------------
+    request.input("CustomerName", sql.NVarChar, CustomerName);
+    request.input("Address", sql.NVarChar, Address);
+    request.input("Area", sql.NVarChar, Area);
+    request.input("ContactNo", sql.VarChar, ContactNo);
+    request.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
+    request.input("OrderDate", sql.Date, OrderDate);
+    request.input("OrderTakenBy", sql.NVarChar, OrderTakenBy);
+    request.input("InvoiceNo", sql.NVarChar, invoiceNo);
+
+    const orderInsertResult = await request.query(`
       INSERT INTO OrdersTemp 
       (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo)
       OUTPUT INSERTED.OrderID
-      VALUES 
-      (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo);
-    `;
+      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo);
+    `);
 
-    const orderRequest = pool.request();
-    orderRequest.input("CustomerName", sql.NVarChar, CustomerName);
-    orderRequest.input("Address", sql.NVarChar, Address);
-    orderRequest.input("Area", sql.NVarChar, Area);
-    orderRequest.input("ContactNo", sql.VarChar, ContactNo);
-    orderRequest.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
-    orderRequest.input("OrderDate", sql.Date, OrderDate);
-    orderRequest.input("OrderTakenBy", sql.NVarChar, OrderTakenBy);
-    orderRequest.input("InvoiceNo", sql.NVarChar, invoiceNo);
+    const orderId = orderInsertResult.recordset[0].OrderID;
 
-    const result = await orderRequest.query(orderQuery);
-    const orderId = result.recordset[0].OrderID;
-
-    // -------------------------------------------------------
-    // 4️⃣ INSERT ORDER ITEMS
-    // -------------------------------------------------------
+    // ----------------- 4️⃣ PROCESS ITEMS & STOCK -----------------
     for (let item of Items) {
-      const itemQuery = `
-        INSERT INTO OrderItems 
-        (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
-        VALUES 
-        (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
-      `;
+      let remainingQty = item.Quantity;
 
-      const itemReq = pool.request();
-      itemReq.input("OrderID", sql.Int, orderId);
-      itemReq.input("ProductName", sql.NVarChar, item.ProductName);
-      itemReq.input("ProductType", sql.NVarChar, item.ProductType);
-      itemReq.input("Weight", sql.NVarChar, item.Weight);
-      itemReq.input("Quantity", sql.Int, item.Quantity);
-      itemReq.input("Rate", sql.Decimal(10, 2), item.Rate);
-      itemReq.input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate);
+      // Fetch stock rows (FIFO)
+      const stockRowsResult = await transaction.request()
+        .input("ProductType", sql.NVarChar, item.ProductType)
+        .query(`
+          SELECT ID, Quantity 
+          FROM Stock
+          WHERE item_name = @ProductType AND Quantity > 0
+          ORDER BY ID ASC
+        `);
 
-      await itemReq.query(itemQuery);
+      const stockRows = stockRowsResult.recordset;
+
+      for (let stockRow of stockRows) {
+        if (remainingQty <= 0) break;
+
+        const deductQty = Math.min(stockRow.Quantity, remainingQty);
+
+        await transaction.request()
+          .input("DeductQty", sql.Int, deductQty)
+          .input("ID", sql.Int, stockRow.ID)
+          .query(`
+            UPDATE Stock
+            SET Quantity = Quantity - @DeductQty
+            WHERE ID = @ID
+          `);
+
+        remainingQty -= deductQty;
+      }
+
+      if (remainingQty > 0) {
+        throw new Error(`Not enough stock for ${item.ProductType}. Remaining ${remainingQty}`);
+      }
+
+      // Insert order item
+      await transaction.request()
+        .input("OrderID", sql.Int, orderId)
+        .input("ProductName", sql.NVarChar, item.ProductName)
+        .input("ProductType", sql.NVarChar, item.ProductType)
+        .input("Weight", sql.NVarChar, item.Weight || "")
+        .input("Quantity", sql.Int, item.Quantity)
+        .input("Rate", sql.Decimal(10, 2), item.Rate)
+        .input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate)
+        .query(`
+          INSERT INTO OrderItems 
+          (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+          VALUES (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+        `);
     }
 
+    await transaction.commit(); // ✅ Commit only after all inserts & stock updates succeed
+
     res.status(200).json({
-      message: "Order + Invoice Generated!",
+      message: "Order placed & stock updated safely!",
       orderId,
       invoiceNo
     });
 
   } catch (error) {
+    await transaction.rollback(); // 🔴 Rollback if any error
     console.error("❌ Error adding order:", error);
     res.status(500).json({
-      message: "Internal server error",
-      error: error.message
+      message: error.message || "Internal server error"
     });
   }
 };

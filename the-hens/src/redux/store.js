@@ -9,6 +9,8 @@
  import orderCompletionReducer from '../features/orderCompletionSlice'
  import denominationReducer from '../features/denominationSlice'
  import purchaseOrderReducer from '../features/purchaseOrderSlice'
+  import stockReducer from '../features/stockSlice'
+ 
  
  const store = configureStore ({
     reducer : {
@@ -16,6 +18,7 @@
         product : productReducer,
         order: orderReducer,
         auth : authReducer,
+         stock: stockReducer,
          assignedOrders: assignedOrderReducer,
          paymentMode : paymentModeReducer,
         orderCompletion: orderCompletionReducer,

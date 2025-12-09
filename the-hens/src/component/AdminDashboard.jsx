@@ -48,6 +48,7 @@ const indexOfLastRecord = currentPage * recordsPerPage;
 const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
 const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
  const totalOrders = orders.length;
+ 
 
 const totalItems = orders.reduce((acc, order) => {
   const quantities = order.Quantities ? order.Quantities.split(",").map(Number) : [];
@@ -396,14 +397,23 @@ const handleStatusChange = (row, value) => {
       <td className={styles.tableData}>{row.ContactNo}</td>
     <td className={styles.tableData}>
   <div className={styles.productTable}>
-    {row.ProductTypes.split(",").map((type, i) => (
-      <div key={i} className={styles.productRow}>
-        <span className={styles.pType}>{type.trim()}</span>
-        <span className={styles.pWeight}>{row.Weights.split(",")[i].trim()}</span>
-        <span className={styles.pQty}>Qty: {row.Quantities.split(",")[i].trim()}</span>
-        <span className={styles.pRate}>₹{row.Rates.split(",")[i].trim()}</span>
-      </div>
-    ))}
+
+    {(() => {
+      const types = row.ProductTypes ? row.ProductTypes.split(",") : [];
+      const weights = row.Weights ? row.Weights.split(",") : [];
+      const quantities = row.Quantities ? row.Quantities.split(",") : [];
+      const rates = row.Rates ? row.Rates.split(",") : [];
+
+      return types.map((type, i) => (
+        <div key={i} className={styles.productRow}>
+          <span className={styles.pType}>{type?.trim() || "-"}</span>
+          <span className={styles.pWeight}>{weights[i]?.trim() || "-"}</span>
+          <span className={styles.pQty}>Qty: {quantities[i]?.trim() || "-"}</span>
+          <span className={styles.pRate}>₹{rates[i]?.trim() || "-"}</span>
+        </div>
+      ));
+    })()}
+
   </div>
 </td>
 

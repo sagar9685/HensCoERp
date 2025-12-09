@@ -1,14 +1,15 @@
 import { FaUserCircle } from 'react-icons/fa';
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {logout} from '../../features/authSlice'
 import { useNavigate } from "react-router";
-
-
-
+import { openStockModal } from '../../features/stockSlice';
+import AddStockModal from "./AddStockModal"; 
+ 
 const UserNavbar = () => {
 
     const dispatch = useDispatch();
     const navigate = useNavigate();
+  const modalOpen = useSelector((state) => state.stock.modalOpen);
 
      const handleLogout = () => {
        dispatch (logout())
@@ -34,98 +35,16 @@ const UserNavbar = () => {
             </ul>
             <ul className="navbar-nav navbar-nav-right">
               <li className="nav-item dropdown d-none d-lg-block">
-                <a className="nav-link btn btn-success create-new-button" id="createbuttonDropdown" data-toggle="dropdown" aria-expanded="false" href="#">+ Add New Stock</a>
-                 
+              <a
+                className="nav-link btn btn-success create-new-button"
+                style={{ cursor: "pointer" }}
+                onClick={() => dispatch(openStockModal())}   // ✔ open modal from redux
+              >
+                + Add New Stock
+              </a>
               </li>
              
-              {/* <li className="nav-item dropdown border-left">
-                <a className="nav-link count-indicator dropdown-toggle" id="messageDropdown" href="#" data-toggle="dropdown" aria-expanded="false">
-                  <i className="mdi mdi-email"></i>
-                  <span className="count bg-success"></span>
-                </a>
-                <div className="dropdown-menu dropdown-menu-right navbar-dropdown preview-list" aria-labelledby="messageDropdown">
-                  <h6 className="p-3 mb-0">Messages</h6>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <img src="./src/assets/images/faces/face4.jpg" alt="image" className="rounded-circle profile-pic"/>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject ellipsis mb-1">Mark send you a message</p>
-                      <p className="text-muted mb-0"> 1 Minutes ago </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <img src="./src/assets/images/faces/face2.jpg" alt="image" className="rounded-circle profile-pic"/>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject ellipsis mb-1">Cregh send you a message</p>
-                      <p className="text-muted mb-0"> 15 Minutes ago </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <img src="./src/assets/images/faces/face3.jpg" alt="image" className="rounded-circle profile-pic"/>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject ellipsis mb-1">Profile picture updated</p>
-                      <p className="text-muted mb-0"> 18 Minutes ago </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <p className="p-3 mb-0 text-center">4 new messages</p>
-                </div>
-              </li> */}
-              {/* <li className="nav-item dropdown border-left">
-                <a className="nav-link count-indicator dropdown-toggle" id="notificationDropdown" href="#" data-toggle="dropdown">
-                  <i className="mdi mdi-bell"></i>
-                  <span className="count bg-danger"></span>
-                </a>
-                <div className="dropdown-menu dropdown-menu-right navbar-dropdown preview-list" aria-labelledby="notificationDropdown">
-                  <h6 className="p-3 mb-0">Notifications</h6>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <div className="preview-icon bg-dark rounded-circle">
-                        <i className="mdi mdi-calendar text-success"></i>
-                      </div>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject mb-1">Event today</p>
-                      <p className="text-muted ellipsis mb-0"> Just a reminder that you have an event today </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <div className="preview-icon bg-dark rounded-circle">
-                        <i className="mdi mdi-settings text-danger"></i>
-                      </div>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject mb-1">Settings</p>
-                      <p className="text-muted ellipsis mb-0"> Update dashboard </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <a className="dropdown-item preview-item">
-                    <div className="preview-thumbnail">
-                      <div className="preview-icon bg-dark rounded-circle">
-                        <i className="mdi mdi-link-variant text-warning"></i>
-                      </div>
-                    </div>
-                    <div className="preview-item-content">
-                      <p className="preview-subject mb-1">Launch Admin</p>
-                      <p className="text-muted ellipsis mb-0"> New admin wow! </p>
-                    </div>
-                  </a>
-                  <div className="dropdown-divider"></div>
-                  <p className="p-3 mb-0 text-center">See all notifications</p>
-                </div>
-              </li> */}
+             
               <li className="nav-item dropdown">
                 <a className="nav-link" id="profileDropdown" href="#" data-toggle="dropdown">
                   <div className="navbar-profile">
@@ -169,6 +88,8 @@ const UserNavbar = () => {
             </button>
           </div>
         </nav>
+          {/* ✅ Show modal */}
+        {modalOpen && <AddStockModal />}
         </>
     )
 }

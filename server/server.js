@@ -11,6 +11,7 @@ const paymentRoutes = require('./routes/paymentRoutes')
 const deliveryMenRoutes = require('./routes/deliveryMenRoutes')
 const areaRoutes = require('./routes/areaRoutes')
 const purchaseRoutes = require('./routes/purchaseOrderRoutes')
+const stockRoutes = require('./routes/stockRoutes')
 
 dotenv.config();
 const app = express();
@@ -29,6 +30,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/products', productRoutes);
 app.use("/api/rates", rateRoutes);
 app.use("/api/purchaseorders", purchaseRoutes);
+app.use("/api/stock", stockRoutes);
 app.use("/api",areaRoutes);
 app.use("/api/users",authRoutes);
 app.use("/api/users", paymentRoutes);
