@@ -16,7 +16,7 @@ const AddStockModal = () => {
   const [quantity, setQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const productTypes = useSelector((state) => state.product?.types ?? []);
-  const loading = useSelector((state) => state.product?.loading ?? false);
+//   const loading = useSelector((state) => state.product?.loading ?? false);
 
   useEffect(() => {
     dispatch(fetchProductTypes());

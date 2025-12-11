@@ -9,6 +9,7 @@ import UserDataTable from "./component/user/UserDataCash/UserDataTable";
 import UserForm from "./component/user/UserForm";
 import UserChart from "./component/user/UserChart";
 import Purchase from "./component/AdminPurchase/Purchase";
+import Stock from "./component/user/Stock";
 
 function App() {
   return (
@@ -65,6 +66,13 @@ function App() {
          <Route path = '/chart' element = {
           <ProtectedRoute>
           <UserChart/>
+        </ProtectedRoute>
+        }
+        />
+
+         <Route path = '/stock' element = {
+          <ProtectedRoute>
+          <Stock/>
         </ProtectedRoute>
         }
         />

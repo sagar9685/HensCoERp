@@ -34,40 +34,7 @@ const generateInwardNo = async () => {
   return `${prefix}${String(nextNumber).padStart(2, "0")}`;
 };
 
-
-// exports.addStock = async (req, res) => {
-//   const { item_name, quantity, weight } = req.body;
-
-//   try {
-//     const inwardNo = await generateInwardNo();
-
-//     const pool = await poolPromise;   // ✅ FIX: use pool
-
-//     const query = `
-//       INSERT INTO Stock (inward_no, item_name, quantity, weight)
-//       VALUES (@inward_no, @item_name, @quantity, @weight)
-//     `;
-
-//     const request = pool.request();   // ❗ Correct
-
-//     request.input("inward_no", sql.VarChar, inwardNo);
-//     request.input("item_name", sql.VarChar, item_name);
-//     request.input("quantity", sql.Int, quantity);
-//     request.input("weight", sql.VarChar, weight);
-
-//     await request.query(query);
-
-//     res.json({
-//       message: "Stock added successfully",
-//       inward_no: inwardNo
-//     });
-
-//   } catch (error) {
-//     console.error("Stock Add Error:", error);
-//     res.status(500).json({ error: "Error adding stock" });
-//   }
-// };
-
+ 
 
 exports.addStock = async (req, res) => {
   const { item_name, quantity, weight } = req.body;
@@ -122,5 +89,27 @@ exports.getStock = async (req, res) => {
   } catch (error) {
     console.error("Error fetching customers:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
+exports.getAvailableStock = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request().query(`
+      SELECT 
+        item_name,
+        SUM(quantity) AS available_stock
+      FROM Stock
+      GROUP BY item_name
+      ORDER BY item_name ASC
+    `);
+
+    res.json(result.recordset);
+
+  } catch (error) {
+    console.error("Stock Fetch Error:", error);
+    res.status(500).json({ error: "Error fetching available stock" });
   }
 };

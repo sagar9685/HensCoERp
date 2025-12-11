@@ -15,108 +15,129 @@
     box-sizing: border-box;
 }
 
-/* --- Invoice Card Styling --- */
+/* --- Compact Invoice Card Styling --- */
 
 .invoiceCard {
     background-color: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
+    max-width: 480px;
+    max-height: 85vh;
     overflow-y: auto;
-    padding: 30px;
+    padding: 20px;
     font-family: 'Arial', sans-serif;
     color: #333;
     animation: fadeIn 0.3s ease-out;
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Header Section --- */
+/* --- Compact Header Section --- */
 
 .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 3px solid #f0f0f0;
-    padding-bottom: 15px;
-    margin-bottom: 25px;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
 }
 
 .header h2 {
-    font-size: 1.8rem;
+    font-size: 1.4rem;
     color: #007bff;
     margin: 0;
+    font-weight: 600;
 }
 
 .closeBtn {
     background: none;
     border: none;
-    font-size: 1.5rem;
-    color: #999;
+    font-size: 1.2rem;
+    color: #666;
     cursor: pointer;
     transition: color 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 
 .closeBtn:hover {
+    background-color: #f8f9fa;
     color: #dc3545;
 }
 
-/* --- General Section Styling --- */
+/* --- Compact Section Styling --- */
 
 .section {
-    margin-bottom: 25px;
-    padding: 15px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    background-color: #f8f9fa;
+    margin-bottom: 18px;
+    padding: 16px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #fafafa;
 }
 
 .section h3 {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     color: #495057;
     margin-top: 0;
     margin-bottom: 15px;
-    padding-bottom: 5px;
-    border-bottom: 1px dashed #ced4da;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
 }
 
-.section p {
-    margin: 5px 0;
+/* Details Grid */
+.detailsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
     font-size: 0.95rem;
-    line-height: 1.5;
 }
 
-.section strong {
+.detailsGrid > div {
+    margin: 3px 0;
+}
+
+.detailsGrid strong {
     color: #007bff;
+    font-weight: 600;
+    margin-right: 5px;
 }
 
-/* --- Table Styling for Denomination Breakdown --- */
+/* --- Compact Table Styling --- */
 
 .table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 15px;
+    margin-top: 10px;
     background-color: #fff;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    border-radius: 6px;
-    overflow: hidden;
+    font-size: 0.9rem;
+    border: 1px solid #dee2e6;
 }
 
 .table thead tr {
     background-color: #007bff;
     color: white;
-    font-weight: bold;
 }
 
-.table th, .table td {
-    padding: 12px 15px;
-    text-align: left;
-    border-bottom: 1px solid #dee2e6;
+.table th {
+    padding: 8px 10px;
+    font-weight: 600;
+    border: 1px solid #dee2e6;
+}
+
+.table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #eee;
+    border-right: 1px solid #eee;
 }
 
 .table tbody tr:nth-child(even) {
@@ -124,215 +145,133 @@
 }
 
 .table tbody tr:hover {
-    background-color: #e2f2ff;
+    background-color: #e8f4ff;
 }
 
-.table td:last-child, .table th:last-child {
-    text-align: right;
-}
+/* --- Total Section --- */
 
-/* --- Totals Section --- */
+.totalSection {
+    background-color: #f0fff4;
+    border-color: #28a745;
+}
 
 .totalRow {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 1.2rem;
-    padding: 10px 0;
-    border-top: 2px solid #007bff;
-    margin-top: 15px;
+    font-size: 1.1rem;
+    padding: 12px 0;
+    border-top: 1px solid #28a745;
+    margin-top: 10px;
 }
 
 .totalRow strong {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     color: #28a745;
+    font-weight: 700;
 }
 
 /* --- Footer and Print Button --- */
 
 .footer {
     text-align: center;
-    padding-top: 20px;
-    border-top: 1px solid #f0f0f0;
-    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 15px;
 }
 
 .printBtn {
-    background-color: #28a745;
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
     color: white;
     border: none;
-    padding: 12px 25px;
-    border-radius: 25px;
-    font-size: 1rem;
-    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s, transform 0.1s;
+    transition: all 0.2s;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(40, 167, 69, 0.2);
 }
 
 .printBtn:hover {
-    background-color: #218838;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
 }
 
 .printBtn:active {
     transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(40, 167, 69, 0.2);
 }
 
-/* --- Print Styles --- */
-@media print {
-    /* Hide everything except the invoice */
-    body * {
-        visibility: hidden;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    
-    /* Show only the invoice wrapper and its contents */
-    .invoiceWrapper,
-    .invoiceWrapper * {
-        visibility: visible;
-    }
-    
-    /* Reset the invoice wrapper for printing */
-    .invoiceWrapper {
-        position: absolute;
-        top: 10mm;
-        left: 10mm;
-        right: 10mm;
-        bottom: 10mm;
-        width: auto;
-        height: auto;
-        background: white;
-        padding: 0;
-        margin: 0;
-        display: block;
-        box-shadow: none;
-        border-radius: 0;
-        overflow: visible;
-    }
-    
-    /* Style adjustments for compact printing */
+/* --- Responsiveness --- */
+@media (max-width: 500px) {
     .invoiceCard {
-        box-shadow: none;
-        max-width: none;
-        max-height: none;
-        overflow: visible;
-        padding: 0;
-        margin: 0;
-        border-radius: 0;
-        width: 100%;
-        height: auto;
-        page-break-inside: avoid;
-    }
-    
-    /* Compact styling for print */
-    .header {
-        margin-bottom: 15px;
-        padding-bottom: 10px;
+        padding: 15px;
+        max-width: 95%;
+        max-height: 90vh;
     }
     
     .header h2 {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
     
     .section {
+        padding: 12px;
         margin-bottom: 15px;
-        padding: 10px;
-        page-break-inside: avoid;
     }
     
     .section h3 {
-        font-size: 1.1rem;
-        margin-bottom: 10px;
+        font-size: 1rem;
+        margin-bottom: 12px;
     }
     
-    .section p {
+    .detailsGrid {
+        grid-template-columns: 1fr;
+        gap: 6px;
         font-size: 0.9rem;
-        margin: 3px 0;
-    }
-    
-    .table {
-        margin-top: 10px;
-        font-size: 0.85rem;
     }
     
     .table th, .table td {
-        padding: 8px 10px;
+        padding: 6px 8px;
+        font-size: 0.85rem;
     }
     
     .totalRow {
         font-size: 1rem;
-        padding: 8px 0;
+        padding: 10px 0;
     }
     
     .totalRow strong {
         font-size: 1.2rem;
     }
     
-    /* Hide buttons when printing */
-    .closeBtn, .printBtn {
-        display: none;
-    }
-    
-    /* Ensure proper colors for printing */
-    .table thead tr {
-        background-color: #f8f9fa !important;
-        color: #333 !important;
-        -webkit-print-color-adjust: exact;
-        color-adjust: exact;
-    }
-    
-    /* Ensure table borders are visible */
-    .table th, .table td {
-        border-bottom: 1px solid #ddd !important;
-    }
-    
-    /* Remove background colors for better printing */
-    .section {
-        background-color: white !important;
-        border: 1px solid #ddd !important;
-    }
-    
-    /* Force single page */
-    .invoiceCard {
-        page-break-after: avoid;
-        page-break-before: avoid;
+    .printBtn {
+        padding: 10px 16px;
+        font-size: 0.9rem;
+        width: 100%;
+        justify-content: center;
     }
 }
 
-/* --- Responsiveness: Mobile/Small Screen Adjustments --- */
-@media (max-width: 500px) {
-    .invoiceCard {
-        padding: 20px 15px;
-    }
-    
-    .header h2 {
-        font-size: 1.4rem;
-    }
+/* --- Scrollbar Styling --- */
+.invoiceCard::-webkit-scrollbar {
+    width: 6px;
+}
 
-    .section p {
-        font-size: 0.9rem;
-    }
+.invoiceCard::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
 
-    .table th, .table td {
-        padding: 8px 10px;
-        font-size: 0.85rem;
-    }
-    
-    .totalRow {
-        font-size: 1rem;
-        padding: 8px 0;
-    }
-    
-    .totalRow strong {
-        font-size: 1.25rem;
-    }
-    
-    .printBtn {
-        padding: 10px 20px;
-        font-size: 0.9rem;
-    }
+.invoiceCard::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+.invoiceCard::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
 }

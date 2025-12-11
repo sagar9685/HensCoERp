@@ -1,221 +1,185 @@
 import UserFooter from "./UserFooter";
 import UserNavbar from "./UserNavBar";
+import styles from "./UserDashboard.module.css";
 
- 
 const UserDashboard = () => {
-    return(
-        <>
-              <div className="container-fluid page-body-wrapper">
-        {/* <!-- partial:partials/_navbar.html --> */}
-        <UserNavbar/>
-        {/* <!-- partial --> */}
-        <div className="main-panel">
-          <div className="content-wrapper">
+  return (
+    <>
+      <div className="container-fluid">
+        <UserNavbar />
+        <div className={styles.mainContainer}>
+          <div className={styles.contentWrapper}>
            
+            {/* Stats Cards */}
             <div className="row">
               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
-                <div className="card">
+                <div className={`card ${styles.statCard}`}>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-9">
                         <div className="d-flex align-items-center align-self-start">
-                          <h3 className="mb-0">$12.34</h3>
-                          <p className="text-success ml-2 mb-0 font-weight-medium">+3.5%</p>
+                          <h3 className="mb-0">156</h3>
+                          <p className={`${styles.positive} ml-2 mb-0 font-weight-medium`}>+12.5%</p>
                         </div>
                       </div>
                       <div className="col-3">
-                        <div className="icon icon-box-success ">
-                          <span className="mdi mdi-arrow-top-right icon-item"></span>
+                        <div className={`${styles.iconBox} ${styles.iconBoxSuccess}`}>
+                          <span className="mdi mdi-package-variant"></span>
                         </div>
                       </div>
                     </div>
-                    <h6 className="text-muted font-weight-normal">Potential growth</h6>
+                    <h6 className={styles.statLabel}>Total Stocks</h6>
                   </div>
                 </div>
               </div>
+              
               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
-                <div className="card">
+                <div className={`card ${styles.statCard}`}>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-9">
                         <div className="d-flex align-items-center align-self-start">
-                          <h3 className="mb-0">$17.34</h3>
-                          <p className="text-success ml-2 mb-0 font-weight-medium">+11%</p>
+                          <h3 className="mb-0">24</h3>
+                          <p className={`${styles.warning} ml-2 mb-0 font-weight-medium`}>Pending</p>
                         </div>
                       </div>
                       <div className="col-3">
-                        <div className="icon icon-box-success">
-                          <span className="mdi mdi-arrow-top-right icon-item"></span>
+                        <div className={`${styles.iconBox} ${styles.iconBoxWarning}`}>
+                          <span className="mdi mdi-clock-outline"></span>
                         </div>
                       </div>
                     </div>
-                    <h6 className="text-muted font-weight-normal">Revenue current</h6>
+                    <h6 className={styles.statLabel}>Pending Orders</h6>
                   </div>
                 </div>
               </div>
+              
               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
-                <div className="card">
+                <div className={`card ${styles.statCard}`}>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-9">
                         <div className="d-flex align-items-center align-self-start">
-                          <h3 className="mb-0">$12.34</h3>
-                          <p className="text-danger ml-2 mb-0 font-weight-medium">-2.4%</p>
+                          <h3 className="mb-0">$2,450</h3>
+                          <p className={`${styles.positive} ml-2 mb-0 font-weight-medium`}>+8.3%</p>
                         </div>
                       </div>
                       <div className="col-3">
-                        <div className="icon icon-box-danger">
-                          <span className="mdi mdi-arrow-bottom-left icon-item"></span>
+                        <div className={`${styles.iconBox} ${styles.iconBoxInfo}`}>
+                          <span className="mdi mdi-cash-multiple"></span>
                         </div>
                       </div>
                     </div>
-                    <h6 className="text-muted font-weight-normal">Daily Income</h6>
+                    <h6 className={styles.statLabel}>Delivery Cash</h6>
                   </div>
                 </div>
               </div>
+              
               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
-                <div className="card">
+                <div className={`card ${styles.statCard}`}>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-9">
                         <div className="d-flex align-items-center align-self-start">
-                          <h3 className="mb-0">$31.53</h3>
-                          <p className="text-success ml-2 mb-0 font-weight-medium">+3.5%</p>
+                          <h3 className="mb-0">$15,230</h3>
+                          <p className={`${styles.positive} ml-2 mb-0 font-weight-medium`}>+15.2%</p>
                         </div>
                       </div>
                       <div className="col-3">
-                        <div className="icon icon-box-success ">
-                          <span className="mdi mdi-arrow-top-right icon-item"></span>
+                        <div className={`${styles.iconBox} ${styles.iconBoxSuccess}`}>
+                          <span className="mdi mdi-chart-line"></span>
                         </div>
                       </div>
                     </div>
-                    <h6 className="text-muted font-weight-normal">Expense current</h6>
+                    <h6 className={styles.statLabel}>Monthly Sales</h6>
                   </div>
                 </div>
               </div>
             </div>
+            
+            {/* Charts and Recent Orders */}
             <div className="row">
-              <div className="col-md-4 grid-margin stretch-card">
-                <div className="card">
-                  <div className="card-body">
-                    <h4 className="card-title">Transaction History</h4>
-                    <canvas id="transaction-history" className="transaction-chart"></canvas>
-                    <div className="bg-gray-dark d-flex d-md-block d-xl-flex flex-row py-3 px-4 px-md-3 px-xl-4 rounded mt-3">
-                      <div className="text-md-center text-xl-left">
-                        <h6 className="mb-1">Transfer to Paypal</h6>
-                        <p className="text-muted mb-0">07 Jan 2019, 09:12AM</p>
-                      </div>
-                      <div className="align-self-center flex-grow text-right text-md-center text-xl-right py-md-2 py-xl-0">
-                        <h6 className="font-weight-bold mb-0">$236</h6>
-                      </div>
-                    </div>
-                    <div className="bg-gray-dark d-flex d-md-block d-xl-flex flex-row py-3 px-4 px-md-3 px-xl-4 rounded mt-3">
-                      <div className="text-md-center text-xl-left">
-                        <h6 className="mb-1">Tranfer to Stripe</h6>
-                        <p className="text-muted mb-0">07 Jan 2019, 09:12AM</p>
-                      </div>
-                      <div className="align-self-center flex-grow text-right text-md-center text-xl-right py-md-2 py-xl-0">
-                        <h6 className="font-weight-bold mb-0">$593</h6>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
               <div className="col-md-8 grid-margin stretch-card">
-                <div className="card">
+                <div className={`card ${styles.chartCard}`}>
                   <div className="card-body">
                     <div className="d-flex flex-row justify-content-between">
-                      <h4 className="card-title mb-1">Open Projects</h4>
-                      <p className="text-muted mb-1">Your data status</p>
+                      <h4 className="card-title mb-1">Sales Analytics</h4>
+                      <div className="dropdown">
+                        <button className={`btn btn-sm ${styles.dropdownBtn}`} type="button" data-toggle="dropdown">
+                          Last 7 Days <span className="mdi mdi-chevron-down"></span>
+                        </button>
+                        <div className="dropdown-menu">
+                          <a className="dropdown-item" href="#">Last 7 Days</a>
+                          <a className="dropdown-item" href="#">Last 30 Days</a>
+                          <a className="dropdown-item" href="#">Last Year</a>
+                        </div>
+                      </div>
                     </div>
-                    <div className="row">
-                      <div className="col-12">
-                        <div className="preview-list">
-                          <div className="preview-item border-bottom">
-                            <div className="preview-thumbnail">
-                              <div className="preview-icon bg-primary">
-                                <i className="mdi mdi-file-document"></i>
-                              </div>
-                            </div>
-                            <div className="preview-item-content d-sm-flex flex-grow">
-                              <div className="flex-grow">
-                                <h6 className="preview-subject">Admin dashboard design</h6>
-                                <p className="text-muted mb-0">Broadcast web app mockup</p>
-                              </div>
-                              <div className="mr-auto text-sm-right pt-2 pt-sm-0">
-                                <p className="text-muted">15 minutes ago</p>
-                                <p className="text-muted mb-0">30 tasks, 5 issues </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="preview-item border-bottom">
-                            <div className="preview-thumbnail">
-                              <div className="preview-icon bg-success">
-                                <i className="mdi mdi-cloud-download"></i>
-                              </div>
-                            </div>
-                            <div className="preview-item-content d-sm-flex flex-grow">
-                              <div className="flex-grow">
-                                <h6 className="preview-subject">Wordpress Development</h6>
-                                <p className="text-muted mb-0">Upload new design</p>
-                              </div>
-                              <div className="mr-auto text-sm-right pt-2 pt-sm-0">
-                                <p className="text-muted">1 hour ago</p>
-                                <p className="text-muted mb-0">23 tasks, 5 issues </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="preview-item border-bottom">
-                            <div className="preview-thumbnail">
-                              <div className="preview-icon bg-info">
-                                <i className="mdi mdi-clock"></i>
-                              </div>
-                            </div>
-                            <div className="preview-item-content d-sm-flex flex-grow">
-                              <div className="flex-grow">
-                                <h6 className="preview-subject">Project meeting</h6>
-                                <p className="text-muted mb-0">New project discussion</p>
-                              </div>
-                              <div className="mr-auto text-sm-right pt-2 pt-sm-0">
-                                <p className="text-muted">35 minutes ago</p>
-                                <p className="text-muted mb-0">15 tasks, 2 issues</p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="preview-item border-bottom">
-                            <div className="preview-thumbnail">
-                              <div className="preview-icon bg-danger">
-                                <i className="mdi mdi-email-open"></i>
-                              </div>
-                            </div>
-                            <div className="preview-item-content d-sm-flex flex-grow">
-                              <div className="flex-grow">
-                                <h6 className="preview-subject">Broadcast Mail</h6>
-                                <p className="text-muted mb-0">Sent release details to team</p>
-                              </div>
-                              <div className="mr-auto text-sm-right pt-2 pt-sm-0">
-                                <p className="text-muted">55 minutes ago</p>
-                                <p className="text-muted mb-0">35 tasks, 7 issues </p>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="preview-item">
-                            <div className="preview-thumbnail">
-                              <div className="preview-icon bg-warning">
-                                <i className="mdi mdi-chart-pie"></i>
-                              </div>
-                            </div>
-                            <div className="preview-item-content d-sm-flex flex-grow">
-                              <div className="flex-grow">
-                                <h6 className="preview-subject">UI Design</h6>
-                                <p className="text-muted mb-0">New application planning</p>
-                              </div>
-                              <div className="mr-auto text-sm-right pt-2 pt-sm-0">
-                                <p className="text-muted">50 minutes ago</p>
-                                <p className="text-muted mb-0">27 tasks, 4 issues </p>
-                              </div>
-                            </div>
-                          </div>
+                    <div className={styles.chartContainer}>
+                      {/* This would be replaced with actual chart library like Chart.js or Recharts */}
+                      <div className={styles.mockChart}>
+                        <div className={styles.chartBar} style={{height: '80%'}}></div>
+                        <div className={styles.chartBar} style={{height: '60%'}}></div>
+                        <div className={styles.chartBar} style={{height: '90%'}}></div>
+                        <div className={styles.chartBar} style={{height: '70%'}}></div>
+                        <div className={styles.chartBar} style={{height: '85%'}}></div>
+                        <div className={styles.chartBar} style={{height: '95%'}}></div>
+                        <div className={styles.chartBar} style={{height: '65%'}}></div>
+                      </div>
+                      <div className={styles.chartLabels}>
+                        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="col-md-4 grid-margin stretch-card">
+                <div className={`card ${styles.orderCard}`}>
+                  <div className="card-body">
+                    <h4 className="card-title mb-4">Recent Orders</h4>
+                    <div className={styles.orderList}>
+                      <div className={`${styles.orderItem} ${styles.pending}`}>
+                        <div className={styles.orderIcon}>
+                          <span className="mdi mdi-clock"></span>
+                        </div>
+                        <div className={styles.orderDetails}>
+                          <h6>Order #ORD-0012</h6>
+                          <p className={styles.orderTime}>10 min ago</p>
+                          <p className={styles.orderAmount}>$245.00</p>
+                        </div>
+                      </div>
+                      
+                      <div className={`${styles.orderItem} ${styles.processing}`}>
+                        <div className={styles.orderIcon}>
+                          <span className="mdi mdi-truck-delivery"></span>
+                        </div>
+                        <div className={styles.orderDetails}>
+                          <h6>Order #ORD-0011</h6>
+                          <p className={styles.orderTime}>25 min ago</p>
+                          <p className={styles.orderAmount}>$189.50</p>
+                        </div>
+                      </div>
+                      
+                      <div className={`${styles.orderItem} ${styles.delivered}`}>
+                        <div className={styles.orderIcon}>
+                          <span className="mdi mdi-check-circle"></span>
+                        </div>
+                        <div className={styles.orderDetails}>
+                          <h6>Order #ORD-0010</h6>
+                          <p className={styles.orderTime}>1 hour ago</p>
+                          <p className={styles.orderAmount}>$325.75</p>
+                        </div>
+                      </div>
+                      
+                      <div className={`${styles.orderItem} ${styles.pending}`}>
+                        <div className={styles.orderIcon}>
+                          <span className="mdi mdi-clock"></span>
+                        </div>
+                        <div className={styles.orderDetails}>
+                          <h6>Order #ORD-0009</h6>
+                          <p className={styles.orderTime}>2 hours ago</p>
+                          <p className={styles.orderAmount}>$145.00</p>
                         </div>
                       </div>
                     </div>
@@ -223,194 +187,206 @@ const UserDashboard = () => {
                 </div>
               </div>
             </div>
+            
+            {/* Delivery Boys & Stock Status */}
             <div className="row">
-              <div className="col-sm-4 grid-margin">
-                <div className="card">
+              <div className="col-md-6 grid-margin stretch-card">
+                <div className={`card ${styles.deliveryCard}`}>
                   <div className="card-body">
-                    <h5>Revenue</h5>
-                    <div className="row">
-                      <div className="col-8 col-sm-12 col-xl-8 my-auto">
-                        <div className="d-flex d-sm-block d-md-flex align-items-center">
-                          <h2 className="mb-0">$32123</h2>
-                          <p className="text-success ml-2 mb-0 font-weight-medium">+3.5%</p>
-                        </div>
-                        <h6 className="text-muted font-weight-normal">11.38% Since last month</h6>
-                      </div>
-                      <div className="col-4 col-sm-12 col-xl-4 text-center text-xl-right">
-                        <i className="icon-lg mdi mdi-codepen text-primary ml-auto"></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-4 grid-margin">
-                <div className="card">
-                  <div className="card-body">
-                    <h5>Sales</h5>
-                    <div className="row">
-                      <div className="col-8 col-sm-12 col-xl-8 my-auto">
-                        <div className="d-flex d-sm-block d-md-flex align-items-center">
-                          <h2 className="mb-0">$45850</h2>
-                          <p className="text-success ml-2 mb-0 font-weight-medium">+8.3%</p>
-                        </div>
-                        <h6 className="text-muted font-weight-normal"> 9.61% Since last month</h6>
-                      </div>
-                      <div className="col-4 col-sm-12 col-xl-4 text-center text-xl-right">
-                        <i className="icon-lg mdi mdi-wallet-travel text-danger ml-auto"></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="col-sm-4 grid-margin">
-                <div className="card">
-                  <div className="card-body">
-                    <h5>Purchase</h5>
-                    <div className="row">
-                      <div className="col-8 col-sm-12 col-xl-8 my-auto">
-                        <div className="d-flex d-sm-block d-md-flex align-items-center">
-                          <h2 className="mb-0">$2039</h2>
-                          <p className="text-danger ml-2 mb-0 font-weight-medium">-2.1% </p>
-                        </div>
-                        <h6 className="text-muted font-weight-normal">2.27% Since last month</h6>
-                      </div>
-                      <div className="col-4 col-sm-12 col-xl-4 text-center text-xl-right">
-                        <i className="icon-lg mdi mdi-monitor text-success ml-auto"></i>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="row ">
-              <div className="col-12 grid-margin">
-                <div className="card">
-                  <div className="card-body">
-                    <h4 className="card-title">Order Status</h4>
+                    <h4 className="card-title mb-4">Delivery Boys Status</h4>
                     <div className="table-responsive">
-                      <table className="table">
+                      <table className={`table ${styles.deliveryTable}`}>
                         <thead>
                           <tr>
-                            <th>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
-                            </th>
-                            <th> Client Name </th>
-                            <th> Order No </th>
-                            <th> Product Cost </th>
-                            <th> Project </th>
-                            <th> Payment Mode </th>
-                            <th> Start Date </th>
-                            <th> Payment Status </th>
+                            <th>Name</th>
+                            <th>Orders Today</th>
+                            <th>Cash Collected</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
+                            <td className={styles.deliveryBoy}>
+                              <img src="/api/placeholder/32/32" alt="John" />
+                              <span>John Doe</span>
                             </td>
-                            <td>
-                              <img src="./src/assets/images/faces/face1.jpg" alt="image" />
-                              <span className="pl-2">Henry Klein</span>
+                            <td>12</td>
+                            <td>$1,240</td>
+                            <td><span className={`badge ${styles.activeBadge}`}>Active</span></td>
+                          </tr>
+                          <tr>
+                            <td className={styles.deliveryBoy}>
+                              <img src="/api/placeholder/32/32" alt="Mike" />
+                              <span>Mike Smith</span>
                             </td>
-                            <td> 02312 </td>
-                            <td> $14,500 </td>
-                            <td> Dashboard </td>
-                            <td> Credit card </td>
-                            <td> 04 Dec 2019 </td>
+                            <td>8</td>
+                            <td>$890</td>
+                            <td><span className={`badge ${styles.activeBadge}`}>Active</span></td>
+                          </tr>
+                          <tr>
+                            <td className={styles.deliveryBoy}>
+                              <img src="/api/placeholder/32/32" alt="Sarah" />
+                              <span>Sarah Johnson</span>
+                            </td>
+                            <td>15</td>
+                            <td>$1,560</td>
+                            <td><span className={`badge ${styles.offlineBadge}`}>Break</span></td>
+                          </tr>
+                          <tr>
+                            <td className={styles.deliveryBoy}>
+                              <img src="/api/placeholder/32/32" alt="Alex" />
+                              <span>Alex Wilson</span>
+                            </td>
+                            <td>6</td>
+                            <td>$620</td>
+                            <td><span className={`badge ${styles.activeBadge}`}>Active</span></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="col-md-6 grid-margin stretch-card">
+                <div className={`card ${styles.stockCard}`}>
+                  <div className="card-body">
+                    <h4 className="card-title mb-4">Stock Status</h4>
+                    <div className={styles.stockList}>
+                      <div className={styles.stockItem}>
+                        <div className={styles.stockInfo}>
+                          <h6>iPhone 14 Pro</h6>
+                          <p>Electronics</p>
+                        </div>
+                        <div className={styles.stockLevel}>
+                          <div className={styles.progressBar}>
+                            <div className={`${styles.progressFill} ${styles.highStock}`} style={{width: '75%'}}></div>
+                          </div>
+                          <span className={styles.stockCount}>45/60</span>
+                        </div>
+                      </div>
+                      
+                      <div className={styles.stockItem}>
+                        <div className={styles.stockInfo}>
+                          <h6>Nike Air Max</h6>
+                          <p>Footwear</p>
+                        </div>
+                        <div className={styles.stockLevel}>
+                          <div className={styles.progressBar}>
+                            <div className={`${styles.progressFill} ${styles.mediumStock}`} style={{width: '45%'}}></div>
+                          </div>
+                          <span className={styles.stockCount}>27/60</span>
+                        </div>
+                      </div>
+                      
+                      <div className={styles.stockItem}>
+                        <div className={styles.stockInfo}>
+                          <h6>Coffee Maker</h6>
+                          <p>Home Appliances</p>
+                        </div>
+                        <div className={styles.stockLevel}>
+                          <div className={styles.progressBar}>
+                            <div className={`${styles.progressFill} ${styles.lowStock}`} style={{width: '20%'}}></div>
+                          </div>
+                          <span className={styles.stockCount}>12/60</span>
+                        </div>
+                      </div>
+                      
+                      <div className={styles.stockItem}>
+                        <div className={styles.stockInfo}>
+                          <h6>Wireless Earbuds</h6>
+                          <p>Electronics</p>
+                        </div>
+                        <div className={styles.stockLevel}>
+                          <div className={styles.progressBar}>
+                            <div className={`${styles.progressFill} ${styles.criticalStock}`} style={{width: '10%'}}></div>
+                          </div>
+                          <span className={styles.stockCount}>6/60</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Pending Orders Table */}
+            <div className="row">
+              <div className="col-12 grid-margin">
+                <div className={`card ${styles.ordersTableCard}`}>
+                  <div className="card-body">
+                    <div className="d-flex justify-content-between align-items-center mb-4">
+                      <h4 className="card-title mb-0">Pending Orders</h4>
+                      <button className={`btn ${styles.viewAllBtn}`}>View All</button>
+                    </div>
+                    <div className="table-responsive">
+                      <table className={`table ${styles.ordersTable}`}>
+                        <thead>
+                          <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Products</th>
+                            <th>Amount</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td>#ORD-0012</td>
+                            <td className={styles.customerCell}>
+                              <img src="/api/placeholder/36/36" alt="Customer" />
+                              <span>Robert Johnson</span>
+                            </td>
+                            <td>2 Items</td>
+                            <td>$245.00</td>
+                            <td>Cash on Delivery</td>
+                            <td><span className={`badge ${styles.pendingBadge}`}>Pending</span></td>
                             <td>
-                              <div className="badge badge-outline-success">Approved</div>
+                              <button className={`btn btn-sm ${styles.actionBtn}`}>Process</button>
                             </td>
                           </tr>
                           <tr>
-                            <td>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
+                            <td>#ORD-0011</td>
+                            <td className={styles.customerCell}>
+                              <img src="/api/placeholder/36/36" alt="Customer" />
+                              <span>Emma Wilson</span>
                             </td>
+                            <td>1 Item</td>
+                            <td>$89.50</td>
+                            <td>Credit Card</td>
+                            <td><span className={`badge ${styles.processingBadge}`}>Processing</span></td>
                             <td>
-                              <img src="./src/assets/images/faces/face2.jpg" alt="image" />
-                              <span className="pl-2">Estella Bryan</span>
-                            </td>
-                            <td> 02312 </td>
-                            <td> $14,500 </td>
-                            <td> Website </td>
-                            <td> Cash on delivered </td>
-                            <td> 04 Dec 2019 </td>
-                            <td>
-                              <div className="badge badge-outline-warning">Pending</div>
+                              <button className={`btn btn-sm ${styles.actionBtn}`}>Dispatch</button>
                             </td>
                           </tr>
                           <tr>
-                            <td>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
+                            <td>#ORD-0010</td>
+                            <td className={styles.customerCell}>
+                              <img src="/api/placeholder/36/36" alt="Customer" />
+                              <span>Michael Brown</span>
                             </td>
+                            <td>3 Items</td>
+                            <td>$325.75</td>
+                            <td>PayPal</td>
+                            <td><span className={`badge ${styles.pendingBadge}`}>Pending</span></td>
                             <td>
-                              <img src="./src/assets/images/faces/face5.jpg" alt="image" />
-                              <span className="pl-2">Lucy Abbott</span>
-                            </td>
-                            <td> 02312 </td>
-                            <td> $14,500 </td>
-                            <td> App design </td>
-                            <td> Credit card </td>
-                            <td> 04 Dec 2019 </td>
-                            <td>
-                              <div className="badge badge-outline-danger">Rejected</div>
+                              <button className={`btn btn-sm ${styles.actionBtn}`}>Process</button>
                             </td>
                           </tr>
                           <tr>
-                            <td>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
+                            <td>#ORD-0009</td>
+                            <td className={styles.customerCell}>
+                              <img src="/api/placeholder/36/36" alt="Customer" />
+                              <span>Sophia Garcia</span>
                             </td>
+                            <td>1 Item</td>
+                            <td>$145.00</td>
+                            <td>Cash on Delivery</td>
+                            <td><span className={`badge ${styles.processingBadge}`}>Processing</span></td>
                             <td>
-                              <img src="./src/assets/images/faces/face3.jpg" alt="image" />
-                              <span className="pl-2">Peter Gill</span>
-                            </td>
-                            <td> 02312 </td>
-                            <td> $14,500 </td>
-                            <td> Development </td>
-                            <td> Online Payment </td>
-                            <td> 04 Dec 2019 </td>
-                            <td>
-                              <div className="badge badge-outline-success">Approved</div>
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>
-                              <div className="form-check form-check-muted m-0">
-                                <label className="form-check-label">
-                                  <input type="checkbox" className="form-check-input"/>
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <img src="./src/assets/images/faces/face4.jpg" alt="image" />
-                              <span className="pl-2">Sallie Reyes</span>
-                            </td>
-                            <td> 02312 </td>
-                            <td> $14,500 </td>
-                            <td> Website </td>
-                            <td> Credit card </td>
-                            <td> 04 Dec 2019 </td>
-                            <td>
-                              <div className="badge badge-outline-success">Approved</div>
+                              <button className={`btn btn-sm ${styles.actionBtn}`}>Dispatch</button>
                             </td>
                           </tr>
                         </tbody>
@@ -420,18 +396,13 @@ const UserDashboard = () => {
                 </div>
               </div>
             </div>
-           
-          
+            
           </div>
-          {/* <!-- content-wrapper ends -->
-          <!-- partial:partials/_footer.html --> */}
-         <UserFooter/>
-          {/* <!-- partial --> */}
+          <UserFooter />
         </div>
-        {/* <!-- main-panel ends --> */}
       </div>
-        </>
-    )
-}
+    </>
+  );
+};
 
 export default UserDashboard;

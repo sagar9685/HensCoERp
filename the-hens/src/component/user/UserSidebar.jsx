@@ -50,6 +50,15 @@ const UserSideBar = () => {
               <span className="menu-title">Charts</span>
             </Link>
           </li>
+                <li className="nav-item menu-items">
+          <Link className="nav-link" to="/stock">
+            <span className="menu-icon">
+              <i className="mdi mdi-package-variant"></i>
+            </span>
+            <span className="menu-title">Stock</span>
+          </Link>
+        </li>
+
           {/* <li className="nav-item menu-items">
             <a className="nav-link" href="pages/icons/mdi.html">
               <span className="menu-icon">

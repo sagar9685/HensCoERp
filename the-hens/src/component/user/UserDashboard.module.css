@@ -1,0 +1,450 @@
+ .mainContainer {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.contentWrapper {
+  padding: 20px;
+  padding-top: 80px;
+}
+
+/* Stat Cards */
+.statCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: white;
+  overflow: hidden;
+  position: relative;
+}
+
+.statCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(to bottom, #667eea, #764ba2);
+}
+
+.statCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.iconBox {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: white;
+}
+
+.iconBoxSuccess {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+}
+
+.iconBoxWarning {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+}
+
+.iconBoxInfo {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.iconBoxDanger {
+  background: linear-gradient(135deg, #ff0844, #ffb199);
+}
+
+.positive {
+  color: #00b09b !important;
+}
+
+.warning {
+  color: #f7971e !important;
+}
+
+.danger {
+  color: #ff0844 !important;
+}
+
+.statLabel {
+  color: #6c757d;
+  font-weight: 500;
+  margin-top: 10px;
+}
+
+/* Chart Card */
+.chartCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 100%;
+}
+
+.chartContainer {
+  margin-top: 20px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.mockChart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  height: 200px;
+  padding: 20px 0;
+}
+
+.chartBar {
+  flex: 1;
+  margin: 0 5px;
+  background: linear-gradient(to top, #667eea, #764ba2);
+  border-radius: 5px 5px 0 0;
+  min-height: 10px;
+  position: relative;
+  transition: height 0.3s ease;
+}
+
+.chartBar:hover {
+  opacity: 0.8;
+}
+
+.chartLabels {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 5px 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+/* Order Card */
+.orderCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 100%;
+}
+
+.orderList {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.orderItem {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border-radius: 10px;
+  background: #f8f9fa;
+  transition: transform 0.2s ease;
+}
+
+.orderItem:hover {
+  transform: translateX(5px);
+  background: #e9ecef;
+}
+
+.orderIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 15px;
+  font-size: 20px;
+  color: white;
+}
+
+.pending .orderIcon {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+}
+
+.processing .orderIcon {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.delivered .orderIcon {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+}
+
+.orderDetails {
+  flex: 1;
+}
+
+.orderDetails h6 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.orderTime {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 5px 0;
+}
+
+.orderAmount {
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+/* Delivery Card */
+.deliveryCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 100%;
+}
+
+.deliveryTable {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.deliveryTable thead th {
+  border: none;
+  font-weight: 600;
+  color: #6c757d;
+  background: transparent;
+}
+
+.deliveryTable tbody tr {
+  background: #f8f9fa;
+  border-radius: 10px;
+  transition: transform 0.2s ease;
+}
+
+.deliveryTable tbody tr:hover {
+  transform: translateY(-2px);
+  background: #e9ecef;
+}
+
+.deliveryBoy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.deliveryBoy img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.activeBadge {
+  background: linear-gradient(135deg, #00b09b, #96c93d) !important;
+  color: white !important;
+  border: none;
+}
+
+.offlineBadge {
+  background: linear-gradient(135deg, #6c757d, #adb5bd) !important;
+  color: white !important;
+  border: none;
+}
+
+/* Stock Card */
+.stockCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+  height: 100%;
+}
+
+.stockList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stockItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border-radius: 10px;
+  background: #f8f9fa;
+}
+
+.stockInfo h6 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.stockInfo p {
+  font-size: 14px;
+  color: #6c757d;
+  margin: 5px 0 0;
+}
+
+.stockLevel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 150px;
+}
+
+.progressBar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+}
+
+.highStock {
+  background: linear-gradient(135deg, #00b09b, #96c93d);
+}
+
+.mediumStock {
+  background: linear-gradient(135deg, #f7971e, #ffd200);
+}
+
+.lowStock {
+  background: linear-gradient(135deg, #ff0844, #ffb199);
+}
+
+.criticalStock {
+  background: linear-gradient(135deg, #dc3545, #f8a5c2);
+}
+
+.stockCount {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* Orders Table */
+.ordersTableCard {
+  border: none;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  background: white;
+}
+
+.viewAllBtn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.viewAllBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.ordersTable {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.ordersTable thead th {
+  border: none;
+  font-weight: 600;
+  color: #6c757d;
+  background: transparent;
+}
+
+.ordersTable tbody tr {
+  background: #f8f9fa;
+  border-radius: 10px;
+  transition: transform 0.2s ease;
+}
+
+.ordersTable tbody tr:hover {
+  transform: translateY(-2px);
+  background: #e9ecef;
+}
+
+.customerCell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.customerCell img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pendingBadge {
+  background: linear-gradient(135deg, #f7971e, #ffd200) !important;
+  color: white !important;
+  border: none;
+}
+
+.processingBadge {
+  background: linear-gradient(135deg, #4facfe, #00f2fe) !important;
+  color: white !important;
+  border: none;
+}
+
+.actionBtn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 15px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.actionBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* Dropdown */
+.dropdownBtn {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 15px;
+}
+
+.dropdownBtn:hover {
+  background: linear-gradient(135deg, #5a67d8, #6b46c1);
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .contentWrapper {
+    padding: 10px;
+    padding-top: 70px;
+  }
+  
+  .statCard, .chartCard, .orderCard, .deliveryCard, .stockCard, .ordersTableCard {
+    margin-bottom: 20px;
+  }
+  
+  .mockChart {
+    height: 150px;
+  }
+}

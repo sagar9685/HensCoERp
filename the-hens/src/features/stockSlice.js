@@ -26,6 +26,19 @@ export const fetchStock = createAsyncThunk(
   }
 );
 
+export const fetchAvailableStock = createAsyncThunk(
+  "stock/fetchAvailableStock",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/stock/avilable`);
+      return response.data;
+    } catch (err) {
+      return rejectWithValue(err.response.data);
+    }
+  }
+);
+
+
 
 
 const stockSlice = createSlice({
@@ -35,6 +48,7 @@ const stockSlice = createSlice({
     loading: false,
     lastInwardNo: null,
      items: [],
+     available: [],
   },
   reducers: {
     openStockModal: (state) => {
@@ -66,7 +80,18 @@ const stockSlice = createSlice({
         })
         .addCase(fetchStock.rejected, (state) => {
             state.loading = false;
-        });
+        })
+        .addCase(fetchAvailableStock.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchAvailableStock.fulfilled, (state, action) => {
+        state.loading = false;
+        state.available = action.payload;
+      })
+      .addCase(fetchAvailableStock.rejected, (state) => {
+        state.loading = false;
+      })
+
   },
 });
 
