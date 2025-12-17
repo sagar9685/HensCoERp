@@ -74,6 +74,7 @@ const totalPending = orders.filter(order => order.PaymentVerifyStatus !== "Verif
     setIsInvoiceModalOpen(false);
     setSelectedOrderForInvoice(null);
   };
+  console.log(selectedOrderForInvoice,"selectedOrderForInvoice")
 
 
 
@@ -575,6 +576,8 @@ const handleStatusChange = (row, value) => {
     onClose={closeInvoiceModal}
   />
 )}
+
+
 
 
     </div>

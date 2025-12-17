@@ -5,7 +5,7 @@ and uses a modal for on-screen preview.
 */
 
 :root {
-    --primary-color: #007bff; /* Blue for highlights and buttons */
+    --primary-color: rgb(219, 32, 36); /* Blue for highlights and buttons */
     --secondary-color: #6c757d; /* Grey for borders and secondary text */
     --accent-color: #28a745; /* Green for success/download */
     --text-dark: #343a40;
@@ -121,7 +121,7 @@ We force a smaller font size and tighter padding.
 }
 
 /* Utility classes for alignment */
-.textCenter { text-align: center !important; }
+.textCenter { text-align: center !important;  font-weight: bold; }
 .textRight { text-align: right !important; }
 
 /*
@@ -180,7 +180,7 @@ We force a smaller font size and tighter padding.
 }
 
 .invoiceMeta h1 {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     color: var(--primary-color);
     margin: 0 0 5px 0;
     font-weight: 700;
@@ -463,7 +463,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 }
 
 .signImg {
-    height: 30px; /* Small height for signature image */
+    height: 100px; /* Small height for signature image */
     width: auto;
     object-fit: contain;
     margin-bottom: -5px;

@@ -65,6 +65,7 @@ const UserForm = () => {
       handleCloseCompleteModal();
     } catch (error) {
       toast.error("Failed to update order status", error);
+      
     }
   };
 

@@ -18,7 +18,7 @@ const numberToWords = (num) => {
     str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
     str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
     str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-    return str.trim() + ' Only';
+    return str.trim();
 };
 
 // --- Constants ---
@@ -29,7 +29,7 @@ const COMPANY_INFO = {
   gstin: "23AAGCV7020A1ZX",
   address: "201/15, Ratan Colony, Gorakhpur, Jabalpur, Madhya Pradesh 482001",
  
-  phone: "9685043467",
+  phone: "7880008188",
   email: "info@thehensco.com",
   bankDetails: {
     accountName: "VND VENTURES PRIVATE LIMITED",
@@ -132,15 +132,24 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         const qtys = orderData.Quantities ? orderData.Quantities.split(",") : [];
         const rates = orderData.Rates ? orderData.Rates.split(",") : [];
         const types = orderData.ProductTypes ? orderData.ProductTypes.split(",") : [];
+       
+        const weight = orderData.Weights ? orderData.Weights.split(",")  : [];
+
+  
+        console.log(names,qtys,weight , "aa gaya")
+
 
         names.forEach((name, i) => {
             const q = Number(qtys[i] || 0);
             const r = Number(rates[i] || 0);
             const t = q * r;
+            const w = weight[i] || " "
+         
             subTotalVal += t;
             productItems.push({ 
                 productName: name, 
                    productType: types[i] || "N/A",
+                   weight : w,
                 qty: q, 
                 rate: r.toFixed(2), 
                 totalAmt: t.toFixed(2),
@@ -153,6 +162,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     const deliveryChargeVal = orderData?.DeliveryCharge ? Number(orderData.DeliveryCharge) : 0;
     const totalAmountVal = subTotalVal + deliveryChargeVal;
     const amountInWords = numberToWords(Math.round(totalAmountVal));
+    console.log(amountInWords,"amount")
+    console.log(productItems,"profu")
 
     return (
         <div className={styles.modalOverlay}>
@@ -191,7 +202,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                     </div>
                                 </div>
                                 <div className={styles.invoiceMeta}>
-                                    <h1>Bill of Supply / INVOICE</h1>
+                                    <h1>Bill of Supply / Invoice</h1>
                                     <div className={styles.invoiceDetails}>
                                         <p><strong>Invoice No:</strong> {orderData.InvoiceNo || orderData.InvoiceNo}</p>
                                         <p><strong>Invoice Date:</strong> {new Date(orderData.OrderDate || new Date()).toLocaleDateString('en-GB', {
@@ -239,7 +250,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                         <tr>
                                             <th className={styles.textCenter}>#</th>
                                             <th>Item Description</th>
-                                            
+                                             <th>Item Weight</th>
                                             <th className={styles.textCenter}>HSN/SAC</th>
                                             <th className={styles.textRight}>Rate (₹)</th>
                                             <th className={styles.textCenter}>Qty</th>
@@ -250,11 +261,13 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                         {productItems.map((item, i) => (
                                             <tr key={i}>
                                                 <td className={styles.textCenter}>{i + 1}</td>
-                                             <td>
-  {/* <strong>{item.productName}</strong>
-  <br /> */}
-  <small>{item.productType}</small>
+                                            <td>
+  <span style={{ fontWeight: "bold" }}>{item.productType}</span><br />
 </td>
+   <td>
+  <span style={{ fontWeight: "bold" }}>{item.weight}</span><br />
+</td>
+
 
                                                 <td className={styles.textCenter}>{item.hsn}</td>
                                                 <td className={styles.textRight}>{item.rate}</td>
@@ -310,7 +323,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                         <h4>PAYMENT DETAILS</h4>
                                         <div className={styles.payQrBox}>
                                             <img 
-                                                src="./img/PAY_qr.jpg" 
+                                                src="./img/company_pay_qr.jpg" 
                                                 alt="Payment QR Code" 
                                                 className={styles.qrPaymentImg}
                                                 onError={(e) => {
@@ -375,7 +388,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                     <div className={styles.signatureSection}>
                                         <div className={styles.signatureContainer}>
                                             <img 
-                                                src="./img/SAGAR_SIGN.jpg" 
+                                                src="./img/Aakash_lawani_sign.png" 
                                                 alt="Authorized Signature" 
                                                 className={styles.signImg}
                                                 onError={(e) => {
