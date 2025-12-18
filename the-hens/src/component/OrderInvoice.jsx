@@ -25,7 +25,7 @@ const numberToWords = (num) => {
 const COMPANY_INFO = {
   name: "VND VENTURES PRIVATE LIMITED",
   brand: "The Hen's Co.",
-  pan: "AAGCV7020A",
+  pan: "AAGCV7020A", 
   gstin: "23AAGCV7020A1ZX",
   address: "201/15, Ratan Colony, Gorakhpur, Jabalpur, Madhya Pradesh 482001",
  
@@ -162,8 +162,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     const deliveryChargeVal = orderData?.DeliveryCharge ? Number(orderData.DeliveryCharge) : 0;
     const totalAmountVal = subTotalVal + deliveryChargeVal;
     const amountInWords = numberToWords(Math.round(totalAmountVal));
-    console.log(amountInWords,"amount")
-    console.log(productItems,"profu")
+    console.log(orderData,"orderData")
+   
 
     return (
         <div className={styles.modalOverlay}>
@@ -235,7 +235,11 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                                 <div className={styles.detailBox}>
                                     <h3><FaFileAlt /> Order Details</h3>
                                     <div className={styles.orderInfo}>
-                                        <p><strong>Order ID:</strong> {orderData.OrderID}</p>
+                                       <p><strong>Order Date:</strong> {new Date(orderData.OrderDate || new Date()).toLocaleDateString('en-GB', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}</p>
                                         <p><strong>Dispatched Via:</strong> {orderData.DeliveryMode || 'Van Delivery'}</p>
                                         <p><strong>Order Taken By:</strong> {orderData.OrderTakenBy || 'N/A'}</p>
                                         <p><strong>Delivery Date:</strong> {new Date(orderData.DeliveryDate || new Date()).toLocaleDateString('en-GB')}</p>
