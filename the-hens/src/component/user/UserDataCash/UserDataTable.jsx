@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import UserSideBar from "../UserSidebar";
 import UserNavbar from "../UserNavBar";
-import ExcelReport from "../../CashExcelReport"; // Your existing ExcelReport component
+import ExcelReport from "../../CashExcelReport";
 import Invoice from "./Invoice";
 import DeliveryManDetails from "./DeliveryManDetails";
 import FilterSection from "./FilterSection";
@@ -9,227 +9,245 @@ import DeliveryMenList from "./DeliveryMenList";
 import styles from "./UserDataTable.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCashByDeliveryMen } from "../../../features/assignedOrderSlice";
-import { addDenomination, handoverCash,clearMessages } from "../../../features/denominationSlice";
+import {  handoverCash, clearMessages } from "../../../features/denominationSlice";
+import { fetchPendingCashOrders, clearPendingOrders } from "../../../features/paymentModeSlice"; // <-- Redux slice
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
 const calculateTotalFromDenominations = (denominations) => {
   return DENOMINATIONS.reduce((total, value) => {
-    const count = Number(denominations[value]) || 0; // NaN se 0
-    return total + (value * count);
+    const count = Number(denominations[value]) || 0;
+    return total + value * count;
   }, 0);
 };
 
-
-
-
-
 export default function UserDataTable() {
-    const [list, setList] = useState([]);
-    const [selectedId, setSelectedId] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [fromDate, setFromDate] = useState("");
-    const [toDate, setToDate] = useState("");
-    const [showInvoice, setShowInvoice] = useState(false);
-    
+  const [list, setList] = useState([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [showInvoice, setShowInvoice] = useState(false);
 
-    const [manualDenominations, setManualDenominations] = useState(
-        DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+  const [manualDenominations, setManualDenominations] = useState(
+    DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+  );
+
+  const totalHandoverAmount = useMemo(
+    () => calculateTotalFromDenominations(manualDenominations),
+    [manualDenominations]
+  );
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [handoverHistory, setHandoverHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const dispatch = useDispatch();
+
+  const { loading: dLoading, success: dSuccess, error: dError } = useSelector(
+    (state) => state.denomination
+  );
+
+  const { cashList } = useSelector((state) => state.assignedOrders);
+
+  // ✅ Pending cash orders from Redux
+  const { list: pendingCashOrders } = useSelector((state) => state.pendingCashOrders);
+
+  useEffect(() => {
+    if (dSuccess) {
+      setSuccessMessage(dSuccess);
+      setTimeout(() => dispatch(clearMessages()), 3000);
+    }
+    if (dError) {
+      setError(dError);
+      setTimeout(() => dispatch(clearMessages()), 3000);
+    }
+  }, [dSuccess, dError]);
+
+  useEffect(() => {
+    dispatch(fetchCashByDeliveryMen());
+  }, [dispatch]);
+
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => {
+      setList(cashList);
+      setLoading(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [cashList]);
+
+  // ✅ Fetch pending cash orders whenever selected delivery man changes
+  const selected = list.find((x) => String(x.DeliveryManID) === String(selectedId));
+useEffect(() => {
+  if (selected?.DeliveryManID) {
+    dispatch(fetchPendingCashOrders(selected.DeliveryManID)).unwrap()
+      .then(res => console.log('Fetched pending orders:', res))
+      .catch(err => console.error(err));
+  }
+}, [selected, dispatch]);
+
+
+  const filteredAndSortedList = useMemo(() => {
+    let filtered = list.filter(
+      (item) =>
+        item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.Area.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const totalHandoverAmount = useMemo(() => 
-        calculateTotalFromDenominations(manualDenominations)
-    , [manualDenominations]);
-    
-    const [successMessage, setSuccessMessage] = useState("");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
-    const [handoverHistory, setHandoverHistory] = useState([]);
-    const [showHistory, setShowHistory] = useState(false);
-    const dispatch = useDispatch()
-    const { loading: dLoading, success: dSuccess, error: dError } = useSelector(
-            (state) => state.denomination
-                );
+    if (sortConfig.key) {
+      filtered.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === "asc" ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+    return filtered;
+  }, [list, searchTerm, sortConfig]);
 
-                useEffect(() => {
-                if (dSuccess) {
-                    setSuccessMessage(dSuccess);
-                    setTimeout(() => dispatch(clearMessages()), 3000);
-                }
-                if (dError) {
-                    setError(dError);
-                    setTimeout(() => dispatch(clearMessages()), 3000);
-                }
-                }, [dSuccess, dError]);
-   
-      
-    const {cashList}  = useSelector((state) => state.assignedOrders);
-    console.log('deliveryMen come from cash dep',cashList)
-
-    useEffect(()=> {
-    dispatch(fetchCashByDeliveryMen());
-    },[dispatch])
-
-    useEffect(() => {
-        setLoading(true);
-        const timer = setTimeout(() => {
-            setList(cashList);
-            setLoading(false);
-        }, 800);
-        return () => clearTimeout(timer);
-    }, [cashList]);
-
-    const filteredAndSortedList = useMemo(() => {
-        let filtered = list.filter(item => 
-            item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.Area.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        if (sortConfig.key) {
-            filtered.sort((a, b) => {
-                if (a[sortConfig.key] < b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? -1 : 1;
-                }
-                if (a[sortConfig.key] > b[sortConfig.key]) {
-                    return sortConfig.direction === 'asc' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-
-        return filtered;
-    }, [list, searchTerm, sortConfig]);
-
-    const handleSort = (key) => {
-        setSortConfig({
-            key,
-            direction: sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc'
-        });
-    };
-
-    const selected = list.find((x) => String(x.DeliveryManID) === String(selectedId));
-
-    const handleNoteCountChange = (noteValue, count) => {
-        const parsedCount = parseInt(count, 10);
-        setManualDenominations(prev => ({
-            ...prev,
-            [noteValue]: isNaN(parsedCount) || parsedCount < 0 ? "" : parsedCount,
-        }));
-        setError("");
-        setSuccessMessage("");
-    };
-
-    const handleQuickAmount = (percentage) => {
-        if (!selected) return;
-        const amount = (selected.TotalCash * percentage) / 100;
-        const finalAmount = Math.floor(amount);
-
-        const autoNotes = {};
-        let remaining = finalAmount;
-
-        DENOMINATIONS.forEach(noteValue => {
-            if (remaining >= noteValue) {
-                const count = Math.floor(remaining / noteValue);
-                autoNotes[noteValue] = count;
-                remaining -= count * noteValue;
-            } else {
-                 autoNotes[noteValue] = "";
-            }
-        });
-
-        setManualDenominations(autoNotes);
-        setError("");
-        setSuccessMessage(`Quick select: ₹${finalAmount.toLocaleString()} calculated and notes populated.`);
-    };
-
-const handleHandover = () => {
-  if (!selected) {
-    setError("Please select a delivery man first.");
-    return;
-  }
-  if (totalHandoverAmount <= 0) {
-    setError("Please enter note counts to calculate total.");
-    return;
-  }
-  if (totalHandoverAmount > selected.TotalCash) {
-    setError("Amount exceeds current balance.");
-    return;
-  }
-
-  const denominationsToSend = {};
-  DENOMINATIONS.forEach(note => {
-    const count = manualDenominations[note];
-    if (count && count > 0) denominationsToSend[note] = Number(count);
-  });
-
-  const payload = {
-    deliveryManId: Number(selected.DeliveryManID),
-    totalHandoverAmount: Number(totalHandoverAmount),
-    denominationJSON: denominationsToSend,
-    orderPaymentIds: []
+  const handleSort = (key) => {
+    setSortConfig({
+      key,
+      direction: sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc",
+    });
   };
 
-  // 🔥 Dispatch and wait
-  dispatch(handoverCash(payload))
-    .unwrap()
-    .then((res) => {
-      const updatedBalance = res.updatedBalance;
+  const handleNoteCountChange = (noteValue, count) => {
+    const parsedCount = parseInt(count, 10);
+    setManualDenominations((prev) => ({
+      ...prev,
+      [noteValue]: isNaN(parsedCount) || parsedCount < 0 ? "" : parsedCount,
+    }));
+    setError("");
+    setSuccessMessage("");
+  };
 
-      // 🔥 Update UI with updatedBalance from backend
-      setList(prev =>
-        prev.map(item =>
-          item.DeliveryManID === selected.DeliveryManID
-            ? { ...item, TotalCash: updatedBalance }
-            : item
-        )
-      );
+  const handleQuickAmount = (percentage) => {
+    if (!selected) return;
+    const amount = (selected.TotalCash * percentage) / 100;
+    const finalAmount = Math.floor(amount);
 
-      // Reset UI
-      setManualDenominations(
-        DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
-      );
+    const autoNotes = {};
+    let remaining = finalAmount;
 
-      setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
-    })
-    .catch((err) => {
-      setError(err.message || "Handover failed");
+    DENOMINATIONS.forEach((noteValue) => {
+      if (remaining >= noteValue) {
+        const count = Math.floor(remaining / noteValue);
+        autoNotes[noteValue] = count;
+        remaining -= count * noteValue;
+      } else {
+        autoNotes[noteValue] = "";
+      }
     });
-      
-};
+
+    setManualDenominations(autoNotes);
+    setError("");
+    setSuccessMessage(`Quick select: ₹${finalAmount.toLocaleString()} calculated and notes populated.`);
+  };
+
+  // ✅ Updated handleHandover using Redux pendingCashOrders
+  const handleHandover = () => {
+    if (!selected) {
+      setError("Please select a delivery man first.");
+      return;
+    }
+
+    if (totalHandoverAmount <= 0) {
+      setError("Please enter note counts to calculate total.");
+      return;
+    }
+
+    if (totalHandoverAmount > selected.TotalCash) {
+      setError("Amount exceeds current balance.");
+      return;
+    }
+
+    const denominationsToSend = {};
+    DENOMINATIONS.forEach((note) => {
+      const count = manualDenominations[note];
+      if (count && count > 0) denominationsToSend[note] = Number(count);
+    });
+ 
+    const orderPaymentIds = pendingCashOrders
+  .map((p) => p.PaymentID)
+  .filter((id) => id != null);
 
 
 
-    const clearSelection = () => {
-        setSelectedId("");
-        setError("");
-        setSuccessMessage("");
-        setManualDenominations(
-            DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+console.log("orderPaymentIds from redux",orderPaymentIds)
+
+
+
+    // 🔹 ADD THIS CHECK
+if (orderPaymentIds.length === 0) {
+  setError("No pending cash orders to handover.");
+  return;
+}
+console.log('Selected:', selected);
+
+console.log('Pending Cash Orders from Redux:', pendingCashOrders);
+
+    const payload = {
+      deliveryManId: Number(selected.DeliveryManID),
+      totalHandoverAmount: Number(totalHandoverAmount),
+      denominationJSON: denominationsToSend,
+      orderPaymentIds,
+    };
+
+    console.log(payload,"payload")
+
+    dispatch(handoverCash(payload))
+      .unwrap()
+      .then((res) => {
+        const updatedBalance = res.updatedBalance;
+
+        setList((prev) =>
+          prev.map((item) =>
+            item.DeliveryManID === selected.DeliveryManID ? { ...item, TotalCash: updatedBalance } : item
+          )
         );
-    };
-    
-    const clearAllFilters = () => {
-        setSearchTerm("");
-        setFromDate("");
-        setToDate("");
-        setSelectedId("");
-        setSortConfig({ key: null, direction: 'asc' });
-    };
 
-    const stats = useMemo(() => {
-        const totalCash = filteredAndSortedList.reduce((sum, item) => sum + item.TotalCash, 0);
-        const averageCash = filteredAndSortedList.length > 0 ? totalCash / filteredAndSortedList.length : 0;
-        const highestCash = Math.max(...filteredAndSortedList.map(item => item.TotalCash));
-        const lowestCash = Math.min(...filteredAndSortedList.map(item => item.TotalCash));
+        setManualDenominations(DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}));
+        setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
+      })
+      .catch((err) => {
+        setError(err.message || "Handover failed");
+      });
+  };
 
-        return { totalCash, averageCash, highestCash, lowestCash };
-    }, [filteredAndSortedList]);
+  const clearSelection = () => {
+    setSelectedId("");
+    setError("");
+    setSuccessMessage("");
+    setManualDenominations(DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}));
+    dispatch(clearPendingOrders());
+  };
 
-    const getSortIcon = (key) => {
-        if (sortConfig.key !== key) return '↕️';
-        return sortConfig.direction === 'asc' ? '↑' : '↓';
-    };
+  const clearAllFilters = () => {
+    setSearchTerm("");
+    setFromDate("");
+    setToDate("");
+    setSelectedId("");
+    setSortConfig({ key: null, direction: "asc" });
+    dispatch(clearPendingOrders());
+  };
+
+  const stats = useMemo(() => {
+    const totalCash = filteredAndSortedList.reduce((sum, item) => sum + item.TotalCash, 0);
+    const averageCash = filteredAndSortedList.length > 0 ? totalCash / filteredAndSortedList.length : 0;
+    const highestCash = Math.max(...filteredAndSortedList.map((item) => item.TotalCash));
+    const lowestCash = Math.min(...filteredAndSortedList.map((item) => item.TotalCash));
+    return { totalCash, averageCash, highestCash, lowestCash };
+  }, [filteredAndSortedList]);
+
+  const getSortIcon = (key) => {
+    if (sortConfig.key !== key) return "↕️";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
+  };
+
 
     return (
         <>

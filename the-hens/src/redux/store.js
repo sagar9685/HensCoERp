@@ -5,7 +5,7 @@
  import orderReducer from '../features/orderSlice'
  import authReducer from '../features/authSlice'
  import assignedOrderReducer from '../features/assignedOrderSlice'
- import paymentModeReducer from '../features/paymentModeSlice'
+ import paymentModeReducer, {pendingCashOrdersReducer} from '../features/paymentModeSlice'
  import orderCompletionReducer from '../features/orderCompletionSlice'
  import denominationReducer from '../features/denominationSlice'
  import purchaseOrderReducer from '../features/purchaseOrderSlice'
@@ -21,6 +21,7 @@
          stock: stockReducer,
          assignedOrders: assignedOrderReducer,
          paymentMode : paymentModeReducer,
+             pendingCashOrders: pendingCashOrdersReducer,  
         orderCompletion: orderCompletionReducer,
            denomination: denominationReducer,
               purchaseOrder: purchaseOrderReducer,

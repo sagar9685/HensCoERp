@@ -19,14 +19,28 @@ export const addDenomination = createAsyncThunk(
 
 export const handoverCash = createAsyncThunk(
   "denomination/handover",
-  async ({ deliveryManId, totalHandoverAmount, denominationJSON }, { rejectWithValue }) => {
+  async ({ deliveryManId, totalHandoverAmount, denominationJSON,orderPaymentIds }, { rejectWithValue }) => {
     try {
       const res = await axios.post(`${API_BASE_URL}/api/users/handover`, {
         deliveryManId,
         totalHandoverAmount,
         denominationJSON,
-        orderPaymentIds: [] // backend expects this
+         orderPaymentIds  
       });
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
+export const fetchPendingCashOrders = createAsyncThunk(
+  "denomination/fetchPendingOrders",
+  async (deliveryManId, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/users/cash/prnding/${deliveryManId}`
+      );
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -36,12 +50,15 @@ export const handoverCash = createAsyncThunk(
 
 
 
+
 const denominationSlice = createSlice({
   name: "denomination",
   initialState: {
     loading: false,
     success: "",
-    error: ""
+    error: "",
+      orders: [],
+  totalCash: 0
   },
   reducers: {
     clearMessages: (state) => {
@@ -74,7 +91,20 @@ const denominationSlice = createSlice({
         state.loading = false;
         state.error = action.payload.error || action.payload;
         state.success = "";
-      });
+      })
+      .addCase(fetchPendingCashOrders.pending, (state) => {
+  state.loading = true;
+})
+.addCase(fetchPendingCashOrders.fulfilled, (state, action) => {
+  state.loading = false;
+  state.orders = action.payload.orders;
+  state.totalCash = action.payload.totalCash;
+})
+.addCase(fetchPendingCashOrders.rejected, (state, action) => {
+  state.loading = false;
+  state.error = action.payload;
+});
+
   }
 });
 

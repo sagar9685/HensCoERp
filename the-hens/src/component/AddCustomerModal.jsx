@@ -13,7 +13,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     area: '',
     contactNo: '',
     alternatePhone: '',
-    pincode: ''
+    pincode: '',
+    Gst_No : ''
   });
 
   const [errors, setErrors] = useState({});
@@ -62,11 +63,17 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     } else if (!/^\d{10}$/.test(formData.contactNo.replace(/\D/g, ''))) {
       newErrors.contactNo = 'Contact number must be 10 digits';
     }
-    if (!formData.pincode.trim()) {
-      newErrors.pincode = 'Pincode is required';
-    } else if (!/^\d{6}$/.test(formData.pincode)) {
-      newErrors.pincode = 'Pincode must be 6 digits';
-    }
+  if (formData.pincode && !/^\d{6}$/.test(formData.pincode)) {
+  newErrors.pincode = 'Pincode must be 6 digits';
+}
+
+if (
+  formData.Gst_No &&
+  !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(formData.Gst_No)
+) {
+  newErrors.Gst_No = 'Invalid GST Number';
+}
+
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,6 +90,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
       Area: formData.area,
       Pincode: formData.pincode,
       Address: formData.address,
+      Gst_No : formData.Gst_No
     };
 
      try {
@@ -107,7 +115,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
       area: '',
       contactNo: '',
       alternatePhone: '',
-      pincode: ''
+      pincode: '',
+      Gst_No: ''
     });
     setErrors({});
     onClose();
@@ -173,10 +182,10 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                 </label>
                 <input
                   type="tel"
-                  name="alternatePhone"
-                  value={formData.alternatePhone}
+                  name="Gst_No"
+                  value={formData.Gst_No}
                   onChange={handleChange}
-                  placeholder="Enter alternate phone"
+                  placeholder="Enter alternate contact"
                   className={styles.inputField}
                 />
               </div>
@@ -242,6 +251,21 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                 />
                 {errors.address && <span className={styles.error}>{errors.address}</span>}
               </div>
+
+               <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>
+                Gst_No
+                </label>
+                <input
+                  type="tel"
+                  name="alternatePhone"
+                  value={formData.alternatePhone}
+                  onChange={handleChange}
+                  placeholder="Enter alternate phone"
+                  className={styles.inputField}
+                />
+              </div>
+
             </div>
           </form>
         </div>

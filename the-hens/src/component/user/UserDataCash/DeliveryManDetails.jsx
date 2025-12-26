@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./UserDataTable.module.css";
 import { DENOMINATIONS } from "../../../features/denominationSlice";
-import {  useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import OrderDetailsModal from "./UserOrderDetailsModal"; // ✅ ADD THIS
 
 export default function DeliveryManDetails({ 
     selected, 
@@ -15,8 +16,8 @@ export default function DeliveryManDetails({
 }) {
    
     const { loading: dLoading, success, error } = useSelector((state) => state.denomination);
-
- ;
+    const [showOrders, setShowOrders] = useState(false);
+ 
 
 
     if (!selected) {
@@ -36,8 +37,11 @@ export default function DeliveryManDetails({
             </div>
         );
     }
+     
+   
 
     return (
+        <>
         <div className={styles.detailCard}>
             <div className={styles.cardHeader}>
                 <h2 className={styles.cardTitle}>
@@ -162,9 +166,12 @@ export default function DeliveryManDetails({
 
                 {/* ACTIONS */}
                 <div className={styles.cardActions}>
-                    <button className={styles.secondaryButton}>
-                        📞 Contact
-                    </button>
+                    <button
+  className={styles.secondaryButton}
+  onClick={() => setShowOrders(true)}
+>
+  Order Details
+</button>
                     <button
                         className={styles.generateInvoiceButton}
                         onClick={() => onGenerateInvoice()}
@@ -175,5 +182,14 @@ export default function DeliveryManDetails({
                 </div>
             </div>
         </div>
+          {/* ✅ MODAL */}
+      {showOrders && (
+        <OrderDetailsModal
+          deliveryManId={selected.DeliveryManID}
+          onClose={() => setShowOrders(false)}
+        />
+      )}
+        </>
+     
     );
 }

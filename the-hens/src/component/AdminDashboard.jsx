@@ -12,12 +12,7 @@ import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
  import InvoiceGenerator from "./OrderInvoice";
 
-import InvoiceTemplate from "./OrderInvoice";
-import ReactDOM from "react-dom";
 
- 
- 
-  
 
 const AdminDashboard = () => {
   const [filters, setFilters] = useState({
@@ -47,6 +42,7 @@ const recordsPerPage = 10;
 const indexOfLastRecord = currentPage * recordsPerPage;
 const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
 const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
+console.log(currentRecords,"currentRecords")
  const totalOrders = orders.length;
  
 
@@ -151,20 +147,7 @@ const handleStatusChange = (row, value) => {
 
 
 
-
-//   const handleVerify = (row) => {
-//   if (!row.receivedAmount) {
-//     return toast.error("Please enter received amount");
-//   }
-
-//   dispatch(verifyPayment({
-//     paymentId: row.PaymentID,
-//     receivedAmount: row.receivedAmount
-//   })).then(() => {
-//     dispatch(fetchOrder()); // refresh table
-//     toast.success("Payment verified!");
-//   });
-// };
+ 
 
  
 
