@@ -336,11 +336,13 @@ exports.markPaymentVerified = async (req, res) => {
 
  ;
 
- 
 exports.handoverCash = async (req, res) => {
   const { deliveryManId, totalHandoverAmount, denominationJSON, orderPaymentIds } = req.body;
 
+  console.log("Handover payload:", req.body); // 🔹 payload check
+
   if (!deliveryManId || !totalHandoverAmount) {
+    console.log("Missing deliveryManId or totalHandoverAmount");
     return res.status(400).json({ message: "DeliveryManID and Amount required!" });
   }
 
@@ -349,8 +351,9 @@ exports.handoverCash = async (req, res) => {
 
   try {
     await transaction.begin();
+    console.log("Transaction started");
 
-    // 1️⃣ Get current balance from DeliveryMenCashBalance
+    // 1️⃣ Get current balance
     const balanceResult = await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .query(`
@@ -364,10 +367,21 @@ exports.handoverCash = async (req, res) => {
     }
 
     const currentBalance = balanceResult.recordset[0].CurrentBalance;
+    console.log("Current balance:", currentBalance);
 
     // Check sufficient balance
     if (currentBalance < totalHandoverAmount) {
       return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    // 🔹 Handle empty orderPaymentIds safely
+    if (!orderPaymentIds || orderPaymentIds.length === 0) {
+      console.log("No orders to handover");
+      await transaction.commit();
+      return res.status(200).json({
+        message: "Nothing to handover",
+        updatedBalance: currentBalance,
+      });
     }
 
     // 2️⃣ Subtract balance
@@ -379,6 +393,7 @@ exports.handoverCash = async (req, res) => {
         SET CurrentBalance = CurrentBalance - @Amount
         WHERE DeliveryManID = @DeliveryManID
       `);
+    console.log("Balance updated");
 
     // 3️⃣ Insert into CashDepartment
     await new sql.Request(transaction)
@@ -390,17 +405,37 @@ exports.handoverCash = async (req, res) => {
         (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
         VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
       `);
+    console.log("Inserted into CashDepartment");
 
-    // 4️⃣ Mark OrderPayments as handed over
-    if (orderPaymentIds?.length > 0) {
-      await new sql.Request(transaction)
-        .input("IDs", sql.VarChar, orderPaymentIds.join(','))
-        .query(`
-          UPDATE OrderPayments
-          SET IsHandovered = 1
-          WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
-        `);
+    // 4️⃣ Validate & mark payments
+    const paymentCheck = await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("IDs", sql.VarChar, orderPaymentIds.join(","))
+      .query(`
+        SELECT SUM(OP.Amount) AS TotalCash
+        FROM OrderPayments OP
+        JOIN AssignedOrders A ON OP.AssignID = A.AssignID
+        WHERE 
+          OP.IsHandovered = 0
+          AND A.DeliveryManID = @DeliveryManID
+          AND OP.PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
+      `);
+
+    const calculatedAmount = paymentCheck.recordset[0].TotalCash || 0;
+    console.log("Calculated order amount:", calculatedAmount);
+
+    if (calculatedAmount !== totalHandoverAmount) {
+      throw new Error(`Handover amount mismatch. Selected orders total ₹${calculatedAmount}`);
     }
+
+    await new sql.Request(transaction)
+      .input("IDs", sql.VarChar, orderPaymentIds.join(","))
+      .query(`
+        UPDATE OrderPayments
+        SET IsHandovered = 1
+        WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
+      `);
+    console.log("OrderPayments marked as handed over");
 
     // 5️⃣ Insert history
     await new sql.Request(transaction)
@@ -412,6 +447,7 @@ exports.handoverCash = async (req, res) => {
         (DeliveryManID, Amount, TransactionType, EntryDate)
         VALUES (@DeliveryManID, @Amount, @Type, GETDATE())
       `);
+    console.log("History inserted");
 
     // 6️⃣ Fetch updated balance
     const updatedBalanceResult = await new sql.Request(transaction)
@@ -423,16 +459,17 @@ exports.handoverCash = async (req, res) => {
       `);
 
     const updatedBalance = updatedBalanceResult.recordset[0].CurrentBalance;
-
     await transaction.commit();
+    console.log("Transaction committed, updated balance:", updatedBalance);
 
     res.status(200).json({
       message: "Cash Handover Successful!",
-      updatedBalance
+      updatedBalance,
     });
 
   } catch (err) {
     await transaction.rollback();
+    console.error("Handover failed:", err.message);
     res.status(500).json({ message: "Handover failed", error: err.message });
   }
 };

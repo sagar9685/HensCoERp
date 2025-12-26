@@ -5,5 +5,6 @@ const deliveryController = require("../controller/deliveryMenController");
 router.get("/delivery-men", deliveryController.getDeliveryMen);
 router.post("/delivery-men", deliveryController.addDeliveryMan); 
 router.get("/cash", deliveryController.getDeliveryMenCash);
+router.get("/cash/pending/:deliveryManId",deliveryController.getDeliveryManPendingCashOrders)
 
 module.exports = router;

@@ -4,9 +4,9 @@ const { sql, poolPromise } = require('../utils/db');
 exports.addCustomer = async (req, res) => {
   try {
     console.log('recived body',req.body)
-    const { CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address } = req.body;
+    const { CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address,GST_No } = req.body;
 
-    if (!CustomerName || !Contact_No || !Area || !Pincode || !Address) {
+    if (!CustomerName || !Contact_No || !Area ||  !Address) {
       return res.status(400).json({ message: "Required fields are missing." });
     }
 
@@ -16,17 +16,18 @@ exports.addCustomer = async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Customers (CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address)
-      VALUES (@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address)
+      INSERT INTO Customers (CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address, GST_No)
+      VALUES (@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address, @GST_No)
     `;
 
     const request = pool.request();
     request.input("CustomerName", sql.NVarChar, CustomerName);
     request.input("Contact_No", sql.VarChar, Contact_No);
-    request.input("Alternate_Phone", sql.VarChar, Alternate_Phone);
+    request.input("Alternate_Phone", sql.VarChar, Alternate_Phone || null);
     request.input("Area", sql.NVarChar, Area);
-    request.input("Pincode", sql.VarChar, Pincode);
+    request.input("Pincode", sql.VarChar, Pincode || null);
     request.input("Address", sql.NVarChar, Address);
+    request.input("GST_No", sql.VarChar, GST_No || null)
 
     await request.query(query);
     res.status(200).json({ message: "Customer added successfully!" });

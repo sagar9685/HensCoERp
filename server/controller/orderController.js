@@ -2,10 +2,6 @@ const { sql, poolPromise } = require('../utils/db');
 
  
 
-
-
- 
-
 exports.addOrder = async (req, res) => {
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
@@ -30,7 +26,7 @@ exports.addOrder = async (req, res) => {
 
     const request = new sql.Request(transaction);
 
-    // ----------------- 1️⃣ FINANCIAL YEAR -----------------
+     
     const orderDt = new Date(OrderDate);
     const year = orderDt.getFullYear();
     const month = orderDt.getMonth() + 1;
@@ -38,7 +34,7 @@ exports.addOrder = async (req, res) => {
     const fyEnd = month >= 4 ? year + 1 : year;
     const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
-    // ----------------- 2️⃣ GET LAST INVOICE -----------------
+    
     const lastInvoiceResult = await request.query(`
       SELECT TOP 1 InvoiceNo 
       FROM OrdersTemp
