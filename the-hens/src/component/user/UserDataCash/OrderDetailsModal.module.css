@@ -1,3 +1,4 @@
+/* OrderDetailsModal.module.css */
 .overlay {
   position: fixed;
   inset: 0;
@@ -240,7 +241,7 @@
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 800px;
+  min-width: 1000px;
 }
 
 .dataTable thead {
@@ -252,13 +253,14 @@
 .dataTable th {
   background: #4f46e5;
   color: white;
-  padding: 16px 12px;
+  padding: 14px 10px;
   font-weight: 600;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border: none;
   position: relative;
+  white-space: nowrap;
 }
 
 .dataTable th:not(:last-child)::after {
@@ -272,10 +274,11 @@
 }
 
 .dataTable td {
-  padding: 16px 12px;
+  padding: 14px 10px;
   border-bottom: 1px solid #e5e7eb;
   background: white;
   color: #1f2937;
+  font-size: 0.875rem;
 }
 
 .tableRow {
@@ -301,7 +304,7 @@
 
 .customerName {
   font-weight: 500;
-  max-width: 200px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -309,6 +312,10 @@
 
 .productType {
   color: #6b7280;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .amount {
@@ -317,16 +324,39 @@
   font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
 }
 
+.rate, .delivery {
+  color: #6b7280;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+}
+
 .date {
   display: flex;
   align-items: center;
   gap: 8px;
   color: #6b7280;
+  white-space: nowrap;
 }
 
 .dateIcon {
   opacity: 0.7;
   font-size: 0.875rem;
+}
+
+.address {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.area {
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.contact {
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  white-space: nowrap;
 }
 
 .textCenter {
@@ -386,15 +416,38 @@
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .modal {
     width: 98%;
     max-height: 95vh;
     margin: 10px;
   }
   
+  .tableWrapper {
+    padding: 12px;
+  }
+  
+  .dataTable {
+    font-size: 0.8rem;
+  }
+  
+  .dataTable th,
+  .dataTable td {
+    padding: 10px 6px;
+  }
+}
+
+@media (max-width: 768px) {
   .header {
     padding: 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .headerActions {
+    align-self: flex-end;
+    margin-top: -40px;
   }
   
   .header h3 {
@@ -404,19 +457,6 @@
   .summaryCards {
     grid-template-columns: 1fr;
     padding: 16px;
-  }
-  
-  .tableWrapper {
-    padding: 12px;
-  }
-  
-  .dataTable {
-    font-size: 0.875rem;
-  }
-  
-  .dataTable th,
-  .dataTable td {
-    padding: 12px 8px;
   }
   
   .tableFooter {
@@ -432,12 +472,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-  }
-  
-  .headerActions {
-    position: absolute;
-    top: 16px;
-    right: 16px;
   }
   
   .actionBtn, .closeBtn {
