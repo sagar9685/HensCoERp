@@ -41,12 +41,17 @@ export const fetchPendingCashOrders = createAsyncThunk(
       const res = await axios.get(
         `${API_BASE_URL}/api/users/cash/prnding/${deliveryManId}`
       );
+
+      
       return res.data;
+     
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
+
+ 
 
 
 
