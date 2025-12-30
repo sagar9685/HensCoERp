@@ -4,19 +4,18 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState, useMemo } from "react";
 // Add deleteCustomer here
 import { fetchArea, fetchCustomerName, updateCustomer } from "../features/cutomerSlice";
-
+import AddCustomerModal from "./AddCustomerModal";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faSearch, 
   faEdit, 
-  faTrash, 
   faUser, 
   faMapMarkerAlt, 
   faPhone, 
   faBuilding,
   faTimes,
-  faCheck,
   faPlus,
+  faCheck,
   faFilter
 } from '@fortawesome/free-solid-svg-icons';
 
@@ -25,14 +24,15 @@ function Customer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editForm, setEditForm] = useState({});
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [newCustomer, setNewCustomer] = useState({
-    CustomerName: "",
-    Address: "",
-    Contact_No: "",
-    Area: ""
-  });
+//   const [showAddForm, setShowAddForm] = useState(false);
+//   const [newCustomer, setNewCustomer] = useState({
+//     CustomerName: "",
+//     Address: "",
+//     Contact_No: "",
+//     Area: ""
+//   });
   const [filterArea, setFilterArea] = useState("all");
+    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
 
   const { customerName = [], isLoading, error, areaData = [] } = useSelector((state) => state.customer);
   
@@ -70,17 +70,17 @@ function Customer() {
 
    
 
-  const handleNewCustomerChange = (e) => {
-    const { name, value } = e.target;
-    setNewCustomer(prev => ({ ...prev, [name]: value }));
-  };
+//   const handleNewCustomerChange = (e) => {
+//     const { name, value } = e.target;
+//     setNewCustomer(prev => ({ ...prev, [name]: value }));
+//   };
 
-  const handleAddCustomer = () => {
-    console.log("Add new customer:", newCustomer);
-    // Dispatch your add action here if available
-    setNewCustomer({ CustomerName: "", Address: "", Contact_No: "", Area: "" });
-    setShowAddForm(false);
-  };
+//   const handleAddCustomer = () => {
+//     console.log("Add new customer:", newCustomer);
+//     // Dispatch your add action here if available
+//     setNewCustomer({ CustomerName: "", Address: "", Contact_No: "", Area: "" });
+//     setShowAddForm(false);
+//   };
 
   // Optimized filtering logic
   const filteredCustomers = useMemo(() => {
@@ -158,12 +158,12 @@ function Customer() {
               </select>
             </div>
 
-            <button className={styles.addButton} onClick={() => setShowAddForm(!showAddForm)}>
+             <button className={styles.addButton} onClick={() => setIsCustomerModalOpen(true)}>
               <FontAwesomeIcon icon={faPlus} /> Add New Customer
             </button>
           </div>
         </div>
-
+{/* 
         {showAddForm && (
           <div className={styles.addForm}>
             <h3>Add New Customer</h3>
@@ -178,7 +178,7 @@ function Customer() {
               <button onClick={() => setShowAddForm(false)} className={styles.cancelBtn}><FontAwesomeIcon icon={faTimes} /> Cancel</button>
             </div>
           </div>
-        )}
+        )} */}
 
         <div className={styles.statsCards}>
           <div className={styles.statCard}>
@@ -268,6 +268,12 @@ function Customer() {
           </div>
         )}
       </div>
+      
+      {/* 3. Modal Component integrate kiya */}
+      <AddCustomerModal 
+        isOpen={isCustomerModalOpen} 
+        onClose={() => setIsCustomerModalOpen(false)} 
+      />
     </>
   );
 }
