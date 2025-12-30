@@ -2,7 +2,7 @@ import Header from "./Header";
 import styles from "./Customer.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState } from "react";
-import { fetchCustomerName } from "../features/cutomerSlice";
+import { fetchArea, fetchCustomerName,updateCustomer } from "../features/cutomerSlice";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -37,6 +37,7 @@ function Customer() {
   
   useEffect(() => {
     dispatch(fetchCustomerName());
+    dispatch(fetchArea())
   }, [dispatch]);
 
   const handleEditClick = (customer) => {
@@ -98,6 +99,8 @@ function Customer() {
   });
 
   const areas = [...new Set(customerName.map(customer => customer.Area))];
+  const areaTypes = useSelector(state => state.customer.areaData); // from DB
+
 
   if (isLoading) {
     return (
@@ -239,54 +242,82 @@ function Customer() {
         <div className={styles.customersGrid}>
           {filteredCustomers.map((customer) => (
             <div key={customer.CustomerId} className={styles.customerCard}>
-              {editingCustomer === customer.CustomerId ? (
-                <div className={styles.editForm}>
-                  <input
-                    type="text"
-                    name="CustomerName"
-                    value={editForm.CustomerName}
-                    onChange={handleEditChange}
-                    className={styles.editInput}
-                  />
-                  <input
-                    type="text"
-                    name="Address"
-                    value={editForm.Address}
-                    onChange={handleEditChange}
-                    className={styles.editInput}
-                  />
-                  <input
-                    type="tel"
-                    name="Contact_No"
-                    value={editForm.Contact_No}
-                    onChange={handleEditChange}
-                    className={styles.editInput}
-                  />
-                  <input
-                    type="text"
-                    name="Area"
-                    value={editForm.Area}
-                    onChange={handleEditChange}
-                    className={styles.editInput}
-                  />
-                  <div className={styles.editActions}>
-                    <button 
-                      onClick={() => handleSaveEdit(customer.CustomerId)}
-                      className={styles.saveBtn}
-                    >
-                      <FontAwesomeIcon icon={faCheck} />
-                      Save
-                    </button>
-                    <button 
-                      onClick={handleCancelEdit}
-                      className={styles.cancelBtn}
-                    >
-                      <FontAwesomeIcon icon={faTimes} />
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              ) : (
+            {editingCustomer === customer.CustomerId ? (
+  <div className={styles.editForm}>
+    <input
+      type="text"
+      name="CustomerName"
+      value={editForm.CustomerName}
+      onChange={handleEditChange}
+      className={styles.editInput}
+      placeholder="Customer Name"
+    />
+    <input
+      type="text"
+      name="Address"
+      value={editForm.Address}
+      onChange={handleEditChange}
+      className={styles.editInput}
+      placeholder="Address"
+    />
+    <input
+      type="tel"
+      name="Contact_No"
+      value={editForm.Contact_No}
+      onChange={handleEditChange}
+      className={styles.editInput}
+      placeholder="Phone Number"
+    />
+    <input
+      type="text"
+      name="Pincode"
+      value={editForm.Pincode || ""}
+      onChange={handleEditChange}
+      className={styles.editInput}
+      placeholder="Pincode"
+    />
+    <input
+      type="text"
+      name="Gst_No"
+      value={editForm.Gst_No || ""}
+      onChange={handleEditChange}
+      className={styles.editInput}
+      placeholder="GST Number"
+    />
+   <select
+  name="Area"
+  value={editForm.Area}
+  onChange={handleEditChange}
+  className={styles.editInput}
+>
+  <option value="">Select Area</option>
+  {Array.isArray(areaTypes) && areaTypes.length > 0
+    ? areaTypes.map(area => (
+        <option key={area.areaId} value={area.areaName}>
+          {area.areaName}
+        </option>
+      ))
+    : <option disabled>Loading areas...</option>
+  }
+</select>
+
+
+    <div className={styles.editActions}>
+      <button 
+        onClick={() => handleSaveEdit(customer.CustomerId)}
+        className={styles.saveBtn}
+      >
+        <FontAwesomeIcon icon={faCheck} /> Update
+      </button>
+      <button 
+        onClick={handleCancelEdit}
+        className={styles.cancelBtn}
+      >
+        <FontAwesomeIcon icon={faTimes} /> Cancel
+      </button>
+    </div>
+  </div>
+) : (
                 <>
                   <div className={styles.cardHeader}>
                     <div className={styles.customerAvatar}>

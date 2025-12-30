@@ -62,6 +62,7 @@ export const fetchArea = createAsyncThunk("area",async(_,thunkAPI)=>{
 export const fetchCustomerName = createAsyncThunk("customerName",async(_,thunkAPI) => {
   try{
     const res = await axios.get(`${API_BASE_URL}/api/customers`);
+        console.log("Customer fetch response:", res.data); // check karo
     return res.data
   }catch(err) {
     return thunkAPI.rejectWithValue(err.response?.data || "fetch customer name failed")
