@@ -1,5 +1,5 @@
 .container {
-  max-width: 1400px;
+  max-width: 2200px;
   margin: 0 auto;
   padding: 2rem;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -604,6 +604,145 @@
   
   .saveBtn, .cancelBtn {
     width: 100%;
+    justify-content: center;
+  }
+}/* Pagination Styles */
+.resultsInfo {
+  margin: 20px 0;
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.resultsInfo .highlight {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+.paginationContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.paginationInfo {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.paginationButton {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #495057;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+}
+
+.paginationButton:hover:not(:disabled) {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.paginationButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pageNumbers {
+  display: flex;
+  gap: 5px;
+  margin: 0 10px;
+}
+
+.pageButton {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid #dee2e6;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #495057;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.pageButton:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.pageButton.activePage {
+  background: #3498db;
+  border-color: #3498db;
+  color: white;
+}
+
+.pageEllipsis {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  color: #6c757d;
+  font-weight: bold;
+}
+
+.itemsPerPageSelector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.pageSizeSelect {
+  padding: 6px 10px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+/* Responsive pagination */
+@media (max-width: 768px) {
+  .paginationContainer {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .paginationControls {
+    order: 2;
+  }
+  
+  .paginationInfo {
+    order: 1;
+  }
+  
+  .itemsPerPageSelector {
+    order: 3;
+  }
+  
+  .pageNumbers {
+    flex-wrap: wrap;
     justify-content: center;
   }
 }

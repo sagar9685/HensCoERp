@@ -2,7 +2,6 @@ import Header from "./Header";
 import styles from "./Customer.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import { useEffect, useState, useMemo } from "react";
-// Add deleteCustomer here
 import { fetchArea, fetchCustomerName, updateCustomer } from "../features/cutomerSlice";
 import AddCustomerModal from "./AddCustomerModal";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -16,7 +15,11 @@ import {
   faTimes,
   faPlus,
   faCheck,
-  faFilter
+  faFilter,
+  faChevronLeft,
+  faChevronRight,
+  faAngleDoubleLeft,
+  faAngleDoubleRight
 } from '@fortawesome/free-solid-svg-icons';
 
 function Customer() {
@@ -24,15 +27,12 @@ function Customer() {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editForm, setEditForm] = useState({});
-//   const [showAddForm, setShowAddForm] = useState(false);
-//   const [newCustomer, setNewCustomer] = useState({
-//     CustomerName: "",
-//     Address: "",
-//     Contact_No: "",
-//     Area: ""
-//   });
   const [filterArea, setFilterArea] = useState("all");
-    const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
 
   const { customerName = [], isLoading, error, areaData = [] } = useSelector((state) => state.customer);
   
@@ -41,9 +41,13 @@ function Customer() {
     dispatch(fetchArea());
   }, [dispatch]);
 
+  useEffect(() => {
+    // Reset to first page when search or filter changes
+    setCurrentPage(1);
+  }, [searchTerm, filterArea]);
+
   const handleEditClick = (customer) => {
     setEditingCustomer(customer.CustomerId);
-    // Added Pincode and Gst_No to prevent controlled/uncontrolled input warnings
     setEditForm({
       CustomerName: customer.CustomerName || "",
       Address: customer.Address || "",
@@ -68,20 +72,6 @@ function Customer() {
     setEditingCustomer(null);
   };
 
-   
-
-//   const handleNewCustomerChange = (e) => {
-//     const { name, value } = e.target;
-//     setNewCustomer(prev => ({ ...prev, [name]: value }));
-//   };
-
-//   const handleAddCustomer = () => {
-//     console.log("Add new customer:", newCustomer);
-//     // Dispatch your add action here if available
-//     setNewCustomer({ CustomerName: "", Address: "", Contact_No: "", Area: "" });
-//     setShowAddForm(false);
-//   };
-
   // Optimized filtering logic
   const filteredCustomers = useMemo(() => {
     return customerName.filter(customer => {
@@ -98,6 +88,63 @@ function Customer() {
   }, [customerName, searchTerm, filterArea]);
 
   const areas = useMemo(() => [...new Set(customerName.map(c => c.Area))], [customerName]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredCustomers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentCustomers = filteredCustomers.slice(startIndex, endIndex);
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total pages are less than maxVisiblePages
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Show first page, last page, and pages around current page
+      let startPage = Math.max(2, currentPage - 1);
+      let endPage = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if we're at the start
+      if (currentPage <= 2) {
+        startPage = 2;
+        endPage = 4;
+      }
+      // Adjust if we're at the end
+      else if (currentPage >= totalPages - 1) {
+        startPage = totalPages - 3;
+        endPage = totalPages - 1;
+      }
+      
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push('...');
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      if (endPage < totalPages - 1) pageNumbers.push('...');
+      pageNumbers.push(totalPages);
+    }
+    
+    return pageNumbers;
+  };
+
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToPrevPage = () => goToPage(currentPage - 1);
+  const goToNextPage = () => goToPage(currentPage + 1);
 
   // Loading logic changed: Only show full screen loader if no data exists
   if (isLoading && customerName.length === 0) {
@@ -158,27 +205,11 @@ function Customer() {
               </select>
             </div>
 
-             <button className={styles.addButton} onClick={() => setIsCustomerModalOpen(true)}>
+            <button className={styles.addButton} onClick={() => setIsCustomerModalOpen(true)}>
               <FontAwesomeIcon icon={faPlus} /> Add New Customer
             </button>
           </div>
         </div>
-{/* 
-        {showAddForm && (
-          <div className={styles.addForm}>
-            <h3>Add New Customer</h3>
-            <div className={styles.formGrid}>
-              <input type="text" name="CustomerName" placeholder="Customer Name" value={newCustomer.CustomerName} onChange={handleNewCustomerChange} className={styles.formInput} />
-              <input type="text" name="Address" placeholder="Address" value={newCustomer.Address} onChange={handleNewCustomerChange} className={styles.formInput} />
-              <input type="tel" name="Contact_No" placeholder="Phone Number" value={newCustomer.Contact_No} onChange={handleNewCustomerChange} className={styles.formInput} />
-              <input type="text" name="Area" placeholder="Area" value={newCustomer.Area} onChange={handleNewCustomerChange} className={styles.formInput} />
-            </div>
-            <div className={styles.formActions}>
-              <button onClick={handleAddCustomer} className={styles.saveBtn}><FontAwesomeIcon icon={faCheck} /> Save</button>
-              <button onClick={() => setShowAddForm(false)} className={styles.cancelBtn}><FontAwesomeIcon icon={faTimes} /> Cancel</button>
-            </div>
-          </div>
-        )} */}
 
         <div className={styles.statsCards}>
           <div className={styles.statCard}>
@@ -197,8 +228,18 @@ function Customer() {
           </div>
         </div>
 
+        {/* Results Info */}
+        <div className={styles.resultsInfo}>
+          <p>
+            Showing <span className={styles.highlight}>{startIndex + 1}-{Math.min(endIndex, filteredCustomers.length)}</span> 
+            of <span className={styles.highlight}>{filteredCustomers.length}</span> customers
+            {searchTerm && ` for "${searchTerm}"`}
+            {filterArea !== "all" && ` in ${filterArea}`}
+          </p>
+        </div>
+
         <div className={styles.customersGrid}>
-          {filteredCustomers.map((customer) => (
+          {currentCustomers.map((customer) => (
             <div key={customer.CustomerId} className={styles.customerCard}>
               {editingCustomer === customer.CustomerId ? (
                 <div className={styles.editForm}>
@@ -228,7 +269,6 @@ function Customer() {
                     </div>
                     <div className={styles.cardActions}>
                       <button onClick={() => handleEditClick(customer)} className={styles.editBtn} title="Edit"><FontAwesomeIcon icon={faEdit} /></button>
-                    
                     </div>
                   </div>
                   <div className={styles.cardDetails}>
@@ -267,9 +307,90 @@ function Customer() {
             <p>Try adjusting your search or filter criteria</p>
           </div>
         )}
+
+        {/* Pagination Component - Only show if there are more than itemsPerPage */}
+        {filteredCustomers.length > itemsPerPage && (
+          <div className={styles.paginationContainer}>
+            <div className={styles.paginationInfo}>
+              Page {currentPage} of {totalPages}
+            </div>
+            
+            <div className={styles.paginationControls}>
+              <button 
+                className={styles.paginationButton} 
+                onClick={goToFirstPage}
+                disabled={currentPage === 1}
+                title="First Page"
+              >
+                <FontAwesomeIcon icon={faAngleDoubleLeft} />
+              </button>
+              
+              <button 
+                className={styles.paginationButton} 
+                onClick={goToPrevPage}
+                disabled={currentPage === 1}
+                title="Previous Page"
+              >
+                <FontAwesomeIcon icon={faChevronLeft} />
+              </button>
+              
+              <div className={styles.pageNumbers}>
+                {getPageNumbers().map((pageNum, index) => (
+                  pageNum === '...' ? (
+                    <span key={`ellipsis-${index}`} className={styles.pageEllipsis}>...</span>
+                  ) : (
+                    <button
+                      key={pageNum}
+                      className={`${styles.pageButton} ${currentPage === pageNum ? styles.activePage : ''}`}
+                      onClick={() => goToPage(pageNum)}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                ))}
+              </div>
+              
+              <button 
+                className={styles.paginationButton} 
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+                title="Next Page"
+              >
+                <FontAwesomeIcon icon={faChevronRight} />
+              </button>
+              
+              <button 
+                className={styles.paginationButton} 
+                onClick={goToLastPage}
+                disabled={currentPage === totalPages}
+                title="Last Page"
+              >
+                <FontAwesomeIcon icon={faAngleDoubleRight} />
+              </button>
+            </div>
+            
+            <div className={styles.itemsPerPageSelector}>
+              <span>Show: </span>
+              <select 
+                value={itemsPerPage} 
+                onChange={(e) => {
+                  // If you want to make itemsPerPage dynamic
+                  // setItemsPerPage(Number(e.target.value));
+                  // setCurrentPage(1);
+                }}
+                className={styles.pageSizeSelect}
+              >
+                <option value={15}>15</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
       
-      {/* 3. Modal Component integrate kiya */}
+      {/* Modal Component integrate kiya */}
       <AddCustomerModal 
         isOpen={isCustomerModalOpen} 
         onClose={() => setIsCustomerModalOpen(false)} 
