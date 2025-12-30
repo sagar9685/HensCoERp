@@ -1,20 +1,22 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios"
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const initialState = {
     isLoading : false,
-    data : [],
+    customers : [],
     areaData : [],
     customerSuggestions: null,
+    customerName : [],
     error : '',
 }
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
  
 
 export const addCustomerData = createAsyncThunk('addCustomer', async (formData, thunkAPI) => {
   try {
-    console.log(" Data sending to backend:", formData);
+    
     const res = await axios.post(`${API_BASE_URL}/api/customers/add`, formData);
    
 
@@ -23,7 +25,8 @@ export const addCustomerData = createAsyncThunk('addCustomer', async (formData, 
     return thunkAPI.rejectWithValue(err.response?.data || 'Something went wrong');
   }
 });
- 
+
+
 
 export const searchCustomers = createAsyncThunk(
   "customer/searchCustomers",
@@ -41,6 +44,10 @@ export const searchCustomers = createAsyncThunk(
 );
 
 
+ 
+ 
+
+
 export const fetchArea = createAsyncThunk("area",async(_,thunkAPI)=>{
   try{
       const res = await axios.get(`${API_BASE_URL}/api/area`);
@@ -52,13 +59,42 @@ export const fetchArea = createAsyncThunk("area",async(_,thunkAPI)=>{
 })
 
 
+export const fetchCustomerName = createAsyncThunk("customerName",async(_,thunkAPI) => {
+  try{
+    const res = await axios.get(`${API_BASE_URL}/api/customers`);
+    return res.data
+  }catch(err) {
+    return thunkAPI.rejectWithValue(err.response?.data || "fetch customer name failed")
+  }
+
+})
+
+export const updateCustomer = createAsyncThunk(
+  "customer/updateCustomer",
+  async ({ id, data }, thunkAPI) => {
+    try {
+      await axios.put(
+        `${API_BASE_URL}/api/customers/update/${id}`,
+        data
+      );
+      return { id, data };
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data || "Update failed"
+      );
+    }
+  }
+);
+
+
+
 const customerSlice = createSlice({
     name:'customer',
     initialState,
     reducers : {
-        clearCustomer: (state) => {
-            state.customerData = null
-        }
+        clearCustomerSuggestions: (state) => {
+      state.customerSuggestions = null;
+    },
     },
     extraReducers : (builder) =>  {
         builder.addCase(addCustomerData.fulfilled, (state,action) => {
@@ -89,7 +125,7 @@ const customerSlice = createSlice({
       .addCase(searchCustomers.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;
-        state.customerData = null;
+        state.customerSuggestions  = null;
       });
           // fetch area 
       builder
@@ -104,8 +140,43 @@ const customerSlice = createSlice({
         state.isLoading=false;
         state.error = action.payload
       })
+      builder
+      .addCase(fetchCustomerName.pending, (state)=> {
+        state.isLoading = true;
+      })
+      .addCase(fetchCustomerName.fulfilled, (state,action)=> {
+        state.isLoading = false;
+        state.customerName = action.payload
+      })
+      .addCase(fetchCustomerName.rejected, (state,action)=> {
+        state.isLoading = false;
+        state.error = action.payload
+      })
+      builder
+  .addCase(updateCustomer.pending, (state) => {
+    state.isLoading = true;
+  })
+  .addCase(updateCustomer.fulfilled, (state, action) => {
+    state.isLoading = false;
+
+    const index = state.customerName.findIndex(
+      (c) => c.CustomerId === action.payload.id
+    );
+
+    if (index !== -1) {
+      state.customerName[index] = {
+        ...state.customerName[index],
+        ...action.payload.data,
+      };
+    }
+  })
+  .addCase(updateCustomer.rejected, (state, action) => {
+    state.isLoading = false;
+    state.error = action.payload;
+  });
+
     }
 })
 
-export const { clearCustomer } = customerSlice.actions;
+export const { clearCustomerSuggestions  } = customerSlice.actions;
 export default customerSlice.reducer;

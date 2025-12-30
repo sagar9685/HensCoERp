@@ -22,10 +22,12 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           
           body { 
             font-family: 'Inter', sans-serif; 
-            padding: 25px 30px;
+            padding: 20px 25px;
             color: #1f2937;
             background: #ffffff;
             line-height: 1.5;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           
           /* Report Header */
@@ -33,8 +35,8 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
             border-bottom: 2px solid #4f46e5;
           }
           
@@ -43,14 +45,14 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           }
           
           .company-name {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             color: #4f46e5;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
           }
           
           .company-tagline {
-            font-size: 14px;
+            font-size: 13px;
             color: #6b7280;
             font-weight: 400;
           }
@@ -60,21 +62,21 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           }
           
           .report-title {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 600;
             color: #1f2937;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
           }
           
           .report-date {
-            font-size: 13px;
+            font-size: 12px;
             color: #6b7280;
           }
           
           .delivery-info {
-            font-size: 13px;
+            font-size: 12px;
             color: #374151;
-            margin-top: 5px;
+            margin-top: 4px;
             font-weight: 500;
           }
           
@@ -82,29 +84,29 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           .summary-stats {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 25px;
+            gap: 12px;
+            margin-bottom: 20px;
           }
           
           .stat-box {
             background: #f8fafc;
             border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 12px 10px;
             text-align: center;
           }
           
           .stat-label {
-            font-size: 12px;
+            font-size: 11px;
             color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
+            letter-spacing: 0.3px;
+            margin-bottom: 4px;
             font-weight: 500;
           }
           
           .stat-value {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: 700;
             color: #1f2937;
           }
@@ -119,16 +121,17 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           
           /* Table Styles */
           .data-table-container {
-            margin-top: 20px;
+            margin-top: 15px;
             border: 1px solid #e5e7eb;
-            border-radius: 8px;
+            border-radius: 6px;
             overflow: hidden;
           }
           
           .data-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11.5px;
+            font-size: 10px;
+            table-layout: fixed;
           }
           
           .data-table thead {
@@ -136,22 +139,24 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           }
           
           .data-table th {
-            padding: 14px 10px;
+            padding: 10px 6px;
             text-align: left;
             font-weight: 600;
             color: white;
             border: none;
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.2px;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
           
           .data-table th:first-child {
-            padding-left: 15px;
+            padding-left: 10px;
           }
           
           .data-table th:last-child {
-            padding-right: 15px;
+            padding-right: 10px;
           }
           
           .data-table tbody tr {
@@ -167,45 +172,50 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           }
           
           .data-table td {
-            padding: 12px 10px;
+            padding: 8px 6px;
             vertical-align: top;
+            word-wrap: break-word;
           }
           
           .data-table td:first-child {
-            padding-left: 15px;
+            padding-left: 10px;
           }
           
           .data-table td:last-child {
-            padding-right: 15px;
+            padding-right: 10px;
           }
           
           /* Column specific styles */
           .col-order-id {
             font-weight: 600;
             color: #1f2937;
+            font-size: 9.5px;
           }
           
           .col-customer {
             font-weight: 500;
-            min-width: 120px;
           }
           
           .col-amount {
             font-weight: 600;
             color: #059669;
             font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 9.5px;
           }
           
           .col-rate, .col-delivery {
             font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 9.5px;
           }
           
           .col-date {
             white-space: nowrap;
+            font-size: 9.5px;
           }
           
           .col-address {
-            max-width: 150px;
+            font-size: 9.5px;
+            line-height: 1.3;
           }
           
           .text-right {
@@ -220,100 +230,197 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           .table-totals {
             background: #f8fafc;
             border-top: 2px solid #e5e7eb;
-            padding: 15px;
+            padding: 12px 15px;
           }
           
           .total-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 5px;
+            margin-bottom: 4px;
           }
           
           .total-label {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             color: #4b5563;
           }
           
           .total-value {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             color: #1f2937;
             font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
           }
           
           .total-value.grand-total {
-            font-size: 16px;
+            font-size: 14px;
             color: #059669;
           }
           
           /* Report Footer */
           .report-footer {
-            margin-top: 30px;
-            padding-top: 20px;
+            margin-top: 20px;
+            padding-top: 15px;
             border-top: 1px solid #e5e7eb;
-            font-size: 11px;
+            font-size: 10px;
             color: #9ca3af;
             text-align: center;
           }
           
           .contact-info {
-            margin-top: 5px;
+            margin-top: 4px;
           }
           
-          /* Print Specific Styles */
+          /* Print Specific Styles - MOST IMPORTANT PART */
           @media print {
             @page {
-              margin: 15mm;
+              margin: 10mm 5mm !important;
               size: A4 landscape;
             }
             
             body {
-              padding: 0;
-              font-size: 9pt;
+              padding: 0 !important;
+              margin: 0 !important;
+              font-size: 8.5pt !important;
+              width: 100% !important;
+              height: 100% !important;
+              overflow: visible !important;
             }
             
-            .data-table {
-              font-size: 9pt;
+            /* Remove all browser headers/footers */
+            @page {
+              margin-top: 0;
+              margin-bottom: 0;
             }
             
-            .data-table th {
-              padding: 10px 8px;
-              font-size: 9pt;
+            @page :first {
+              margin-top: 0;
             }
             
-            .data-table td {
-              padding: 9px 8px;
+            @page :last {
+              margin-bottom: 0;
+            }
+            
+            /* Hide page numbers and URLs */
+            body::after {
+              display: none !important;
+            }
+            
+            /* Ensure no page breaks inside important elements */
+            .data-table-container {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
             
             .summary-stats {
-              gap: 10px;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            
+            .table-totals {
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+            
+            /* Force everything on one page */
+            .report-header,
+            .summary-stats,
+            .data-table-container,
+            .table-totals,
+            .report-footer {
+              page-break-before: avoid !important;
+              page-break-after: avoid !important;
+              break-before: avoid !important;
+              break-after: avoid !important;
+            }
+            
+            /* Table adjustments for print */
+            .data-table {
+              font-size: 8pt !important;
+              width: 100% !important;
+            }
+            
+            .data-table th {
+              padding: 6px 4px !important;
+              font-size: 8pt !important;
+            }
+            
+            .data-table td {
+              padding: 5px 4px !important;
+              font-size: 8pt !important;
+            }
+            
+            .summary-stats {
+              gap: 8px !important;
+              margin-bottom: 15px !important;
             }
             
             .stat-box {
-              padding: 12px 8px;
+              padding: 8px 6px !important;
             }
             
             .stat-value {
-              font-size: 18px;
+              font-size: 14px !important;
+            }
+            
+            /* Reduce spacing for print */
+            .report-header {
+              margin-bottom: 12px !important;
+              padding-bottom: 10px !important;
+            }
+            
+            .data-table-container {
+              margin-top: 10px !important;
+            }
+            
+            .table-totals {
+              padding: 8px 10px !important;
+            }
+            
+            .report-footer {
+              margin-top: 15px !important;
+              padding-top: 10px !important;
             }
             
             /* Ensure colors print properly */
-            .data-table thead {
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
+            .data-table thead,
+            .stat-box,
+            .table-totals {
+              -webkit-print-color-adjust: exact !important;
+              color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             
-            /* Hide URL and page info */
-            .report-footer {
-              color: #6b7280;
+            /* Hide unnecessary elements in print */
+            .screen-only {
+              display: none !important;
+            }
+            
+            /* Prevent text from being too small */
+            .col-order-id,
+            .col-customer,
+            .col-address,
+            .col-amount,
+            .col-rate,
+            .col-delivery,
+            .col-date {
+              font-size: 7.5pt !important;
+              line-height: 1.2 !important;
             }
           }
           
           /* Hide from screen but show in print */
           .screen-only {
-            display: none;
+            display: block;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #0369a1;
+            text-align: center;
           }
           
           @media screen {
@@ -364,18 +471,18 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           <table class="data-table">
             <thead>
               <tr>
-                <th style="width: 8%;">Order ID</th>
-                <th style="width: 10%;">Invoice No</th>
-                <th style="width: 12%;">Customer</th>
-                <th style="width: 10%;">Product</th>
-                <th style="width: 5%;" class="text-center">Qty</th>
-                <th style="width: 7%;" class="text-right">Rate</th>
-                <th style="width: 8%;" class="text-right">Delivery</th>
+                <th style="width: 7%;">Order ID</th>
+                <th style="width: 8%;">Invoice No</th>
+                <th style="width: 10%;">Customer</th>
+                <th style="width: 9%;">Product</th>
+                <th style="width: 4%;" class="text-center">Qty</th>
+                <th style="width: 6%;" class="text-right">Rate</th>
+                <th style="width: 7%;" class="text-right">Delivery</th>
                 <th style="width: 15%;">Address</th>
-                <th style="width: 8%;">Area</th>
-                <th style="width: 9%;">Contact</th>
-                <th style="width: 8%;" class="text-right">Amount</th>
-                <th style="width: 10%;">Date</th>
+                <th style="width: 7%;">Area</th>
+                <th style="width: 8%;">Contact</th>
+                <th style="width: 7%;" class="text-right">Amount</th>
+                <th style="width: 8%;">Date</th>
               </tr>
             </thead>
             <tbody>
@@ -434,7 +541,11 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           window.onload = function() {
             setTimeout(function() {
               window.print();
-            }, 1000);
+              // Close window after print (optional)
+              setTimeout(function() {
+                window.close();
+              }, 500);
+            }, 500);
           };
         </script>
       </body>

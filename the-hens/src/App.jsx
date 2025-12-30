@@ -10,6 +10,7 @@ import UserForm from "./component/user/UserForm";
 import UserChart from "./component/user/UserChart";
 import Purchase from "./component/AdminPurchase/Purchase";
 import Stock from "./component/user/Stock";
+import Customer from "./component/Customer";
 
 function App() {
   return (
@@ -33,6 +34,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <Purchase/>
+            </ProtectedRoute>
+          } 
+        />
+
+          <Route 
+          path="/customer" 
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <Customer/>
             </ProtectedRoute>
           } 
         />
