@@ -1,8 +1,9 @@
 import Header from "./Header";
 import styles from "./Customer.module.css";
 import { useDispatch, useSelector } from "react-redux";
-import { useEffect, useState } from "react";
-import { fetchArea, fetchCustomerName,updateCustomer } from "../features/cutomerSlice";
+import { useEffect, useState, useMemo } from "react";
+// Add deleteCustomer here
+import { fetchArea, fetchCustomerName, updateCustomer } from "../features/cutomerSlice";
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -33,29 +34,29 @@ function Customer() {
   });
   const [filterArea, setFilterArea] = useState("all");
 
-  const { customerName, isLoading, error } = useSelector((state) => state.customer);
+  const { customerName = [], isLoading, error, areaData = [] } = useSelector((state) => state.customer);
   
   useEffect(() => {
     dispatch(fetchCustomerName());
-    dispatch(fetchArea())
+    dispatch(fetchArea());
   }, [dispatch]);
 
   const handleEditClick = (customer) => {
     setEditingCustomer(customer.CustomerId);
+    // Added Pincode and Gst_No to prevent controlled/uncontrolled input warnings
     setEditForm({
-      CustomerName: customer.CustomerName,
-      Address: customer.Address,
-      Contact_No: customer.Contact_No,
-      Area: customer.Area
+      CustomerName: customer.CustomerName || "",
+      Address: customer.Address || "",
+      Contact_No: customer.Contact_No || "",
+      Area: customer.Area || "",
+      Pincode: customer.Pincode || "",
+      Gst_No: customer.Gst_No || ""
     });
   };
 
   const handleEditChange = (e) => {
     const { name, value } = e.target;
-    setEditForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setEditForm(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSaveEdit = (customerId) => {
@@ -67,42 +68,39 @@ function Customer() {
     setEditingCustomer(null);
   };
 
-  const handleDelete = (customerId) => {
-    if (window.confirm("Are you sure you want to delete this customer?")) {
-      dispatch(deleteCustomer(customerId));
-    }
-  };
+   
 
   const handleNewCustomerChange = (e) => {
     const { name, value } = e.target;
-    setNewCustomer(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setNewCustomer(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddCustomer = () => {
-    // Here you would dispatch an action to add the customer
     console.log("Add new customer:", newCustomer);
+    // Dispatch your add action here if available
     setNewCustomer({ CustomerName: "", Address: "", Contact_No: "", Area: "" });
     setShowAddForm(false);
   };
 
-  const filteredCustomers = customerName.filter(customer => {
-    const matchesSearch = customer.CustomerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.Area.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         customer.Contact_No.includes(searchTerm);
-    
-    const matchesFilter = filterArea === "all" || customer.Area === filterArea;
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Optimized filtering logic
+  const filteredCustomers = useMemo(() => {
+    return customerName.filter(customer => {
+      const name = customer.CustomerName?.toLowerCase() || "";
+      const area = customer.Area?.toLowerCase() || "";
+      const contact = customer.Contact_No || "";
+      const search = searchTerm.toLowerCase();
 
-  const areas = [...new Set(customerName.map(customer => customer.Area))];
-  const areaTypes = useSelector(state => state.customer.areaData); // from DB
+      const matchesSearch = name.includes(search) || area.includes(search) || contact.includes(search);
+      const matchesFilter = filterArea === "all" || customer.Area === filterArea;
+      
+      return matchesSearch && matchesFilter;
+    });
+  }, [customerName, searchTerm, filterArea]);
 
+  const areas = useMemo(() => [...new Set(customerName.map(c => c.Area))], [customerName]);
 
-  if (isLoading) {
+  // Loading logic changed: Only show full screen loader if no data exists
+  if (isLoading && customerName.length === 0) {
     return (
       <div className={styles.loadingContainer}>
         <div className={styles.spinner}></div>
@@ -111,14 +109,12 @@ function Customer() {
     );
   }
 
-  if (error) {
+  if (error && customerName.length === 0) {
     return (
       <div className={styles.errorContainer}>
         <h2>Error Loading Customers</h2>
         <p>{error}</p>
-        <button onClick={() => dispatch(fetchCustomerName())} className={styles.retryBtn}>
-          Retry
-        </button>
+        <button onClick={() => dispatch(fetchCustomerName())} className={styles.retryBtn}>Retry</button>
       </div>
     );
   }
@@ -162,12 +158,8 @@ function Customer() {
               </select>
             </div>
 
-            <button 
-              className={styles.addButton}
-              onClick={() => setShowAddForm(!showAddForm)}
-            >
-              <FontAwesomeIcon icon={faPlus} />
-              Add New Customer
+            <button className={styles.addButton} onClick={() => setShowAddForm(!showAddForm)}>
+              <FontAwesomeIcon icon={faPlus} /> Add New Customer
             </button>
           </div>
         </div>
@@ -176,48 +168,14 @@ function Customer() {
           <div className={styles.addForm}>
             <h3>Add New Customer</h3>
             <div className={styles.formGrid}>
-              <input
-                type="text"
-                name="CustomerName"
-                placeholder="Customer Name"
-                value={newCustomer.CustomerName}
-                onChange={handleNewCustomerChange}
-                className={styles.formInput}
-              />
-              <input
-                type="text"
-                name="Address"
-                placeholder="Address"
-                value={newCustomer.Address}
-                onChange={handleNewCustomerChange}
-                className={styles.formInput}
-              />
-              <input
-                type="tel"
-                name="Contact_No"
-                placeholder="Phone Number"
-                value={newCustomer.Contact_No}
-                onChange={handleNewCustomerChange}
-                className={styles.formInput}
-              />
-              <input
-                type="text"
-                name="Area"
-                placeholder="Area"
-                value={newCustomer.Area}
-                onChange={handleNewCustomerChange}
-                className={styles.formInput}
-              />
+              <input type="text" name="CustomerName" placeholder="Customer Name" value={newCustomer.CustomerName} onChange={handleNewCustomerChange} className={styles.formInput} />
+              <input type="text" name="Address" placeholder="Address" value={newCustomer.Address} onChange={handleNewCustomerChange} className={styles.formInput} />
+              <input type="tel" name="Contact_No" placeholder="Phone Number" value={newCustomer.Contact_No} onChange={handleNewCustomerChange} className={styles.formInput} />
+              <input type="text" name="Area" placeholder="Area" value={newCustomer.Area} onChange={handleNewCustomerChange} className={styles.formInput} />
             </div>
             <div className={styles.formActions}>
-              <button onClick={handleAddCustomer} className={styles.saveBtn}>
-                <FontAwesomeIcon icon={faCheck} />
-                Save Customer
-              </button>
-              <button onClick={() => setShowAddForm(false)} className={styles.cancelBtn}>
-                <FontAwesomeIcon icon={faTimes} />
-                Cancel
-              </button>
+              <button onClick={handleAddCustomer} className={styles.saveBtn}><FontAwesomeIcon icon={faCheck} /> Save</button>
+              <button onClick={() => setShowAddForm(false)} className={styles.cancelBtn}><FontAwesomeIcon icon={faTimes} /> Cancel</button>
             </div>
           </div>
         )}
@@ -242,109 +200,37 @@ function Customer() {
         <div className={styles.customersGrid}>
           {filteredCustomers.map((customer) => (
             <div key={customer.CustomerId} className={styles.customerCard}>
-            {editingCustomer === customer.CustomerId ? (
-  <div className={styles.editForm}>
-    <input
-      type="text"
-      name="CustomerName"
-      value={editForm.CustomerName}
-      onChange={handleEditChange}
-      className={styles.editInput}
-      placeholder="Customer Name"
-    />
-    <input
-      type="text"
-      name="Address"
-      value={editForm.Address}
-      onChange={handleEditChange}
-      className={styles.editInput}
-      placeholder="Address"
-    />
-    <input
-      type="tel"
-      name="Contact_No"
-      value={editForm.Contact_No}
-      onChange={handleEditChange}
-      className={styles.editInput}
-      placeholder="Phone Number"
-    />
-    <input
-      type="text"
-      name="Pincode"
-      value={editForm.Pincode || ""}
-      onChange={handleEditChange}
-      className={styles.editInput}
-      placeholder="Pincode"
-    />
-    <input
-      type="text"
-      name="Gst_No"
-      value={editForm.Gst_No || ""}
-      onChange={handleEditChange}
-      className={styles.editInput}
-      placeholder="GST Number"
-    />
-   <select
-  name="Area"
-  value={editForm.Area}
-  onChange={handleEditChange}
-  className={styles.editInput}
->
-  <option value="">Select Area</option>
-  {Array.isArray(areaTypes) && areaTypes.length > 0
-    ? areaTypes.map(area => (
-        <option key={area.areaId} value={area.areaName}>
-          {area.areaName}
-        </option>
-      ))
-    : <option disabled>Loading areas...</option>
-  }
-</select>
-
-
-    <div className={styles.editActions}>
-      <button 
-        onClick={() => handleSaveEdit(customer.CustomerId)}
-        className={styles.saveBtn}
-      >
-        <FontAwesomeIcon icon={faCheck} /> Update
-      </button>
-      <button 
-        onClick={handleCancelEdit}
-        className={styles.cancelBtn}
-      >
-        <FontAwesomeIcon icon={faTimes} /> Cancel
-      </button>
-    </div>
-  </div>
-) : (
+              {editingCustomer === customer.CustomerId ? (
+                <div className={styles.editForm}>
+                  <input type="text" name="CustomerName" value={editForm.CustomerName} onChange={handleEditChange} className={styles.editInput} placeholder="Customer Name" />
+                  <input type="text" name="Address" value={editForm.Address} onChange={handleEditChange} className={styles.editInput} placeholder="Address" />
+                  <input type="tel" name="Contact_No" value={editForm.Contact_No} onChange={handleEditChange} className={styles.editInput} placeholder="Phone Number" />
+                  <input type="text" name="Pincode" value={editForm.Pincode} onChange={handleEditChange} className={styles.editInput} placeholder="Pincode" />
+                  <input type="text" name="Gst_No" value={editForm.Gst_No} onChange={handleEditChange} className={styles.editInput} placeholder="GST Number" />
+                  <select name="Area" value={editForm.Area} onChange={handleEditChange} className={styles.editInput}>
+                    <option value="">Select Area</option>
+                    {Array.isArray(areaData) && areaData.map(area => (
+                      <option key={area.areaId} value={area.areaName}>{area.areaName}</option>
+                    ))}
+                  </select>
+                  <div className={styles.editActions}>
+                    <button onClick={() => handleSaveEdit(customer.CustomerId)} className={styles.saveBtn}><FontAwesomeIcon icon={faCheck} /> Update</button>
+                    <button onClick={handleCancelEdit} className={styles.cancelBtn}><FontAwesomeIcon icon={faTimes} /> Cancel</button>
+                  </div>
+                </div>
+              ) : (
                 <>
                   <div className={styles.cardHeader}>
-                    <div className={styles.customerAvatar}>
-                      {customer.CustomerName.charAt(0).toUpperCase()}
-                    </div>
+                    <div className={styles.customerAvatar}>{customer.CustomerName?.charAt(0).toUpperCase()}</div>
                     <div className={styles.customerInfo}>
                       <h3 className={styles.customerName}>{customer.CustomerName}</h3>
                       <span className={styles.customerId}>ID: {customer.CustomerId}</span>
                     </div>
                     <div className={styles.cardActions}>
-                      <button 
-                        onClick={() => handleEditClick(customer)}
-                        className={styles.editBtn}
-                        title="Edit"
-                      >
-                        <FontAwesomeIcon icon={faEdit} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(customer.CustomerId)}
-                        className={styles.deleteBtn}
-                        title="Delete"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </button>
+                      <button onClick={() => handleEditClick(customer)} className={styles.editBtn} title="Edit"><FontAwesomeIcon icon={faEdit} /></button>
+                    
                     </div>
                   </div>
-                  
                   <div className={styles.cardDetails}>
                     <div className={styles.detailItem}>
                       <FontAwesomeIcon icon={faMapMarkerAlt} className={styles.detailIcon} />
@@ -353,7 +239,6 @@ function Customer() {
                         <p className={styles.detailValue}>{customer.Address}</p>
                       </div>
                     </div>
-                    
                     <div className={styles.detailItem}>
                       <FontAwesomeIcon icon={faPhone} className={styles.detailIcon} />
                       <div>
@@ -361,14 +246,11 @@ function Customer() {
                         <p className={styles.detailValue}>{customer.Contact_No}</p>
                       </div>
                     </div>
-                    
                     <div className={styles.detailItem}>
                       <FontAwesomeIcon icon={faBuilding} className={styles.detailIcon} />
                       <div>
                         <p className={styles.detailLabel}>Area</p>
-                        <p className={styles.detailValue}>
-                          <span className={styles.areaBadge}>{customer.Area}</span>
-                        </p>
+                        <p className={styles.detailValue}><span className={styles.areaBadge}>{customer.Area}</span></p>
                       </div>
                     </div>
                   </div>
@@ -378,7 +260,7 @@ function Customer() {
           ))}
         </div>
 
-        {filteredCustomers.length === 0 && (
+        {filteredCustomers.length === 0 && !isLoading && (
           <div className={styles.noResults}>
             <FontAwesomeIcon icon={faUser} className={styles.noResultsIcon} />
             <h3>No customers found</h3>
