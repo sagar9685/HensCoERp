@@ -10,7 +10,7 @@
  import denominationReducer from '../features/denominationSlice'
  import purchaseOrderReducer from '../features/purchaseOrderSlice'
   import stockReducer from '../features/stockSlice'
- 
+ import customerAnalysisReducer from "../features/customerAnalysisSlice";
  
  const store = configureStore ({
     reducer : {
@@ -25,6 +25,7 @@
         orderCompletion: orderCompletionReducer,
            denomination: denominationReducer,
               purchaseOrder: purchaseOrderReducer,
+                customerAnalysis: customerAnalysisReducer,
     }
  })
 

@@ -11,6 +11,7 @@ import UserChart from "./component/user/UserChart";
 import Purchase from "./component/AdminPurchase/Purchase";
 import Stock from "./component/user/Stock";
 import Customer from "./component/Customer";
+import CustomerAnalysis from "./component/CustomerAnalysis";
 
 function App() {
   return (
@@ -43,6 +44,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <Customer/>
+            </ProtectedRoute>
+          } 
+        />
+
+         <Route 
+          path="/customer-analysis" 
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <CustomerAnalysis/>
             </ProtectedRoute>
           } 
         />

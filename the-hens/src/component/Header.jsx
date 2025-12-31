@@ -76,7 +76,7 @@ const Header = () => {
     { key: "dashboard", icon: <MdDashboard />, label: "Dashboard", path: '/dashboard' },
     { key: "purchase", icon: <FaLayerGroup />, label: "Purchase", path: '/purchase' },
     { key: "problems", icon: <FaBug />, label: "Customer", path: '/customer' },
-    { key: "users", icon: <FaUsers />, label: "Users" },
+    { key: "users", icon: <FaUsers />, label: "Frequancy", path: '/customer-analysis' },
     { key: "analytics", icon: <FaChartBar />, label: "Analytics" },
     { key: "announcements", icon: <FaBullhorn />, label: "Announcements" },
     { key: "settings", icon: <FaCog />, label: "Settings" }
