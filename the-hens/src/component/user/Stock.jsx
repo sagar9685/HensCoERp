@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchStock, fetchAvailableStock } from "../../features/stockSlice";
-import UserSideBar from "./UserSideBar"; // Add import
-import UserNavbar from "./UserNavbar"; // Add import
+import UserSideBar from "./UserSidebar"
+import UserNavbar from "./UserNavBar"; // Add import
 import styles from "./stock.module.css";
 import { BarChart3, Package, TrendingUp, AlertCircle, Filter, RefreshCw, Search, Hash } from "lucide-react";
 
