@@ -42,14 +42,14 @@ const UserSideBar = () => {
                 </Link>
                 </li>
            
-          <li className="nav-item menu-items">
+          {/* <li className="nav-item menu-items">
             <Link className="nav-link" to='/chart'>
               <span className="menu-icon">
                 <i className="mdi mdi-chart-bar"></i>
               </span>
               <span className="menu-title">Charts</span>
             </Link>
-          </li>
+          </li> */}
                 <li className="nav-item menu-items">
           <Link className="nav-link" to="/stock">
             <span className="menu-icon">

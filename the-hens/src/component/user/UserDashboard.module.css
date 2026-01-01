@@ -448,3 +448,11 @@
     height: 150px;
   }
 }
+
+.head {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+}
