@@ -100,7 +100,7 @@ const customerSlice = createSlice({
     extraReducers : (builder) =>  {
         builder.addCase(addCustomerData.fulfilled, (state,action) => {
             state.isLoading=false;
-            state.data=action.payload
+            state.customers.push(action.payload);
         });
         builder.addCase(addCustomerData.rejected, (state) => {
             state.isLoading = false;

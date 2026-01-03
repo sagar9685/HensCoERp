@@ -1,0 +1,28 @@
+.container {
+  padding: 20px;
+  background: #f5f6fa;
+}
+
+.tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.tabs button {
+  padding: 8px 16px;
+  border: none;
+  background: #ddd;
+  cursor: pointer;
+}
+
+.active {
+  background: #0d6efd;
+  color: white;
+}
+
+.content {
+  background: #fff;
+  padding: 15px;
+  border-radius: 4px;
+}

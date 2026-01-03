@@ -14,7 +14,9 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     contactNo: '',
     alternatePhone: '',
     pincode: '',
-    Gst_No : ''
+    Gst_No : '',
+     bulkCustomer: 'no',
+  creditLimit: ''
   });
 
   const [errors, setErrors] = useState({});
@@ -90,7 +92,9 @@ if (
       Area: formData.area,
       Pincode: formData.pincode,
       Address: formData.address,
-      Gst_No : formData.Gst_No
+     GST_No: formData.Gst_No,
+Bulk_Mode: formData.bulkCustomer === 'yes' ? 1 : 0,
+  Credit_Limit: formData.creditLimit
     };
 
      try {
@@ -109,18 +113,21 @@ if (
 
 
   const handleClose = () => {
-    setFormData({
-      customerName: '',
-      address: '',
-      area: '',
-      contactNo: '',
-      alternatePhone: '',
-      pincode: '',
-      Gst_No: ''
-    });
-    setErrors({});
-    onClose();
-  };
+  setFormData({
+    customerName: '',
+    address: '',
+    area: '',
+    contactNo: '',
+    alternatePhone: '',
+    pincode: '',
+    Gst_No: '',
+    bulkCustomer: 'no',
+    creditLimit: ''
+  });
+  setErrors({});
+  onClose();
+};
+
 
   if (!isOpen) return null;
 
@@ -180,14 +187,15 @@ if (
                 <label className={styles.inputLabel}>
                   Alternate Phone
                 </label>
-                <input
-                  type="tel"
-                  name="Gst_No"
-                  value={formData.Gst_No}
-                  onChange={handleChange}
-                  placeholder="Enter alternate contact"
-                  className={styles.inputField}
-                />
+               <input
+  type="tel"
+  name="alternatePhone"
+  value={formData.alternatePhone}
+  onChange={handleChange}
+  placeholder="Enter alternate contact"
+  className={styles.inputField}
+/>
+
               </div>
 
               {/* Area */}
@@ -256,15 +264,62 @@ if (
                 <label className={styles.inputLabel}>
                 Gst_No
                 </label>
-                <input
-                  type="tel"
-                  name="alternatePhone"
-                  value={formData.alternatePhone}
-                  onChange={handleChange}
-                  placeholder="Enter alternate phone"
-                  className={styles.inputField}
-                />
+              <input
+  type="text"
+  name="Gst_No"
+  value={formData.Gst_No}
+  onChange={handleChange}
+  placeholder="Enter GST No"
+  className={styles.inputField}
+/>
+
               </div>
+
+              <div className={styles.inputGroup}>
+  <label className={styles.inputLabel}>Bulk Customer</label>
+  
+  <div className={styles.radioOptions}>
+    <label className={styles.radioLabel}>
+     <input
+  type="radio"
+  name="bulkCustomer"
+  value="yes"
+  checked={formData.bulkCustomer === 'yes'}
+  onChange={handleChange}
+/>
+
+      Yes
+    </label>
+
+    <label className={styles.radioLabel}>
+     <input
+  type="radio"
+  name="bulkCustomer"
+  value="no"
+  checked={formData.bulkCustomer === 'no'}
+  onChange={handleChange}
+/>
+      No
+    </label>
+  </div>
+</div>
+
+
+               <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>
+                  Credit Limit
+                </label>
+               <input
+  type="number"
+  name="creditLimit"
+  value={formData.creditLimit}
+  onChange={handleChange}
+  placeholder="Enter Credit Limit"
+  className={styles.inputField}
+/>
+
+              </div>
+
 
             </div>
           </form>

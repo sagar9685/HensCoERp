@@ -12,6 +12,7 @@ import Purchase from "./component/AdminPurchase/Purchase";
 import Stock from "./component/user/Stock";
 import Customer from "./component/Customer";
 import CustomerAnalysis from "./component/CustomerAnalysis";
+import ReportPage from "./component/ReportPage";
 
 function App() {
   return (
@@ -53,6 +54,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <CustomerAnalysis/>
+            </ProtectedRoute>
+          } 
+        />
+
+         <Route 
+          path="/reports" 
+          element={
+            <ProtectedRoute adminOnly={true}>
+            <ReportPage/>
             </ProtectedRoute>
           } 
         />

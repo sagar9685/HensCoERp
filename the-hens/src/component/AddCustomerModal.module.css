@@ -293,3 +293,46 @@
   }
 }
  
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  font-family: sans-serif;
+}
+
+.inputLabel {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #333;
+}
+
+/* Container for the radio options to align them horizontally */
+.radioOptions {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Individual label wrapping the input and text */
+.radioLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: #555;
+  transition: color 0.2s ease;
+}
+
+.radioLabel:hover {
+  color: #000;
+}
+
+/* Customizing the radio button appearance */
+.radioInput {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #007bff; /* Changes the 'dot' color in modern browsers */
+}

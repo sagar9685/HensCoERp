@@ -4,7 +4,18 @@ const { sql, poolPromise } = require('../utils/db');
 exports.addCustomer = async (req, res) => {
   try {
     console.log('recived body',req.body)
-    const { CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address,GST_No } = req.body;
+  const {
+  CustomerName,
+  Contact_No,
+  Alternate_Phone,
+  Area,
+  Pincode,
+  Address,
+  GST_No,
+  Bulk_Mode,
+  Credit_Limit
+} = req.body;
+
 
     if (!CustomerName || !Contact_No || !Area ||  !Address) {
       return res.status(400).json({ message: "Required fields are missing." });
@@ -16,8 +27,11 @@ exports.addCustomer = async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Customers (CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address, GST_No)
-      VALUES (@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address, @GST_No)
+     INSERT INTO Customers 
+(CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address, GST_No, Bulk_Mode, Credit_Limit)
+VALUES 
+(@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address, @GST_No, @Bulk_Mode, @Credit_Limit)
+
     `;
 
     const request = pool.request();
@@ -27,7 +41,18 @@ exports.addCustomer = async (req, res) => {
     request.input("Area", sql.NVarChar, Area);
     request.input("Pincode", sql.VarChar, Pincode || null);
     request.input("Address", sql.NVarChar, Address);
-    request.input("GST_No", sql.VarChar, GST_No || null)
+    request.input("GST_No", sql.VarChar, GST_No || null);
+   request.input(
+  "Bulk_Mode",
+  sql.Bit,
+  Bulk_Mode !== undefined ? Bulk_Mode : 0
+);
+
+request.input(
+  "Credit_Limit",
+  sql.Decimal(18,2),
+  Credit_Limit !== undefined ? Credit_Limit : 0
+);
 
     await request.query(query);
     res.status(200).json({ message: "Customer added successfully!" });
