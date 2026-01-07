@@ -1,4 +1,4 @@
-const { sql, poolPromise } = require('../utils/db');
+const { sql, poolPromise } = require("../utils/db");
 
 /**
  * WEEK WISE CUSTOMER ORDER FREQUENCY
@@ -23,13 +23,11 @@ exports.getCustomerOrderFrequencyWeekWise = async (req, res) => {
 
     const result = await pool.request().query(query);
     res.status(200).json(result.recordset);
-
   } catch (error) {
     console.error("Week wise analysis error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 /**
  * MONTH WISE CUSTOMER ORDER FREQUENCY
@@ -54,13 +52,11 @@ exports.getCustomerOrderFrequencyMonthWise = async (req, res) => {
 
     const result = await pool.request().query(query);
     res.status(200).json(result.recordset);
-
   } catch (error) {
     console.error("Month wise analysis error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 /**
  * YEAR WISE CUSTOMER ORDER FREQUENCY
@@ -83,7 +79,6 @@ exports.getCustomerOrderFrequencyYearWise = async (req, res) => {
 
     const result = await pool.request().query(query);
     res.status(200).json(result.recordset);
-
   } catch (error) {
     console.error("Year wise analysis error:", error);
     res.status(500).json({ message: "Internal server error" });

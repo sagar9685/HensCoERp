@@ -9,10 +9,10 @@ exports.getMonthlyReport = async (req, res) => {
 
     const pool = await poolPromise;
 
-    const summary = await pool.request()
+    const summary = await pool
+      .request()
       .input("year", sql.Int, year)
-      .input("month", sql.Int, month)
-      .query(`
+      .input("month", sql.Int, month).query(`
         SELECT 
           COUNT(DISTINCT o.OrderID) TotalOrders,
           SUM(oi.Total) TotalSales
@@ -22,10 +22,10 @@ exports.getMonthlyReport = async (req, res) => {
         AND MONTH(o.OrderDate)=@month
       `);
 
-    const payment = await pool.request()
+    const payment = await pool
+      .request()
       .input("year", sql.Int, year)
-      .input("month", sql.Int, month)
-      .query(`
+      .input("month", sql.Int, month).query(`
         SELECT pm.ModeName, SUM(op.Amount) Amount
         FROM OrderPayments op
         JOIN PaymentModes pm ON pm.PaymentModeID=op.PaymentModeID
@@ -37,14 +37,12 @@ exports.getMonthlyReport = async (req, res) => {
 
     res.status(200).json({
       summary: summary.recordset[0],
-      payment: payment.recordset
+      payment: payment.recordset,
     });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 /* =======================
    WEEKLY REPORT
@@ -55,11 +53,11 @@ exports.getWeeklyReport = async (req, res) => {
 
     const pool = await poolPromise;
 
-    const result = await pool.request()
+    const result = await pool
+      .request()
       .input("month", sql.Int, month)
       .input("from", sql.Int, from)
-      .input("to", sql.Int, to)
-      .query(`
+      .input("to", sql.Int, to).query(`
         SELECT 
           CAST(o.OrderDate AS DATE) OrderDate,
           COUNT(DISTINCT o.OrderID) Orders,
@@ -73,7 +71,6 @@ exports.getWeeklyReport = async (req, res) => {
       `);
 
     res.status(200).json(result.recordset);
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

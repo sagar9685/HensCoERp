@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {
   getMonthlyReport,
-  getWeeklyReport
+  getWeeklyReport,
 } = require("../controller/reportController");
 
 router.get("/monthly", getMonthlyReport);

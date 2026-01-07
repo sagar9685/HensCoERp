@@ -1,37 +1,33 @@
 const { sql, poolPromise } = require("../utils/db");
 
-
 // CREATE Assigned Order
 exports.assignOrder = async (req, res) => {
-  const { 
-    orderId, 
-    deliveryManId, 
-    otherDeliveryManName,  
-    deliveryDate,
-    remark 
-  } = req.body;
+  const { orderId, deliveryManId, otherDeliveryManName, deliveryDate, remark } =
+    req.body;
 
   // Required fields check
-  if (!orderId  || !deliveryDate) {
+  if (!orderId || !deliveryDate) {
     return res.status(400).json({ message: "Required fields missing" });
   }
 
   // Delivery man validation
   if (!deliveryManId && !otherDeliveryManName) {
-    return res.status(400).json({ message: "Select delivery man or enter other name" });
+    return res
+      .status(400)
+      .json({ message: "Select delivery man or enter other name" });
   }
 
   try {
     const pool = await poolPromise;
 
-    await pool.request()
+    await pool
+      .request()
       .input("OrderID", sql.Int, orderId)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
-     
+
       .input("DeliveryDate", sql.Date, deliveryDate)
-      .input("Remark", sql.NVarChar, remark || null)
-      .query(`
+      .input("Remark", sql.NVarChar, remark || null).query(`
         INSERT INTO AssignedOrders 
           (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark)
           
@@ -40,14 +36,10 @@ exports.assignOrder = async (req, res) => {
       `);
 
     res.status(201).json({ message: "Order assigned successfully" });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
-
-
 
 // GET All Assigned Orders
 exports.getAssignedOrders = async (req, res) => {
@@ -131,36 +123,33 @@ ORDER BY O.OrderID DESC;
     `);
 
     res.status(200).json(result.recordset);
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-
-
 // UPDATE Assigned Order
 exports.updateAssignedOrder = async (req, res) => {
   const { id } = req.params;
-  const { 
-    deliveryManId, 
+  const {
+    deliveryManId,
     otherDeliveryManName,
     paymentModeId,
     deliveryDate,
-    remark
+    remark,
   } = req.body;
 
   try {
     const pool = await poolPromise;
 
-    await pool.request()
+    await pool
+      .request()
       .input("AssignID", sql.Int, id)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
       .input("PaymentModeID", sql.Int, paymentModeId)
       .input("DeliveryDate", sql.Date, deliveryDate)
-      .input("Remark", sql.NVarChar, remark)
-      .query(`
+      .input("Remark", sql.NVarChar, remark).query(`
         UPDATE AssignedOrders
         SET 
           DeliveryManID = @DeliveryManID,
@@ -172,7 +161,6 @@ exports.updateAssignedOrder = async (req, res) => {
       `);
 
     res.status(200).json({ message: "Assigned order updated successfully" });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

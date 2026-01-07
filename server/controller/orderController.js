@@ -1,6 +1,4 @@
-const { sql, poolPromise } = require('../utils/db');
-
- 
+const { sql, poolPromise } = require("../utils/db");
 
 exports.addOrder = async (req, res) => {
   const pool = await poolPromise;
@@ -15,18 +13,19 @@ exports.addOrder = async (req, res) => {
       DeliveryCharge,
       OrderDate,
       OrderTakenBy,
-      Items
+      Items,
     } = req.body;
 
     if (!Items || !Array.isArray(Items) || Items.length === 0) {
-      return res.status(400).json({ message: "Order must contain at least one item." });
+      return res
+        .status(400)
+        .json({ message: "Order must contain at least one item." });
     }
 
     await transaction.begin();
 
     const request = new sql.Request(transaction);
 
-     
     const orderDt = new Date(OrderDate);
     const year = orderDt.getFullYear();
     const month = orderDt.getMonth() + 1;
@@ -34,7 +33,6 @@ exports.addOrder = async (req, res) => {
     const fyEnd = month >= 4 ? year + 1 : year;
     const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
-    
     const lastInvoiceResult = await request.query(`
       SELECT TOP 1 InvoiceNo 
       FROM OrdersTemp
@@ -73,9 +71,9 @@ exports.addOrder = async (req, res) => {
       let remainingQty = item.Quantity;
 
       // Fetch stock rows (FIFO)
-      const stockRowsResult = await transaction.request()
-        .input("ProductType", sql.NVarChar, item.ProductType)
-        .query(`
+      const stockRowsResult = await transaction
+        .request()
+        .input("ProductType", sql.NVarChar, item.ProductType).query(`
           SELECT ID, Quantity 
           FROM Stock
           WHERE item_name = @ProductType AND Quantity > 0
@@ -89,10 +87,10 @@ exports.addOrder = async (req, res) => {
 
         const deductQty = Math.min(stockRow.Quantity, remainingQty);
 
-        await transaction.request()
+        await transaction
+          .request()
           .input("DeductQty", sql.Int, deductQty)
-          .input("ID", sql.Int, stockRow.ID)
-          .query(`
+          .input("ID", sql.Int, stockRow.ID).query(`
             UPDATE Stock
             SET Quantity = Quantity - @DeductQty
             WHERE ID = @ID
@@ -102,19 +100,21 @@ exports.addOrder = async (req, res) => {
       }
 
       if (remainingQty > 0) {
-        throw new Error(`Not enough stock for ${item.ProductType}. Remaining ${remainingQty}`);
+        throw new Error(
+          `Not enough stock for ${item.ProductType}. Remaining ${remainingQty}`
+        );
       }
 
       // Insert order item
-      await transaction.request()
+      await transaction
+        .request()
         .input("OrderID", sql.Int, orderId)
         .input("ProductName", sql.NVarChar, item.ProductName)
         .input("ProductType", sql.NVarChar, item.ProductType)
         .input("Weight", sql.NVarChar, item.Weight || "")
         .input("Quantity", sql.Int, item.Quantity)
         .input("Rate", sql.Decimal(10, 2), item.Rate)
-        .input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate)
-        .query(`
+        .input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate).query(`
           INSERT INTO OrderItems 
           (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
           VALUES (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
@@ -126,19 +126,16 @@ exports.addOrder = async (req, res) => {
     res.status(200).json({
       message: "Order placed & stock updated safely!",
       orderId,
-      invoiceNo
+      invoiceNo,
     });
-
   } catch (error) {
     await transaction.rollback(); // 🔴 Rollback if any error
     console.error("❌ Error adding order:", error);
     res.status(500).json({
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
-
-
 
 exports.getAllorder = async (req, res) => {
   try {
@@ -245,12 +242,10 @@ ORDER BY O.OrderID DESC
     `);
 
     res.status(200).json(result.recordset);
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
-
 
 exports.getOrderTakenByList = async (req, res) => {
   try {

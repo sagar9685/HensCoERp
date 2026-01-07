@@ -1,23 +1,21 @@
-const { sql, poolPromise } = require('../utils/db');
+const { sql, poolPromise } = require("../utils/db");
 
- 
 exports.addCustomer = async (req, res) => {
   try {
-    console.log('recived body',req.body)
-  const {
-  CustomerName,
-  Contact_No,
-  Alternate_Phone,
-  Area,
-  Pincode,
-  Address,
-  GST_No,
-  Bulk_Mode,
-  Credit_Limit
-} = req.body;
+    console.log("recived body", req.body);
+    const {
+      CustomerName,
+      Contact_No,
+      Alternate_Phone,
+      Area,
+      Pincode,
+      Address,
+      GST_No,
+      Bulk_Mode,
+      Credit_Limit,
+    } = req.body;
 
-
-    if (!CustomerName || !Contact_No || !Area ||  !Address) {
+    if (!CustomerName || !Contact_No || !Area || !Address) {
       return res.status(400).json({ message: "Required fields are missing." });
     }
 
@@ -42,28 +40,28 @@ VALUES
     request.input("Pincode", sql.VarChar, Pincode || null);
     request.input("Address", sql.NVarChar, Address);
     request.input("GST_No", sql.VarChar, GST_No || null);
-   request.input(
-  "Bulk_Mode",
-  sql.Bit,
-  Bulk_Mode !== undefined ? Bulk_Mode : 0
-);
+    request.input(
+      "Bulk_Mode",
+      sql.Bit,
+      Bulk_Mode !== undefined ? Bulk_Mode : 0
+    );
 
-request.input(
-  "Credit_Limit",
-  sql.Decimal(18,2),
-  Credit_Limit !== undefined ? Credit_Limit : 0
-);
+    request.input(
+      "Credit_Limit",
+      sql.Decimal(18, 2),
+      Credit_Limit !== undefined ? Credit_Limit : 0
+    );
 
     await request.query(query);
     res.status(200).json({ message: "Customer added successfully!" });
   } catch (error) {
     console.error("Error adding customer:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
 
-
- 
 exports.getCustomers = async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -71,14 +69,17 @@ exports.getCustomers = async (req, res) => {
       return res.status(500).json({ message: "Database connection failed." });
     }
 
-    const result = await pool.request().query("SELECT * FROM Customers ORDER BY CustomerId DESC");
+    const result = await pool
+      .request()
+      .query("SELECT * FROM Customers ORDER BY CustomerId DESC");
     res.status(200).json(result.recordset);
   } catch (error) {
     console.error("Error fetching customers:", error);
-    res.status(500).json({ message: "Internal server error", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };
-
 
 // Search customer by name (for suggestions)
 exports.searchCustomersByName = async (req, res) => {
@@ -96,7 +97,8 @@ exports.searchCustomersByName = async (req, res) => {
       ORDER BY CustomerId DESC
     `;
 
-    const result = await pool.request()
+    const result = await pool
+      .request()
       .input("name", sql.NVarChar, name)
       .query(query);
 
@@ -107,10 +109,9 @@ exports.searchCustomersByName = async (req, res) => {
   }
 };
 
-
-exports.updateCustomer = async(req,res) => {
-  try{
-    const {id} = req.params;
+exports.updateCustomer = async (req, res) => {
+  try {
+    const { id } = req.params;
 
     const {
       CustomerName,
@@ -119,16 +120,16 @@ exports.updateCustomer = async(req,res) => {
       Area,
       Pincode,
       Address,
-      GST_No
+      GST_No,
     } = req.body;
 
-    if(!id) {
-      return res.status(400).json({message : "Customer id is required"})
+    if (!id) {
+      return res.status(400).json({ message: "Customer id is required" });
     }
 
     const pool = await poolPromise;
-    if(!pool) {
-      return res.status(500).json({message : "Db connection failed"})
+    if (!pool) {
+      return res.status(500).json({ message: "Db connection failed" });
     }
 
     const query = `
@@ -146,24 +147,23 @@ exports.updateCustomer = async(req,res) => {
 
     const request = pool.request();
     request.input("CustomerId", sql.Int, id);
-    request.input("CustomerName", sql.NVarChar,CustomerName);
-     request.input("Contact_No", sql.VarChar, Contact_No);
+    request.input("CustomerName", sql.NVarChar, CustomerName);
+    request.input("Contact_No", sql.VarChar, Contact_No);
     request.input("Alternate_Phone", sql.VarChar, Alternate_Phone || null);
     request.input("Area", sql.NVarChar, Area);
     request.input("Pincode", sql.VarChar, Pincode || null);
     request.input("Address", sql.NVarChar, Address);
     request.input("GST_No", sql.VarChar, GST_No || null);
-    
-    await request.query(query)
+
+    await request.query(query);
 
     res.status(200).json({
-      message : "Customer updated successfully"
-    })
-
-  }catch (err) {
-      console.log("Error updating customer:",err)
-      res.status(500).json({
-        message : "Internal server error"
-      })
+      message: "Customer updated successfully",
+    });
+  } catch (err) {
+    console.log("Error updating customer:", err);
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
-}
+};

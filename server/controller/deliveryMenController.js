@@ -1,6 +1,5 @@
 const { sql, poolPromise } = require("../utils/db");
 
- 
 exports.getDeliveryMen = async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -11,12 +10,11 @@ exports.getDeliveryMen = async (req, res) => {
   }
 };
 
-
 exports.getDeliveryMenCash = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-   const query = `
+    const query = `
 SELECT 
     DM.DeliveryManID,
     DM.Name,
@@ -28,24 +26,22 @@ LEFT JOIN DeliveryMenCashBalance C
     ON DM.DeliveryManID = C.DeliveryManID
 `;
 
-
     const result = await pool.request().query(query);
 
     return res.status(200).json({
       success: true,
       message: "Delivery men cash fetched successfully",
-      data: result.recordset
+      data: result.recordset,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Server Error"
+      message: "Server Error",
     });
   }
 };
- 
+
 exports.addDeliveryMan = async (req, res) => {
   const { name } = req.body;
 
@@ -65,15 +61,14 @@ exports.addDeliveryMan = async (req, res) => {
   }
 };
 
-
 exports.getDeliveryManPendingCashOrders = async (req, res) => {
   try {
     const { deliveryManId } = req.params;
     const pool = await poolPromise;
 
-    const result = await pool.request()
-      .input("DeliveryManID", sql.Int, deliveryManId)
-      .query(`
+    const result = await pool
+      .request()
+      .input("DeliveryManID", sql.Int, deliveryManId).query(`
        SELECT 
     DM.Name AS DeliveryManName,
     O.OrderID,
@@ -127,9 +122,8 @@ ORDER BY PaymentDate DESC;
     res.status(200).json({
       success: true,
       totalCash: result.recordset.reduce((s, i) => s + i.CashAmount, 0),
-      orders: result.recordset
+      orders: result.recordset,
     });
-
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
