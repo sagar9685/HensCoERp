@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import styles from './CompleteOrderModal.module.css';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchPaymentModes } from '../../features/paymentModeSlice';
-import { completeOrder, resetOrderState } from "../../features/orderCompletionSlice";
+import React, { useState, useEffect } from "react";
+import styles from "./CompleteOrderModal.module.css";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchPaymentModes } from "../../features/paymentModeSlice";
+import {
+  completeOrder,
+  resetOrderState,
+} from "../../features/orderCompletionSlice";
 
-const makeAmountKey = (modeName) => `${modeName.replace(/\s+/g, '')}Amount`; // e.g. "Bank Transfer" -> "BankTransferAmount"
+const makeAmountKey = (modeName) => `${modeName.replace(/\s+/g, "")}Amount`; // e.g. "Bank Transfer" -> "BankTransferAmount"
 
 const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   const dispatch = useDispatch();
-  const { loading, success } = useSelector(state => state.orderCompletion);
+  const { loading, success } = useSelector((state) => state.orderCompletion);
   const paymentModes = useSelector((state) => state.paymentMode?.list || []);
   console.log("ORDER RECEIVED IN MODAL ===>", order);
 
@@ -17,8 +20,8 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     : 0;
 
   const [formData, setFormData] = useState({
-    remarks: '',
-    deliveryDate: ''
+    remarks: "",
+    deliveryDate: "",
     // amount keys will be injected when paymentModes arrive
   });
 
@@ -26,7 +29,6 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   const [selectedPaymentMethods, setSelectedPaymentMethods] = useState([]);
   const [remainingAmount, setRemainingAmount] = useState(totalAmount);
   const [errors, setErrors] = useState({});
-
 
   useEffect(() => {
     dispatch(fetchPaymentModes());
@@ -36,16 +38,17 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   useEffect(() => {
     if (paymentModes.length > 0) {
       const initialAmounts = {};
-      paymentModes.forEach(pm => {
+      paymentModes.forEach((pm) => {
         const amountKey = makeAmountKey(pm.ModeName);
         initialAmounts[amountKey] = "0";
       });
 
       // default select "Cash" if exists, else first mode
-      const defaultSelected = paymentModes.find(pm => pm.ModeName.toLowerCase() === 'cash')?.ModeName
-        || paymentModes[0]?.ModeName;
+      const defaultSelected =
+        paymentModes.find((pm) => pm.ModeName.toLowerCase() === "cash")
+          ?.ModeName || paymentModes[0]?.ModeName;
 
-      setFormData(prev => ({ ...prev, ...initialAmounts }));
+      setFormData((prev) => ({ ...prev, ...initialAmounts }));
       setSelectedPaymentMethods(defaultSelected ? [defaultSelected] : []);
     }
   }, [paymentModes]);
@@ -60,22 +63,25 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
 
   useEffect(() => {
     if (order) {
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
 
       // if payment mode keys exist in formData, set Cash (or default) to total
-      const newForm = { remarks: '', deliveryDate: today, ...formData };
+      const newForm = { remarks: "", deliveryDate: today, ...formData };
 
       // Put total amount into CashAmount if Cash exists, else first available amount key
-      const cashPM = paymentModes.find(pm => pm.ModeName.toLowerCase() === 'cash');
+      const cashPM = paymentModes.find(
+        (pm) => pm.ModeName.toLowerCase() === "cash"
+      );
       if (cashPM) {
         newForm[makeAmountKey(cashPM.ModeName)] = totalAmount.toString();
         setSelectedPaymentMethods([cashPM.ModeName]);
       } else if (paymentModes[0]) {
-        newForm[makeAmountKey(paymentModes[0].ModeName)] = totalAmount.toString();
+        newForm[makeAmountKey(paymentModes[0].ModeName)] =
+          totalAmount.toString();
         setSelectedPaymentMethods([paymentModes[0].ModeName]);
       }
 
-      setFormData(prev => ({ ...prev, ...newForm }));
+      setFormData((prev) => ({ ...prev, ...newForm }));
       setRemainingAmount(0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,14 +89,14 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePaymentMethodToggle = (modeName) => {
-    setSelectedPaymentMethods(prev => {
+    setSelectedPaymentMethods((prev) => {
       let updated;
       if (prev.includes(modeName)) {
-        updated = prev.filter(m => m !== modeName);
+        updated = prev.filter((m) => m !== modeName);
       } else {
         updated = [...prev, modeName];
       }
@@ -108,13 +114,14 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
 
   const handlePaymentAmountChange = (modeName, value) => {
     const amountKey = makeAmountKey(modeName);
-    setFormData(prev => ({ ...prev, [amountKey]: value }));
+    setFormData((prev) => ({ ...prev, [amountKey]: value }));
 
     // recalc remaining using currently selected payment methods
     const totalPaid = selectedPaymentMethods.reduce((sum, m) => {
       const key = makeAmountKey(m);
       // if the changed mode is this m, use the new value; else use existing formData
-      const amt = (m === modeName) ? Number(value || 0) : Number(formData[key] || 0);
+      const amt =
+        m === modeName ? Number(value || 0) : Number(formData[key] || 0);
       return sum + amt;
     }, 0);
 
@@ -127,7 +134,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
       const currentAmount = Number(formData[amountKey] || 0);
       const newAmount = currentAmount + remainingAmount;
 
-      setFormData(prev => ({ ...prev, [amountKey]: newAmount.toString() }));
+      setFormData((prev) => ({ ...prev, [amountKey]: newAmount.toString() }));
       setRemainingAmount(0);
     }
   };
@@ -140,50 +147,50 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   };
 
   const validateForm = () => {
-  const newErrors = {};
+    const newErrors = {};
 
-  if (!formData.deliveryDate) newErrors.deliveryDate = "Payment received date is required";
-  if (selectedPaymentMethods.length === 0) newErrors.paymentMethods = "Select at least 1 payment method";
+    if (!formData.deliveryDate)
+      newErrors.deliveryDate = "Payment received date is required";
+    if (selectedPaymentMethods.length === 0)
+      newErrors.paymentMethods = "Select at least 1 payment method";
 
-  selectedPaymentMethods.forEach(modeName => {
-    const amountKey = makeAmountKey(modeName);
-    if (!formData[amountKey] || Number(formData[amountKey]) <= 0) {
-      newErrors[amountKey] = `${modeName} amount is required`;
-    }
-  });
+    selectedPaymentMethods.forEach((modeName) => {
+      const amountKey = makeAmountKey(modeName);
+      if (!formData[amountKey] || Number(formData[amountKey]) <= 0) {
+        newErrors[amountKey] = `${modeName} amount is required`;
+      }
+    });
 
-  if (!formData.remarks.trim()) newErrors.remarks = "Remarks are required";
+    if (!formData.remarks.trim()) newErrors.remarks = "Remarks are required";
 
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-};
-
-
-const handleSubmit = () => {
-  if (!validateForm()) {
-    return; // stop submit
-  }
-
-  // proceed with submit
-  const paymentSettlement = {};
-  selectedPaymentMethods.forEach(modeName => {
-    const amountKey = makeAmountKey(modeName);
-    paymentSettlement[modeName] = Number(formData[amountKey] || 0);
-  });
-
-  const payload = {
-    orderId: order.OrderID,
-    assignedOrderId: order.AssignID,
-    status: "Complete",
-    paymentReceivedDate: formData.deliveryDate,
-    remarks: formData.remarks,
-    paymentSettlement
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  console.log("FINAL PAYLOAD ====>", payload);
-  dispatch(completeOrder(payload));
-};
+  const handleSubmit = () => {
+    if (!validateForm()) {
+      return; // stop submit
+    }
 
+    // proceed with submit
+    const paymentSettlement = {};
+    selectedPaymentMethods.forEach((modeName) => {
+      const amountKey = makeAmountKey(modeName);
+      paymentSettlement[modeName] = Number(formData[amountKey] || 0);
+    });
+
+    const payload = {
+      orderId: order.OrderID,
+      assignedOrderId: order.AssignID,
+      status: "Complete",
+      paymentReceivedDate: formData.deliveryDate,
+      remarks: formData.remarks,
+      paymentSettlement,
+    };
+
+    console.log("FINAL PAYLOAD ====>", payload);
+    dispatch(completeOrder(payload));
+  };
 
   if (!isOpen || !order) return null;
 
@@ -230,7 +237,6 @@ const handleSubmit = () => {
           <div className={styles.completeForm}>
             <h3 className={styles.sectionTitle}>Completion Details</h3>
             <div className={styles.formGrid}>
-
               <div className={styles.formGroup}>
                 <label className={styles.formLabel}>
                   <i className="mdi mdi-calendar-check"></i>
@@ -239,13 +245,13 @@ const handleSubmit = () => {
                 <input
                   type="date"
                   name="deliveryDate"
-                  value={formData.deliveryDate || ''}
+                  value={formData.deliveryDate || ""}
                   onChange={handleInputChange}
                   className={styles.formInput}
-                  
                 />
-                {errors.deliveryDate && <p className={styles.errorText}>{errors.deliveryDate}</p>}
-
+                {errors.deliveryDate && (
+                  <p className={styles.errorText}>{errors.deliveryDate}</p>
+                )}
               </div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
@@ -255,10 +261,13 @@ const handleSubmit = () => {
                 </label>
 
                 <div className={styles.paymentMethodsGrid}>
-                  {paymentModes.map(pm => {
+                  {paymentModes.map((pm) => {
                     const modeName = pm.ModeName; // exact DB name
                     return (
-                      <div key={pm.PaymentModeID} className={styles.paymentMethodCheckbox}>
+                      <div
+                        key={pm.PaymentModeID}
+                        className={styles.paymentMethodCheckbox}
+                      >
                         <input
                           type="checkbox"
                           id={`payment-${pm.PaymentModeID}`}
@@ -266,17 +275,30 @@ const handleSubmit = () => {
                           onChange={() => handlePaymentMethodToggle(modeName)}
                         />
                         <label htmlFor={`payment-${pm.PaymentModeID}`}>
-                          {modeName === "Cash" && <i className="mdi mdi-cash"></i>}
-                          {(modeName === "GPay" || modeName.toLowerCase() === "gpay") && <i className="mdi mdi-cellphone"></i>}
-                          {modeName === "Paytm" && <i className="mdi mdi-cellphone"></i>}
-                          {modeName === "FOC" && <i className="mdi mdi-tag"></i>}
-                          {modeName === "Bank Transfer" && <i className="mdi mdi-bank"></i>}
+                          {modeName === "Cash" && (
+                            <i className="mdi mdi-cash"></i>
+                          )}
+                          {(modeName === "GPay" ||
+                            modeName.toLowerCase() === "gpay") && (
+                            <i className="mdi mdi-cellphone"></i>
+                          )}
+                          {modeName === "Paytm" && (
+                            <i className="mdi mdi-cellphone"></i>
+                          )}
+                          {modeName === "FOC" && (
+                            <i className="mdi mdi-tag"></i>
+                          )}
+                          {modeName === "Bank Transfer" && (
+                            <i className="mdi mdi-bank"></i>
+                          )}
                           {pm.ModeName}
                         </label>
-                        {errors.paymentMethods && <p className={styles.errorText}>{errors.paymentMethods}</p>}
-
+                        {errors.paymentMethods && (
+                          <p className={styles.errorText}>
+                            {errors.paymentMethods}
+                          </p>
+                        )}
                       </div>
-                      
                     );
                   })}
                 </div>
@@ -289,7 +311,7 @@ const handleSubmit = () => {
                 </label>
 
                 <div className={styles.paymentAmountsGrid}>
-                  {selectedPaymentMethods.map(modeName => {
+                  {selectedPaymentMethods.map((modeName) => {
                     const amountKey = makeAmountKey(modeName);
                     return (
                       <div key={modeName} className={styles.paymentInputGroup}>
@@ -299,8 +321,13 @@ const handleSubmit = () => {
                         <div className={styles.amountInputWrapper}>
                           <input
                             type="number"
-                            value={formData[amountKey] || '0'}
-                            onChange={(e) => handlePaymentAmountChange(modeName, e.target.value)}
+                            value={formData[amountKey] || "0"}
+                            onChange={(e) =>
+                              handlePaymentAmountChange(
+                                modeName,
+                                e.target.value
+                              )
+                            }
                             className={styles.amountInput}
                             placeholder="0"
                           />
@@ -308,69 +335,90 @@ const handleSubmit = () => {
                             <button
                               type="button"
                               className={styles.addRemainingButton}
-                              onClick={() => distributeRemainingAmount(modeName)}
+                              onClick={() =>
+                                distributeRemainingAmount(modeName)
+                              }
                               title={`Add remaining ₹${remainingAmount}`}
                             >
                               <i className="mdi mdi-plus-circle"></i>
                             </button>
                           )}
-                          
                         </div>
-                       
                       </div>
                     );
                   })}
-                   {errors.paymentMethods && <p className={styles.errorText}>{errors.paymentMethods}</p>}
-
+                  {errors.paymentMethods && (
+                    <p className={styles.errorText}>{errors.paymentMethods}</p>
+                  )}
                 </div>
               </div>
 
               {/* Summary */}
-             <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-  <div className={styles.paymentSummary}>
-    <div className={styles.summaryItem}>
-      <span>Total Amount:</span>
-      <span className={styles.totalAmount}>₹{totalAmount}</span>
-    </div>
+              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                <div className={styles.paymentSummary}>
+                  <div className={styles.summaryItem}>
+                    <span>Total Amount:</span>
+                    <span className={styles.totalAmount}>₹{totalAmount}</span>
+                  </div>
 
-    {selectedPaymentMethods.map(modeName => {
-      const amount = Number(formData[makeAmountKey(modeName)] || 0);
-      if (amount <= 0) return null;
-      return (
-        <div key={modeName} className={styles.summaryItem}>
-          <span>{modeName} Paid:</span>
-          <span className={styles.methodAmount}>₹{amount}</span>
-        </div>
-      );
-    })}
+                  {selectedPaymentMethods.map((modeName) => {
+                    const amount = Number(
+                      formData[makeAmountKey(modeName)] || 0
+                    );
+                    if (amount <= 0) return null;
+                    return (
+                      <div key={modeName} className={styles.summaryItem}>
+                        <span>{modeName} Paid:</span>
+                        <span className={styles.methodAmount}>₹{amount}</span>
+                      </div>
+                    );
+                  })}
 
-    <div className={styles.summaryItem}>
-      <span>Total Paid:</span>
-      <span className={styles.paidAmount}>₹{getTotalPaid()}</span>
-    </div>
+                  <div className={styles.summaryItem}>
+                    <span>Total Paid:</span>
+                    <span className={styles.paidAmount}>₹{getTotalPaid()}</span>
+                  </div>
 
-    <div className={styles.summaryItem}>
-      <span>Remaining:</span>
-      <span className={`${styles.remainingAmount} ${remainingAmount > 0 ? styles.remaining : styles.fullyPaid}`}>
-        ₹{remainingAmount}
-      </span>
-    </div>
+                  <div className={styles.summaryItem}>
+                    <span>Remaining:</span>
+                    <span
+                      className={`${styles.remainingAmount} ${
+                        remainingAmount > 0
+                          ? styles.remaining
+                          : styles.fullyPaid
+                      }`}
+                    >
+                      ₹{remainingAmount}
+                    </span>
+                  </div>
 
-    {remainingAmount > 0 && (
-      <div className={styles.remainingHint}>
-        <i className="mdi mdi-information"></i>
-        Select payment methods and distribute the remaining amount
-      </div>
-    )}
+                  {remainingAmount > 0 && (
+                    <div className={styles.remainingHint}>
+                      <i className="mdi mdi-information"></i>
+                      Select payment methods and distribute the remaining amount
+                    </div>
+                  )}
 
-    <div className={styles.paymentStatus}>
-      <div className={`${styles.statusIndicator} ${remainingAmount === 0 ? styles.fullyPaid : styles.partiallyPaid}`}>
-        <i className={`mdi mdi-${remainingAmount === 0 ? 'check-circle' : 'alert-circle'}`}></i>
-        {remainingAmount === 0 ? 'Fully Paid' : 'Partially Paid'}
-      </div>
-    </div>
-  </div>
-</div>
+                  <div className={styles.paymentStatus}>
+                    <div
+                      className={`${styles.statusIndicator} ${
+                        remainingAmount === 0
+                          ? styles.fullyPaid
+                          : styles.partiallyPaid
+                      }`}
+                    >
+                      <i
+                        className={`mdi mdi-${
+                          remainingAmount === 0
+                            ? "check-circle"
+                            : "alert-circle"
+                        }`}
+                      ></i>
+                      {remainingAmount === 0 ? "Fully Paid" : "Partially Paid"}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
                 <label className={styles.formLabel}>
@@ -379,14 +427,13 @@ const handleSubmit = () => {
                 </label>
                 <textarea
                   name="remarks"
-                  value={formData.remarks || ''}
+                  value={formData.remarks || ""}
                   onChange={handleInputChange}
                   className={styles.formTextarea}
                   rows="3"
                   placeholder="Add any remarks about order completion..."
                 />
               </div>
-
             </div>
           </div>
         </div>
@@ -407,6 +454,7 @@ const handleSubmit = () => {
         </div>
       </div>
     </div>
-  )};
+  );
+};
 
 export default UserCompleteOrderModal;

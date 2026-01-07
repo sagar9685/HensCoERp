@@ -3,94 +3,137 @@ import styles from "./Invoice.module.css";
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
-export default function Invoice({ selected, manualDenominations, totalHandoverAmount, onClose }) {
-    if (!selected) return null;
+export default function Invoice({
+  selected,
+  manualDenominations,
+  totalHandoverAmount,
+  onClose,
+}) {
+  if (!selected) return null;
 
-    const handlePrint = () => {
-        // Create a hidden iframe for printing
-        const printIframe = document.createElement('iframe');
-        printIframe.style.position = 'absolute';
-        printIframe.style.width = '0';
-        printIframe.style.height = '0';
-        printIframe.style.border = '0';
-        document.body.appendChild(printIframe);
-        
-        const printDoc = printIframe.contentWindow.document;
-        
-        // Get current date and time
-        const now = new Date();
-        const dateStr = now.toLocaleDateString();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        // Calculate totals for each denomination
-        let denominationsHtml = '';
-        let rowCount = 0;
-        DENOMINATIONS.forEach((note) => {
-            const qty = Number(manualDenominations[note] || 0);
-            if (qty > 0) {
-                rowCount++;
-                denominationsHtml += `
+  const handlePrint = () => {
+    // Create a hidden iframe for printing
+    const printIframe = document.createElement("iframe");
+    printIframe.style.position = "absolute";
+    printIframe.style.width = "0";
+    printIframe.style.height = "0";
+    printIframe.style.border = "0";
+    document.body.appendChild(printIframe);
+
+    const printDoc = printIframe.contentWindow.document;
+
+    // Get current date and time
+    const now = new Date();
+    const dateStr = now.toLocaleDateString();
+    const timeStr = now.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Calculate totals for each denomination
+    let denominationsHtml = "";
+    let rowCount = 0;
+    DENOMINATIONS.forEach((note) => {
+      const qty = Number(manualDenominations[note] || 0);
+      if (qty > 0) {
+        rowCount++;
+        denominationsHtml += `
                     <tr>
                         <td style="padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 12px;">${rowCount}</td>
                         <td style="padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 12px; text-align: right;">₹${note}</td>
                         <td style="padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 12px; text-align: center;">${qty}</td>
-                        <td style="padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 12px; text-align: right;">₹${(note * qty).toLocaleString()}</td>
+                        <td style="padding: 4px 6px; border-bottom: 1px solid #ddd; font-size: 12px; text-align: right;">₹${(
+                          note * qty
+                        ).toLocaleString()}</td>
                     </tr>
                 `;
-            }
-        });
+      }
+    });
 
-        // Number to words function
-        const numberToWords = (num) => {
-            const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-            const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-            const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-            
-            if (num === 0) return 'Zero Rupees Only';
-            
-            let words = '';
-            
-            // Handle thousands
-            if (num >= 1000) {
-                const thousands = Math.floor(num / 1000);
-                if (thousands >= 100) {
-                    words += numberToWords(thousands);
-                } else if (thousands >= 20) {
-                    words += tens[Math.floor(thousands / 10)] + ' ';
-                    if (thousands % 10 > 0) words += ones[thousands % 10] + ' ';
-                } else if (thousands >= 10) {
-                    words += teens[thousands - 10] + ' ';
-                } else if (thousands > 0) {
-                    words += ones[thousands] + ' ';
-                }
-                words += 'Thousand ';
-                num %= 1000;
-            }
-            
-            // Handle hundreds
-            if (num >= 100) {
-                words += ones[Math.floor(num / 100)] + ' Hundred ';
-                num %= 100;
-            }
-            
-            // Handle tens and ones
-            if (num >= 20) {
-                words += tens[Math.floor(num / 10)] + ' ';
-                num %= 10;
-            } else if (num >= 10) {
-                words += teens[num - 10] + ' ';
-                num = 0;
-            }
-            
-            if (num > 0) {
-                words += ones[num] + ' ';
-            }
-            
-            return words.trim() + ' Rupees Only';
-        };
+    // Number to words function
+    const numberToWords = (num) => {
+      const ones = [
+        "",
+        "One",
+        "Two",
+        "Three",
+        "Four",
+        "Five",
+        "Six",
+        "Seven",
+        "Eight",
+        "Nine",
+      ];
+      const teens = [
+        "Ten",
+        "Eleven",
+        "Twelve",
+        "Thirteen",
+        "Fourteen",
+        "Fifteen",
+        "Sixteen",
+        "Seventeen",
+        "Eighteen",
+        "Nineteen",
+      ];
+      const tens = [
+        "",
+        "",
+        "Twenty",
+        "Thirty",
+        "Forty",
+        "Fifty",
+        "Sixty",
+        "Seventy",
+        "Eighty",
+        "Ninety",
+      ];
 
-        // Write the HTML for printing
-        printDoc.write(`
+      if (num === 0) return "Zero Rupees Only";
+
+      let words = "";
+
+      // Handle thousands
+      if (num >= 1000) {
+        const thousands = Math.floor(num / 1000);
+        if (thousands >= 100) {
+          words += numberToWords(thousands);
+        } else if (thousands >= 20) {
+          words += tens[Math.floor(thousands / 10)] + " ";
+          if (thousands % 10 > 0) words += ones[thousands % 10] + " ";
+        } else if (thousands >= 10) {
+          words += teens[thousands - 10] + " ";
+        } else if (thousands > 0) {
+          words += ones[thousands] + " ";
+        }
+        words += "Thousand ";
+        num %= 1000;
+      }
+
+      // Handle hundreds
+      if (num >= 100) {
+        words += ones[Math.floor(num / 100)] + " Hundred ";
+        num %= 100;
+      }
+
+      // Handle tens and ones
+      if (num >= 20) {
+        words += tens[Math.floor(num / 10)] + " ";
+        num %= 10;
+      } else if (num >= 10) {
+        words += teens[num - 10] + " ";
+        num = 0;
+      }
+
+      if (num > 0) {
+        words += ones[num] + " ";
+      }
+
+      return words.trim() + " Rupees Only";
+    };
+
+    // Write the HTML for printing
+    printDoc.write(`
             <!DOCTYPE html>
             <html>
             <head>
@@ -275,7 +318,9 @@ export default function Invoice({ selected, manualDenominations, totalHandoverAm
                     
                     <div class="details-grid">
                         <div><strong>Name:</strong> ${selected.Name}</div>
-                        <div><strong>ID:</strong> #${selected.DeliveryManID}</div>
+                        <div><strong>ID:</strong> #${
+                          selected.DeliveryManID
+                        }</div>
                         <div><strong>Phone:</strong> ${selected.MobileNo}</div>
                         <div><strong>Area:</strong> ${selected.Area}</div>
                     </div>
@@ -301,7 +346,9 @@ export default function Invoice({ selected, manualDenominations, totalHandoverAm
                             <span style="font-size: 20px; color: #000;">₹${totalHandoverAmount.toLocaleString()}</span>
                         </div>
                         <div class="amount-in-words">
-                            <strong>Amount in Words:</strong> ${numberToWords(totalHandoverAmount)}
+                            <strong>Amount in Words:</strong> ${numberToWords(
+                              totalHandoverAmount
+                            )}
                         </div>
                     </div>
                     
@@ -324,90 +371,101 @@ export default function Invoice({ selected, manualDenominations, totalHandoverAm
             </body>
             </html>
         `);
-        
-        printDoc.close();
-        
-        // Wait for content to load, then print
-        printIframe.onload = function() {
-            setTimeout(() => {
-                printIframe.contentWindow.focus();
-                printIframe.contentWindow.print();
-                
-                // Remove iframe after printing
-                setTimeout(() => {
-                    document.body.removeChild(printIframe);
-                }, 100);
-            }, 250);
-        };
+
+    printDoc.close();
+
+    // Wait for content to load, then print
+    printIframe.onload = function () {
+      setTimeout(() => {
+        printIframe.contentWindow.focus();
+        printIframe.contentWindow.print();
+
+        // Remove iframe after printing
+        setTimeout(() => {
+          document.body.removeChild(printIframe);
+        }, 100);
+      }, 250);
     };
+  };
 
-    return (
-        <div className={styles.invoiceWrapper}>
-            <div className={styles.invoiceCard}>
-                
-                {/* Header */}
-                <div className={styles.header}>
-                    <h2>🧾 Cash Handover Invoice</h2>
-                    <button className={styles.closeBtn} onClick={onClose}>✕</button>
-                </div>
-
-                {/* Details Section */}
-                <div className={styles.section}>
-                    <h3>Delivery Man Details</h3>
-                    <div className={styles.detailsGrid}>
-                        <div><strong>Name:</strong> {selected.Name}</div>
-                        <div><strong>ID:</strong> #{selected.DeliveryManID}</div>
-                        <div><strong>Phone:</strong> {selected.MobileNo}</div>
-                        <div><strong>Area:</strong> {selected.Area}</div>
-                    </div>
-                </div>
-
-                {/* Notes Breakdown */}
-                <div className={styles.section}>
-                    <h3>Denomination Breakdown</h3>
-                    
-                    <table className={styles.table}>
-                        <thead>
-                            <tr>
-                                <th style={{width: '15%'}}>S.No</th>
-                                <th style={{width: '25%', textAlign: 'right'}}>Note</th>
-                                <th style={{width: '25%', textAlign: 'center'}}>Qty</th>
-                                <th style={{width: '35%', textAlign: 'right'}}>Total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {DENOMINATIONS.map((note, idx) => {
-                                const qty = Number(manualDenominations[note] || 0);
-                                if (qty === 0) return null;
-
-                                return (
-                                    <tr key={note}>
-                                        <td>{idx + 1}</td>
-                                        <td style={{textAlign: 'right'}}>₹{note}</td>
-                                        <td style={{textAlign: 'center'}}>{qty}</td>
-                                        <td style={{textAlign: 'right'}}>₹{(note * qty).toLocaleString()}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Total Section */}
-                <div className={`${styles.section} ${styles.totalSection}`}>
-                    <h3>Totals</h3>
-                    <div className={styles.totalRow}>
-                        <span>Total Handover Amount:</span>
-                        <strong>₹{totalHandoverAmount.toLocaleString()}</strong>
-                    </div>
-                </div>
-
-                <div className={styles.footer}>
-                    <button className={styles.printBtn} onClick={handlePrint}>
-                        🖨️ Print Invoice
-                    </button>
-                </div>
-            </div>
+  return (
+    <div className={styles.invoiceWrapper}>
+      <div className={styles.invoiceCard}>
+        {/* Header */}
+        <div className={styles.header}>
+          <h2>🧾 Cash Handover Invoice</h2>
+          <button className={styles.closeBtn} onClick={onClose}>
+            ✕
+          </button>
         </div>
-    );
+
+        {/* Details Section */}
+        <div className={styles.section}>
+          <h3>Delivery Man Details</h3>
+          <div className={styles.detailsGrid}>
+            <div>
+              <strong>Name:</strong> {selected.Name}
+            </div>
+            <div>
+              <strong>ID:</strong> #{selected.DeliveryManID}
+            </div>
+            <div>
+              <strong>Phone:</strong> {selected.MobileNo}
+            </div>
+            <div>
+              <strong>Area:</strong> {selected.Area}
+            </div>
+          </div>
+        </div>
+
+        {/* Notes Breakdown */}
+        <div className={styles.section}>
+          <h3>Denomination Breakdown</h3>
+
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th style={{ width: "15%" }}>S.No</th>
+                <th style={{ width: "25%", textAlign: "right" }}>Note</th>
+                <th style={{ width: "25%", textAlign: "center" }}>Qty</th>
+                <th style={{ width: "35%", textAlign: "right" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DENOMINATIONS.map((note, idx) => {
+                const qty = Number(manualDenominations[note] || 0);
+                if (qty === 0) return null;
+
+                return (
+                  <tr key={note}>
+                    <td>{idx + 1}</td>
+                    <td style={{ textAlign: "right" }}>₹{note}</td>
+                    <td style={{ textAlign: "center" }}>{qty}</td>
+                    <td style={{ textAlign: "right" }}>
+                      ₹{(note * qty).toLocaleString()}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Total Section */}
+        <div className={`${styles.section} ${styles.totalSection}`}>
+          <h3>Totals</h3>
+          <div className={styles.totalRow}>
+            <span>Total Handover Amount:</span>
+            <strong>₹{totalHandoverAmount.toLocaleString()}</strong>
+          </div>
+        </div>
+
+        <div className={styles.footer}>
+          <button className={styles.printBtn} onClick={handlePrint}>
+            🖨️ Print Invoice
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

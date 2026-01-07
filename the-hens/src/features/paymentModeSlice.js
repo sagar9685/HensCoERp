@@ -52,7 +52,9 @@ export const fetchPendingCashOrders = createAsyncThunk(
   "pendingCashOrders/fetch",
   async (deliveryManId, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/users/cash/pending/${deliveryManId}`);
+      const res = await axios.get(
+        `${API_BASE_URL}/api/users/cash/pending/${deliveryManId}`
+      );
       return res.data.orders || [];
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -89,6 +91,6 @@ const pendingCashOrdersSlice = createSlice({
 export const { clearPendingOrders } = pendingCashOrdersSlice.actions;
 
 export { paymentModeSlice, pendingCashOrdersSlice };
- 
-export default paymentModeSlice.reducer;   
-export const pendingCashOrdersReducer = pendingCashOrdersSlice.reducer;  
+
+export default paymentModeSlice.reducer;
+export const pendingCashOrdersReducer = pendingCashOrdersSlice.reducer;

@@ -1,34 +1,96 @@
 import React from "react";
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import styles from './invoice.module.css';
-import { FaDownload, FaTimes, FaFileInvoice, FaPrint, FaRupeeSign, FaFileAlt, FaUser, FaMapMarkerAlt, FaPhone, FaTruck, FaFileSignature } from "react-icons/fa";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+import styles from "./invoice.module.css";
+import {
+  FaDownload,
+  FaTimes,
+  FaFileInvoice,
+  FaPrint,
+  FaRupeeSign,
+  FaFileAlt,
+  FaUser,
+  FaMapMarkerAlt,
+  FaPhone,
+  FaTruck,
+  FaFileSignature,
+} from "react-icons/fa";
 
 // --- Utility: Number to Words ---
 const numberToWords = (num) => {
-    const a = ['', 'One ', 'Two ', 'Three ', 'Four ', 'Five ', 'Six ', 'Seven ', 'Eight ', 'Nine ', 'Ten ', 'Eleven ', 'Twelve ', 'Thirteen ', 'Fourteen ', 'Fifteen ', 'Sixteen ', 'Seventeen ', 'Eighteen ', 'Nineteen '];
-    const b = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const a = [
+    "",
+    "One ",
+    "Two ",
+    "Three ",
+    "Four ",
+    "Five ",
+    "Six ",
+    "Seven ",
+    "Eight ",
+    "Nine ",
+    "Ten ",
+    "Eleven ",
+    "Twelve ",
+    "Thirteen ",
+    "Fourteen ",
+    "Fifteen ",
+    "Sixteen ",
+    "Seventeen ",
+    "Eighteen ",
+    "Nineteen ",
+  ];
+  const b = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
 
-    if ((num = num.toString()).length > 9) return 'Overflow';
-    const n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-    if (!n) return; 
-    let str = '';
-    str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'Crore ' : '';
-    str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'Lakh ' : '';
-    str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
-    str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
-    str += (n[5] != 0) ? ((str != '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-    return str.trim();
+  if ((num = num.toString()).length > 9) return "Overflow";
+  const n = ("000000000" + num)
+    .substr(-9)
+    .match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+  if (!n) return;
+  let str = "";
+  str +=
+    n[1] != 0
+      ? (a[Number(n[1])] || b[n[1][0]] + " " + a[n[1][1]]) + "Crore "
+      : "";
+  str +=
+    n[2] != 0
+      ? (a[Number(n[2])] || b[n[2][0]] + " " + a[n[2][1]]) + "Lakh "
+      : "";
+  str +=
+    n[3] != 0
+      ? (a[Number(n[3])] || b[n[3][0]] + " " + a[n[3][1]]) + "Thousand "
+      : "";
+  str +=
+    n[4] != 0
+      ? (a[Number(n[4])] || b[n[4][0]] + " " + a[n[4][1]]) + "Hundred "
+      : "";
+  str +=
+    n[5] != 0
+      ? (str != "" ? "and " : "") +
+        (a[Number(n[5])] || b[n[5][0]] + " " + a[n[5][1]])
+      : "";
+  return str.trim();
 };
 
 // --- Constants ---
 const COMPANY_INFO = {
   name: "VND VENTURES PRIVATE LIMITED",
   brand: "The Hen's Co.",
-  pan: "AAGCV7020A", 
+  pan: "AAGCV7020A",
   gstin: "23AAGCV7020A1ZX",
   address: "201/15, Ratan Colony, Gorakhpur, Jabalpur, Madhya Pradesh 482001",
- 
+
   phone: "7880008188",
   email: "info@thehensco.com",
   bankDetails: {
@@ -36,408 +98,479 @@ const COMPANY_INFO = {
     accountNumber: "940520110000347",
     bankName: "Bank of India",
     ifscCode: "BKID0009405",
-    branch: "Jabalpur Main Branch"
+    branch: "Jabalpur Main Branch",
   },
-  hsnCode: "04072100"
+  hsnCode: "04072100",
 };
 
 const TERMS_CONDITIONS = [
   " Any claim for shortage or damage must be raised at the time of delivery only.",
   " The supplier shall not be liable for any damage, spoilage, or loss occurring after acceptance by the purchase party.",
-  " Payment terms as per the Bill.",];
-
+  " Payment terms as per the Bill.",
+];
 
 // --- Main Component ---
 const InvoiceGenerator = ({ orderData, onClose }) => {
-
- const downloadPdf = async () => {
-    const element = document.getElementById('invoice-print-content');
+  const downloadPdf = async () => {
+    const element = document.getElementById("invoice-print-content");
     const clone = element.cloneNode(true);
 
     clone.classList.add(styles.printMode);
 
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.top = '-9999px';
-    container.style.left = '-9999px';
-    container.style.width = '210mm';
-    container.style.minHeight = '297mm';
-    container.style.background = '#ffffff';
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.top = "-9999px";
+    container.style.left = "-9999px";
+    container.style.width = "210mm";
+    container.style.minHeight = "297mm";
+    container.style.background = "#ffffff";
     container.appendChild(clone);
     document.body.appendChild(container);
 
     try {
-        const canvas = await html2canvas(clone, {
-            scale: 3,
-            useCORS: true,
-            backgroundColor: '#ffffff',
-            logging: false,
-        });
+      const canvas = await html2canvas(clone, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+      });
 
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
 
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
 
-        let imgProps = pdf.getImageProperties(imgData);
-        let imgWidth = pageWidth;
-        let imgHeight = (imgProps.height * pageWidth) / imgProps.width;
+      let imgProps = pdf.getImageProperties(imgData);
+      let imgWidth = pageWidth;
+      let imgHeight = (imgProps.height * pageWidth) / imgProps.width;
 
-        // ⭐ AUTO SCALE TO FIT INTO ONE PAGE ⭐
-        if (imgHeight > pageHeight) {
-            const scaleFactor = pageHeight / imgHeight;
-            imgHeight = imgHeight * scaleFactor;
-            imgWidth = imgWidth * scaleFactor;
-        }
+      // ⭐ AUTO SCALE TO FIT INTO ONE PAGE ⭐
+      if (imgHeight > pageHeight) {
+        const scaleFactor = pageHeight / imgHeight;
+        imgHeight = imgHeight * scaleFactor;
+        imgWidth = imgWidth * scaleFactor;
+      }
 
-        pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-        pdf.save(`Invoice_${orderData?.InvoiceNo || orderData?.OrderID || 'invoice'}.pdf`);
-
+      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+      pdf.save(
+        `Invoice_${orderData?.InvoiceNo || orderData?.OrderID || "invoice"}.pdf`
+      );
     } catch (err) {
-        console.error("PDF Error:", err);
-        alert("Error generating PDF");
+      console.error("PDF Error:", err);
+      alert("Error generating PDF");
     } finally {
-        document.body.removeChild(container);
+      document.body.removeChild(container);
     }
-};
+  };
 
+  // const handlePrint = () => {
+  //     window.print();
+  // };
 
-    // const handlePrint = () => {
-    //     window.print();
-    // };
-
-    if (!orderData) {
-        return (
-            <div className={styles.modalOverlay}>
-                <div className={styles.modalContent}>
-                    <div className={styles.modalHeader}>
-                        <h2><FaFileInvoice /> Invoice Preview</h2>
-                        <button className={styles.btnClose} onClick={onClose}><FaTimes /></button>
-                    </div>
-                    <div className={styles.invoiceWrapper}>
-                        <p className={styles.noData}>No order data available</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // Parse product data
-    const productItems = [];
-    let subTotalVal = 0;
-    
-    if(orderData) {
-        const names = orderData.ProductNames ? orderData.ProductNames.split(",") : [];
-        const qtys = orderData.Quantities ? orderData.Quantities.split(",") : [];
-        const rates = orderData.Rates ? orderData.Rates.split(",") : [];
-        const types = orderData.ProductTypes ? orderData.ProductTypes.split(",") : [];
-       
-        const weight = orderData.Weights ? orderData.Weights.split(",")  : [];
-
-  
-        console.log(names,qtys,weight , "aa gaya")
-
-
-        names.forEach((name, i) => {
-            const q = Number(qtys[i] || 0);
-            const r = Number(rates[i] || 0);
-            const t = q * r;
-            const w = weight[i] || " "
-         
-            subTotalVal += t;
-            productItems.push({ 
-                productName: name, 
-                   productType: types[i] || "N/A",
-                   weight : w,
-                qty: q, 
-                rate: r.toFixed(2), 
-                totalAmt: t.toFixed(2),
-                hsn: COMPANY_INFO.hsnCode,
-                gstRate: 0 
-            });
-        });
-    }
-
-    const deliveryChargeVal = orderData?.DeliveryCharge ? Number(orderData.DeliveryCharge) : 0;
-    const totalAmountVal = subTotalVal + deliveryChargeVal;
-    const amountInWords = numberToWords(Math.round(totalAmountVal));
-    console.log(orderData,"orderData")
-   
-
+  if (!orderData) {
     return (
-        <div className={styles.modalOverlay}>
-            <div className={styles.modalContent}>
-                <div className={styles.modalHeader}>
-                    <h2><FaFileInvoice style={{color: '#fff'}}/> Invoice Preview - {orderData.InvoiceNo || orderData.OrderID}</h2>
-                    <button className={styles.btnClose} onClick={onClose}><FaTimes /></button>
+      <div className={styles.modalOverlay}>
+        <div className={styles.modalContent}>
+          <div className={styles.modalHeader}>
+            <h2>
+              <FaFileInvoice /> Invoice Preview
+            </h2>
+            <button className={styles.btnClose} onClick={onClose}>
+              <FaTimes />
+            </button>
+          </div>
+          <div className={styles.invoiceWrapper}>
+            <p className={styles.noData}>No order data available</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Parse product data
+  const productItems = [];
+  let subTotalVal = 0;
+
+  if (orderData) {
+    const names = orderData.ProductNames
+      ? orderData.ProductNames.split(",")
+      : [];
+    const qtys = orderData.Quantities ? orderData.Quantities.split(",") : [];
+    const rates = orderData.Rates ? orderData.Rates.split(",") : [];
+    const types = orderData.ProductTypes
+      ? orderData.ProductTypes.split(",")
+      : [];
+
+    const weight = orderData.Weights ? orderData.Weights.split(",") : [];
+
+    console.log(names, qtys, weight, "aa gaya");
+
+    names.forEach((name, i) => {
+      const q = Number(qtys[i] || 0);
+      const r = Number(rates[i] || 0);
+      const t = q * r;
+      const w = weight[i] || " ";
+
+      subTotalVal += t;
+      productItems.push({
+        productName: name,
+        productType: types[i] || "N/A",
+        weight: w,
+        qty: q,
+        rate: r.toFixed(2),
+        totalAmt: t.toFixed(2),
+        hsn: COMPANY_INFO.hsnCode,
+        gstRate: 0,
+      });
+    });
+  }
+
+  const deliveryChargeVal = orderData?.DeliveryCharge
+    ? Number(orderData.DeliveryCharge)
+    : 0;
+  const totalAmountVal = subTotalVal + deliveryChargeVal;
+  const amountInWords = numberToWords(Math.round(totalAmountVal));
+  console.log(orderData, "orderData");
+
+  return (
+    <div className={styles.modalOverlay}>
+      <div className={styles.modalContent}>
+        <div className={styles.modalHeader}>
+          <h2>
+            <FaFileInvoice style={{ color: "#fff" }} /> Invoice Preview -{" "}
+            {orderData.InvoiceNo || orderData.OrderID}
+          </h2>
+          <button className={styles.btnClose} onClick={onClose}>
+            <FaTimes />
+          </button>
+        </div>
+
+        <div className={styles.invoiceWrapper}>
+          <div className={styles.invoiceBody}>
+            <div id="invoice-print-content" className={styles.invoiceContainer}>
+              {/* --- HEADER --- */}
+              <div className={styles.header}>
+                <div className={styles.companyInfo}>
+                  <div className={styles.logoContainer}>
+                    <img
+                      src="./img/logo.png"
+                      alt="Logo"
+                      className={styles.logoImage}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src =
+                          "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIxMiIgZmlsbD0iI0VGRjBGRiIvPjxwYXRoIGQ9Ik02MCAzMEw0NSA2MEg3NUw2MCAzMFoiIGZpbGw9IiM2NjdFRUEiLz48cGF0aCBkPSJNNjAgOTBMNDUgNjBINzVMNjAgOTBaIiBmaWxsPSIjNzY0QkEyIi8+PC9zdmc+";
+                      }}
+                    />
+                  </div>
+                  <div className={styles.brandInfo}>
+                    <div className={styles.companyDetails}>
+                      <p>
+                        <strong>{COMPANY_INFO.name}</strong>
+                      </p>
+                      <p>
+                        <FaMapMarkerAlt /> {COMPANY_INFO.address}
+                      </p>
+                      <p>
+                        <FaPhone /> +91 {COMPANY_INFO.phone}{" "}
+                      </p>
+                      <p>
+                        <strong>GSTIN:</strong> {COMPANY_INFO.gstin}{" "}
+                        <strong>PAN:</strong> {COMPANY_INFO.pan}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.invoiceMeta}>
+                  <h1>Bill of Supply / Invoice</h1>
+                  <div className={styles.invoiceDetails}>
+                    <p>
+                      <strong>Invoice No:</strong>{" "}
+                      {orderData.InvoiceNo || orderData.InvoiceNo}
+                    </p>
+                    <p>
+                      <strong>Invoice Date:</strong>{" "}
+                      {new Date(
+                        orderData.OrderDate || new Date()
+                      ).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- CUSTOMER & ORDER DETAILS --- */}
+              <div className={styles.customerDetails}>
+                <div className={styles.detailBox}>
+                  <h3>
+                    <FaUser /> Bill To
+                  </h3>
+                  <div className={styles.customerInfo}>
+                    <p className={styles.customerName}>
+                      {orderData.CustomerName || "Customer Name"}
+                    </p>
+                    <p className={styles.customerAddress}>
+                      <FaMapMarkerAlt /> {orderData.Address || "Address"},{" "}
+                      {orderData.Area || "Area"}
+                    </p>
+                    <p className={styles.customerContact}>
+                      <FaPhone /> {orderData.ContactNo || "Contact Number"}
+                    </p>
+                    <p className={styles.customerGst}>
+                      <strong>GSTIN:</strong> {orderData.GSTIN || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                <div className={styles.detailBox}>
+                  <h3>
+                    <FaFileAlt /> Order Details
+                  </h3>
+                  <div className={styles.orderInfo}>
+                    <p>
+                      <strong>Order Date:</strong>{" "}
+                      {new Date(
+                        orderData.OrderDate || new Date()
+                      ).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </p>
+                    <p>
+                      <strong>Dispatched Via:</strong>{" "}
+                      {orderData.DeliveryMode || "Van Delivery"}
+                    </p>
+                    <p>
+                      <strong>Order Taken By:</strong>{" "}
+                      {orderData.OrderTakenBy || "N/A"}
+                    </p>
+                    <p>
+                      <strong>Delivery Date:</strong>{" "}
+                      {new Date(
+                        orderData.DeliveryDate || new Date()
+                      ).toLocaleDateString("en-GB")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- PRODUCTS TABLE --- */}
+              <div className={styles.tableContainer}>
+                <table className={styles.productsTable}>
+                  <thead>
+                    <tr>
+                      <th className={styles.textCenter}>#</th>
+                      <th>Item Description</th>
+                      <th>Item Weight</th>
+                      <th className={styles.textCenter}>HSN/SAC</th>
+                      <th className={styles.textRight}>Rate (₹)</th>
+                      <th className={styles.textCenter}>Qty</th>
+                      <th className={styles.textRight}>Amount (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {productItems.map((item, i) => (
+                      <tr key={i}>
+                        <td className={styles.textCenter}>{i + 1}</td>
+                        <td>
+                          <span style={{ fontWeight: "bold" }}>
+                            {item.productType}
+                          </span>
+                          <br />
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: "bold" }}>
+                            {item.weight}
+                          </span>
+                          <br />
+                        </td>
+
+                        <td className={styles.textCenter}>{item.hsn}</td>
+                        <td className={styles.textRight}>{item.rate}</td>
+                        <td className={styles.textCenter}>{item.qty}</td>
+                        <td className={styles.textRight}>{item.totalAmt}</td>
+                      </tr>
+                    ))}
+                    {productItems.length === 0 && (
+                      <tr>
+                        <td colSpan="6" className={styles.textCenter}>
+                          No products found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* --- ENHANCED FOOTER GRID --- */}
+              <div className={styles.footerSection}>
+                {/* Column 1: Amount in Words & Terms */}
+                <div className={styles.footerColumn}>
+                  <div className={styles.amountInWords}>
+                    <span>
+                      <FaRupeeSign /> Amount in words
+                    </span>
+                    <p>{amountInWords} Rupees Only</p>
+                  </div>
+                  <div className={styles.termsBox}>
+                    <h4>
+                      <FaFileAlt /> Terms & Conditions
+                    </h4>
+                    <ul>
+                      {TERMS_CONDITIONS.map((term, i) => (
+                        <li key={i}>{term}</li>
+                      ))}
+                    </ul>
+                    <div className={styles.qrTermContainer}>
+                      <img
+                        src="./img/qr.png"
+                        alt="Terms QR"
+                        className={styles.qrSmall}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className={styles.qrText}>
+                        <p>
+                          <strong>Scan for full</strong>
+                        </p>
+                        <p>Terms & Conditions Policy</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className={styles.invoiceWrapper}>
-                    <div className={styles.invoiceBody}>
-                        <div id="invoice-print-content" className={styles.invoiceContainer}>
-                            
-                            {/* --- HEADER --- */}
-                            <div className={styles.header}>
-                                <div className={styles.companyInfo}>
-                                    <div className={styles.logoContainer}>
-                                        <img 
-                                            src="./img/logo.png" 
-                                            alt="Logo" 
-                                            className={styles.logoImage}
-                                            onError={(e) => {
-                                                e.target.onerror = null;
-                                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCIgdmlld0JveD0iMCAwIDEyMCAxMjAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEyMCIgaGVpZ2h0PSIxMjAiIHJ4PSIxMiIgZmlsbD0iI0VGRjBGRiIvPjxwYXRoIGQ9Ik02MCAzMEw0NSA2MEg3NUw2MCAzMFoiIGZpbGw9IiM2NjdFRUEiLz48cGF0aCBkPSJNNjAgOTBMNDUgNjBINzVMNjAgOTBaIiBmaWxsPSIjNzY0QkEyIi8+PC9zdmc+'
-                                            }}
-                                        />
-                                    </div>
-                                    <div className={styles.brandInfo}>
-                                       
-                                        <div className={styles.companyDetails}>
-                                            <p><strong>{COMPANY_INFO.name}</strong></p>
-                                            <p><FaMapMarkerAlt /> {COMPANY_INFO.address}</p>
-                                            <p><FaPhone /> +91 {COMPANY_INFO.phone} </p>
-                                            <p><strong>GSTIN:</strong> {COMPANY_INFO.gstin}  <strong>PAN:</strong> {COMPANY_INFO.pan}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className={styles.invoiceMeta}>
-                                    <h1>Bill of Supply / Invoice</h1>
-                                    <div className={styles.invoiceDetails}>
-                                        <p><strong>Invoice No:</strong> {orderData.InvoiceNo || orderData.InvoiceNo}</p>
-                                        <p><strong>Invoice Date:</strong> {new Date(orderData.OrderDate || new Date()).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric'
-                                        })}</p>
-                                      
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* --- CUSTOMER & ORDER DETAILS --- */}
-                            <div className={styles.customerDetails}>
-                                <div className={styles.detailBox}>
-                                    <h3><FaUser /> Bill To</h3>
-                                    <div className={styles.customerInfo}>
-                                        <p className={styles.customerName}>{orderData.CustomerName || 'Customer Name'}</p>
-                                        <p className={styles.customerAddress}>
-                                            <FaMapMarkerAlt /> {orderData.Address || 'Address'}, {orderData.Area || 'Area'}
-                                        </p>
-                                        <p className={styles.customerContact}>
-                                            <FaPhone /> {orderData.ContactNo || 'Contact Number'}
-                                        </p>
-                                        <p className={styles.customerGst}>
-                                            <strong>GSTIN:</strong> {orderData.GSTIN || 'N/A'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className={styles.detailBox}>
-                                    <h3><FaFileAlt /> Order Details</h3>
-                                    <div className={styles.orderInfo}>
-                                       <p><strong>Order Date:</strong> {new Date(orderData.OrderDate || new Date()).toLocaleDateString('en-GB', {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric'
-                                        })}</p>
-                                        <p><strong>Dispatched Via:</strong> {orderData.DeliveryMode || 'Van Delivery'}</p>
-                                        <p><strong>Order Taken By:</strong> {orderData.OrderTakenBy || 'N/A'}</p>
-                                        <p><strong>Delivery Date:</strong> {new Date(orderData.DeliveryDate || new Date()).toLocaleDateString('en-GB')}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* --- PRODUCTS TABLE --- */}
-                            <div className={styles.tableContainer}>
-                                <table className={styles.productsTable}>
-                                    <thead>
-                                        <tr>
-                                            <th className={styles.textCenter}>#</th>
-                                            <th>Item Description</th>
-                                             <th>Item Weight</th>
-                                            <th className={styles.textCenter}>HSN/SAC</th>
-                                            <th className={styles.textRight}>Rate (₹)</th>
-                                            <th className={styles.textCenter}>Qty</th>
-                                            <th className={styles.textRight}>Amount (₹)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {productItems.map((item, i) => (
-                                            <tr key={i}>
-                                                <td className={styles.textCenter}>{i + 1}</td>
-                                            <td>
-  <span style={{ fontWeight: "bold" }}>{item.productType}</span><br />
-</td>
-   <td>
-  <span style={{ fontWeight: "bold" }}>{item.weight}</span><br />
-</td>
-
-
-                                                <td className={styles.textCenter}>{item.hsn}</td>
-                                                <td className={styles.textRight}>{item.rate}</td>
-                                                <td className={styles.textCenter}>{item.qty}</td>
-                                                <td className={styles.textRight}>{item.totalAmt}</td>
-                                            </tr>
-                                        ))}
-                                        {productItems.length === 0 && (
-                                            <tr>
-                                                <td colSpan="6" className={styles.textCenter}>No products found</td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* --- ENHANCED FOOTER GRID --- */}
-                            <div className={styles.footerSection}>
-                                
-                                {/* Column 1: Amount in Words & Terms */}
-                                <div className={styles.footerColumn}>
-                                    <div className={styles.amountInWords}>
-                                        <span><FaRupeeSign /> Amount in words</span>
-                                        <p>{amountInWords} Rupees Only</p>
-                                    </div>
-                                    <div className={styles.termsBox}>
-                                        <h4><FaFileAlt /> Terms & Conditions</h4>
-                                        <ul>
-                                            {TERMS_CONDITIONS.map((term, i) => (
-                                                <li key={i}>{term}</li>
-                                            ))}
-                                        </ul>
-                                        <div className={styles.qrTermContainer}>
-                                            <img 
-                                                src="./img/qr.png" 
-                                                alt="Terms QR" 
-                                                className={styles.qrSmall}
-                                                onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                }}
-                                            />
-                                            <div className={styles.qrText}>
-                                                <p><strong>Scan for full</strong></p>
-                                                <p>Terms & Conditions Policy</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Column 2: Payment Details & QR */}
-                                <div className={styles.footerColumn}>
-                                    <div className={styles.paymentInfo}>
-                                        <h4>PAYMENT DETAILS</h4>
-                                        <div className={styles.payQrBox}>
-                                            <img 
-                                                src="./img/company_pay_qr.jpg" 
-                                                alt="Payment QR Code" 
-                                                className={styles.qrPaymentImg}
-                                                onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                    e.target.parentElement.innerHTML = `
+                {/* Column 2: Payment Details & QR */}
+                <div className={styles.footerColumn}>
+                  <div className={styles.paymentInfo}>
+                    <h4>PAYMENT DETAILS</h4>
+                    <div className={styles.payQrBox}>
+                      <img
+                        src="./img/company_pay_qr.jpg"
+                        alt="Payment QR Code"
+                        className={styles.qrPaymentImg}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                          e.target.parentElement.innerHTML = `
                                                         <div class="${styles.noQrMessage}">
                                                             <h4>Payment Details</h4>
                                                             <p>Scan QR Code Not Available</p>
                                                             <p>Please use bank transfer</p>
                                                         </div>
                                                     `;
-                                                }}
-                                            />
-                                            <div className={styles.bankDetailsText}>
-                                                <p>
-                                                    <strong>Bank:</strong> 
-                                                    <span>{COMPANY_INFO.bankDetails.bankName}</span>
-                                                </p>
-                                                <p>
-                                                    <strong>A/C Name:</strong> 
-                                                    <span>{COMPANY_INFO.bankDetails.accountName}</span>
-                                                </p>
-                                                <p>
-                                                    <strong>A/C Number:</strong> 
-                                                    <span>{COMPANY_INFO.bankDetails.accountNumber}</span>
-                                                </p>
-                                                <p>
-                                                    <strong>IFSC:</strong> 
-                                                    <span>{COMPANY_INFO.bankDetails.ifscCode}</span>
-                                                </p>
-                                                <p>
-                                                    <strong>Branch:</strong> 
-                                                    <span>{COMPANY_INFO.bankDetails.branch}</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div className={styles.paymentNote}>
-                                            <p><strong>Note:</strong> Please mention invoice number in payment remarks</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Column 3: Totals & Signature */}
-                                <div className={styles.footerColumn}>
-                                    <div className={styles.totalsBox}>
-                                        <div className={styles.totalRow}>
-                                            <span>Sub Total:</span>
-                                            <span>₹{subTotalVal.toFixed(2)}</span>
-                                        </div>
-                                        <div className={styles.totalRow}>
-                                            <span>Packaging :</span>
-                                            <span>₹{deliveryChargeVal.toFixed(2)}</span>
-                                        </div>
-                                       
-                                        <div className={styles.grandTotalRow}>
-                                            <span>GRAND TOTAL:</span>
-                                            <span>₹{totalAmountVal.toFixed(2)}</span>
-                                        </div>
-                                        
-                                    </div>
-
-                                    <div className={styles.signatureSection}>
-                                        <div className={styles.signatureContainer}>
-                                            <img 
-                                                src="./img/Aakash_lawani_sign.png" 
-                                                alt="Authorized Signature" 
-                                                className={styles.signImg}
-                                                onError={(e) => {
-                                                    e.target.style.display = 'none';
-                                                }}
-                                            />
-                                            <div className={styles.signatureLine}></div>
-                                            <span className={styles.authText}>
-                                                <FaFileSignature /> Authorized Signatory
-                                            </span>
-                                        </div>
-                                        <div className={styles.companyStamp}>
-                                            <p>For {COMPANY_INFO.brand}</p>
-                                            <p>({COMPANY_INFO.name})</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* --- FOOTER NOTES --- */}
-                            <div className={styles.footerNotes}>
-                                <div className={styles.noteBox}>
-                                    <p><strong>Declaration:</strong>  "This invoice reflects the true price and accurate details of the goods and is computer-generated."</p>
-                                </div>
-                                
-                            </div>
-
-                        </div>
+                        }}
+                      />
+                      <div className={styles.bankDetailsText}>
+                        <p>
+                          <strong>Bank:</strong>
+                          <span>{COMPANY_INFO.bankDetails.bankName}</span>
+                        </p>
+                        <p>
+                          <strong>A/C Name:</strong>
+                          <span>{COMPANY_INFO.bankDetails.accountName}</span>
+                        </p>
+                        <p>
+                          <strong>A/C Number:</strong>
+                          <span>{COMPANY_INFO.bankDetails.accountNumber}</span>
+                        </p>
+                        <p>
+                          <strong>IFSC:</strong>
+                          <span>{COMPANY_INFO.bankDetails.ifscCode}</span>
+                        </p>
+                        <p>
+                          <strong>Branch:</strong>
+                          <span>{COMPANY_INFO.bankDetails.branch}</span>
+                        </p>
+                      </div>
                     </div>
+                    <div className={styles.paymentNote}>
+                      <p>
+                        <strong>Note:</strong> Please mention invoice number in
+                        payment remarks
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div className={styles.modalActions}>
-                    {/* <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
+                {/* Column 3: Totals & Signature */}
+                <div className={styles.footerColumn}>
+                  <div className={styles.totalsBox}>
+                    <div className={styles.totalRow}>
+                      <span>Sub Total:</span>
+                      <span>₹{subTotalVal.toFixed(2)}</span>
+                    </div>
+                    <div className={styles.totalRow}>
+                      <span>Packaging :</span>
+                      <span>₹{deliveryChargeVal.toFixed(2)}</span>
+                    </div>
+
+                    <div className={styles.grandTotalRow}>
+                      <span>GRAND TOTAL:</span>
+                      <span>₹{totalAmountVal.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.signatureSection}>
+                    <div className={styles.signatureContainer}>
+                      <img
+                        src="./img/Aakash_lawani_sign.png"
+                        alt="Authorized Signature"
+                        className={styles.signImg}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                      <div className={styles.signatureLine}></div>
+                      <span className={styles.authText}>
+                        <FaFileSignature /> Authorized Signatory
+                      </span>
+                    </div>
+                    <div className={styles.companyStamp}>
+                      <p>For {COMPANY_INFO.brand}</p>
+                      <p>({COMPANY_INFO.name})</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* --- FOOTER NOTES --- */}
+              <div className={styles.footerNotes}>
+                <div className={styles.noteBox}>
+                  <p>
+                    <strong>Declaration:</strong> "This invoice reflects the
+                    true price and accurate details of the goods and is
+                    computer-generated."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.modalActions}>
+          {/* <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
                         <FaPrint /> Print
                     </button> */}
-                    <button className={`${styles.btn} ${styles.btnDownload}`} onClick={downloadPdf}>
-                        <FaDownload /> Download PDF
-                    </button>
-                    <button className={`${styles.btn} ${styles.btnClose}`} onClick={onClose}>
-                        <FaTimes /> Close
-                    </button>
-                </div>
-            </div>
+          <button
+            className={`${styles.btn} ${styles.btnDownload}`}
+            onClick={downloadPdf}
+          >
+            <FaDownload /> Download PDF
+          </button>
+          <button
+            className={`${styles.btn} ${styles.btnClose}`}
+            onClick={onClose}
+          >
+            <FaTimes /> Close
+          </button>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
 export default InvoiceGenerator;

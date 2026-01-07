@@ -1,12 +1,21 @@
 // PrintOrderDetails.jsx
 export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
   // Calculate totals
-  const totalCash = orders.reduce((sum, order) => sum + (order.CashAmount || 0), 0);
+  const totalCash = orders.reduce(
+    (sum, order) => sum + (order.CashAmount || 0),
+    0
+  );
   const totalOrders = orders.length;
-  const totalQuantity = orders.reduce((sum, order) => sum + (order.Quantity || 0), 0);
-  const totalDeliveryCharge = orders.reduce((sum, order) => sum + (parseFloat(order.DeliveryCharge) || 0), 0);
+  const totalQuantity = orders.reduce(
+    (sum, order) => sum + (order.Quantity || 0),
+    0
+  );
+  const totalDeliveryCharge = orders.reduce(
+    (sum, order) => sum + (parseFloat(order.DeliveryCharge) || 0),
+    0
+  );
 
-  const printWindow = window.open('', '_blank');
+  const printWindow = window.open("", "_blank");
   printWindow.document.write(`
     <html>
       <head>
@@ -439,9 +448,13 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           </div>
           <div class="report-info">
             <div class="report-title">Pending Cash Orders Report</div>
-            <div class="report-date">${new Date().toLocaleDateString('en-GB')}</div>
+            <div class="report-date">${new Date().toLocaleDateString(
+              "en-GB"
+            )}</div>
             <div class="delivery-info">
-              <strong>Delivery Person:</strong> ${deliveryManName || deliveryManId}
+              <strong>Delivery Person:</strong> ${
+                deliveryManName || deliveryManId
+              }
             </div>
           </div>
         </div>
@@ -486,22 +499,34 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
               </tr>
             </thead>
             <tbody>
-              ${orders.map((order) => `
+              ${orders
+                .map(
+                  (order) => `
                 <tr>
-                  <td class="col-order-id">${order.OrderID || 'N/A'}</td>
-                  <td>${order.InvoiceNo || 'N/A'}</td>
-                  <td class="col-customer">${order.CustomerName || 'N/A'}</td>
-                  <td>${order.ProductType || 'N/A'}</td>
-                  <td class="text-center">${order.Quantity || '0'}</td>
-                  <td class="col-rate text-right">₹${parseFloat(order.Rate || 0).toFixed(2)}</td>
-                  <td class="col-delivery text-right">₹${parseFloat(order.DeliveryCharge || 0).toFixed(2)}</td>
-                  <td class="col-address">${order.Address || 'N/A'}</td>
-                  <td>${order.Area || 'N/A'}</td>
-                  <td>${order.ContactNo || 'N/A'}</td>
-                  <td class="col-amount text-right">₹${parseFloat(order.CashAmount || 0).toFixed(2)}</td>
-                  <td class="col-date">${order.PaymentDate ? order.PaymentDate.split('T')[0] : 'N/A'}</td>
+                  <td class="col-order-id">${order.OrderID || "N/A"}</td>
+                  <td>${order.InvoiceNo || "N/A"}</td>
+                  <td class="col-customer">${order.CustomerName || "N/A"}</td>
+                  <td>${order.ProductType || "N/A"}</td>
+                  <td class="text-center">${order.Quantity || "0"}</td>
+                  <td class="col-rate text-right">₹${parseFloat(
+                    order.Rate || 0
+                  ).toFixed(2)}</td>
+                  <td class="col-delivery text-right">₹${parseFloat(
+                    order.DeliveryCharge || 0
+                  ).toFixed(2)}</td>
+                  <td class="col-address">${order.Address || "N/A"}</td>
+                  <td>${order.Area || "N/A"}</td>
+                  <td>${order.ContactNo || "N/A"}</td>
+                  <td class="col-amount text-right">₹${parseFloat(
+                    order.CashAmount || 0
+                  ).toFixed(2)}</td>
+                  <td class="col-date">${
+                    order.PaymentDate ? order.PaymentDate.split("T")[0] : "N/A"
+                  }</td>
                 </tr>
-              `).join('')}
+              `
+                )
+                .join("")}
             </tbody>
           </table>
         </div>
@@ -522,7 +547,9 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
           </div>
           <div class="total-row">
             <span class="total-label">Grand Total Amount:</span>
-            <span class="total-value grand-total">₹${totalCash.toFixed(2)}</span>
+            <span class="total-value grand-total">₹${totalCash.toFixed(
+              2
+            )}</span>
           </div>
         </div>
         
@@ -551,55 +578,65 @@ export const printOrderDetails = (orders, deliveryManId, deliveryManName) => {
       </body>
     </html>
   `);
-  
+
   printWindow.document.close();
   printWindow.focus();
 };
 
 export const downloadOrderCSV = (orders, deliveryManId, deliveryManName) => {
   const headers = [
-    'Order ID',
-    'Invoice No',
-    'Customer',
-    'Product',
-    'Quantity',
-    'Rate',
-    'Delivery Charge',
-    'Address',
-    'Area',
-    'Contact No',
-    'Amount',
-    'Date'
+    "Order ID",
+    "Invoice No",
+    "Customer",
+    "Product",
+    "Quantity",
+    "Rate",
+    "Delivery Charge",
+    "Address",
+    "Area",
+    "Contact No",
+    "Amount",
+    "Date",
   ];
 
   const csvContent = [
-    ['Delivery Person:', deliveryManName || deliveryManId],
-    ['Report Date:', new Date().toLocaleDateString('en-GB')],
-    ['Total Orders:', orders.length],
-    ['Total Amount:', '₹' + orders.reduce((sum, order) => sum + (order.CashAmount || 0), 0).toFixed(2)],
+    ["Delivery Person:", deliveryManName || deliveryManId],
+    ["Report Date:", new Date().toLocaleDateString("en-GB")],
+    ["Total Orders:", orders.length],
+    [
+      "Total Amount:",
+      "₹" +
+        orders
+          .reduce((sum, order) => sum + (order.CashAmount || 0), 0)
+          .toFixed(2),
+    ],
     [], // Empty row
     headers,
-    ...orders.map(order => [
-      order.OrderID,
-      order.InvoiceNo,
-      `"${order.CustomerName}"`, // Wrap in quotes for CSV
-      order.ProductType,
-      order.Quantity,
-      order.Rate,
-      order.DeliveryCharge,
-      `"${order.Address}"`, // Wrap in quotes for CSV
-      order.Area,
-      order.ContactNo,
-      order.CashAmount,
-      order.PaymentDate?.split('T')[0]
-    ].join(','))
-  ].join('\n');
+    ...orders.map((order) =>
+      [
+        order.OrderID,
+        order.InvoiceNo,
+        `"${order.CustomerName}"`, // Wrap in quotes for CSV
+        order.ProductType,
+        order.Quantity,
+        order.Rate,
+        order.DeliveryCharge,
+        `"${order.Address}"`, // Wrap in quotes for CSV
+        order.Area,
+        order.ContactNo,
+        order.CashAmount,
+        order.PaymentDate?.split("T")[0],
+      ].join(",")
+    ),
+  ].join("\n");
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  const a = document.createElement("a");
   a.href = url;
-  a.download = `Cash_Orders_${deliveryManId}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `Cash_Orders_${deliveryManId}_${new Date()
+    .toISOString()
+    .slice(0, 10)}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);

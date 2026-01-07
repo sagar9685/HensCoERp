@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import styles from "./Login.module.css";
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaGoogle, FaFacebook, FaGithub, FaTwitter, FaApple, FaMicrosoft } from "react-icons/fa";
+import {
+  FaUser,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaGoogle,
+  FaFacebook,
+  FaGithub,
+  FaTwitter,
+  FaApple,
+  FaMicrosoft,
+} from "react-icons/fa";
 import { RiShieldKeyholeFill } from "react-icons/ri";
 import { useDispatch } from "react-redux";
 import { userLogin } from "../features/authSlice";
@@ -20,10 +31,12 @@ const Toast = ({ message, type, onClose }) => {
     <div className={`${styles.toast} ${styles[type]}`}>
       <div className={styles.toastContent}>
         <div className={styles.toastIcon}>
-          {type === 'success' ? '🎉' : type === 'error' ? '❌' : 'ℹ️'}
+          {type === "success" ? "🎉" : type === "error" ? "❌" : "ℹ️"}
         </div>
         <span className={styles.toastMessage}>{message}</span>
-        <button className={styles.toastClose} onClick={onClose}>×</button>
+        <button className={styles.toastClose} onClick={onClose}>
+          ×
+        </button>
       </div>
       <div className={styles.toastProgress}></div>
     </div>
@@ -41,24 +54,22 @@ const Login = () => {
   const [toasts, setToasts] = useState([]);
   const canvasRef = useRef(null);
 
-
   useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (token) {
-    navigate("/dashboard"); // if already logged in, skip login page
-  }
-}, [navigate]);
-
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/dashboard"); // if already logged in, skip login page
+    }
+  }, [navigate]);
 
   // Add toast function
-  const addToast = (message, type = 'info') => {
+  const addToast = (message, type = "info") => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type }]);
   };
 
   // Remove toast function
   const removeToast = (id) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
+    setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
 
   // Particle animation for background
@@ -66,7 +77,7 @@ const Login = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
@@ -111,8 +122,8 @@ const Login = () => {
 
     function animate() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      particles.forEach(particle => {
+
+      particles.forEach((particle) => {
         particle.update();
         particle.draw();
       });
@@ -127,17 +138,17 @@ const Login = () => {
       canvas.height = window.innerHeight;
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
   }, []);
 
   // Rotating features
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveIndex(prev => (prev + 1) % features.length);
+      setActiveIndex((prev) => (prev + 1) % features.length);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
@@ -147,58 +158,52 @@ const Login = () => {
     "Real-time Monitoring",
     "Advanced Analytics",
     "Cloud Integration",
-    "AI-Powered Insights"
+    "AI-Powered Insights",
   ];
 
   const dispatch = useDispatch();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true)
-    
+    setLoading(true);
+
     if (!username.trim()) {
-      addToast('Please enter your username', 'error');
+      addToast("Please enter your username", "error");
       return;
     }
 
     if (!password.trim()) {
-      addToast('Please enter your password', 'error');
+      addToast("Please enter your password", "error");
       return;
     }
 
-   try {
-    const resultAction = await dispatch(userLogin({ username, password }));
-    if (userLogin.fulfilled.match(resultAction)) {
-      addToast(`Welcome back, ${username}! 🎉`, 'success');
+    try {
+      const resultAction = await dispatch(userLogin({ username, password }));
+      if (userLogin.fulfilled.match(resultAction)) {
+        addToast(`Welcome back, ${username}! 🎉`, "success");
         navigate("/dashboard");
-      
-    
-      setUsername("");
-      setPassword("");
-    } else {
-            addToast("Invalid username or password", "error");
 
+        setUsername("");
+        setPassword("");
+      } else {
+        addToast("Invalid username or password", "error");
+      }
+    } catch (err) {
+      addToast("Something went wrong", err);
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    addToast("Something went wrong", err);
-  }finally {
-    setLoading(false);
-  }
-
-
   };
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
   };
 
-  
-
   return (
     <div className={styles.container}>
       {/* Toast Notifications */}
       <div className={styles.toastContainer}>
-        {toasts.map(toast => (
+        {toasts.map((toast) => (
           <Toast
             key={toast.id}
             message={toast.message}
@@ -222,13 +227,15 @@ const Login = () => {
       </div>
 
       {/* Magnetic Floating Card */}
-      <div 
+      <div
         className={styles.loginCard}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         {/* Advanced Card Effects */}
-        <div className={`${styles.cardGlow} ${isHovered ? styles.glowActive : ''}`}></div>
+        <div
+          className={`${styles.cardGlow} ${isHovered ? styles.glowActive : ""}`}
+        ></div>
         <div className={styles.cardShine}></div>
         <div className={styles.cardParticles}></div>
 
@@ -241,13 +248,13 @@ const Login = () => {
                 <div className={styles.logoParticle}></div>
                 <div className={styles.logoParticle}></div>
               </div>
-              <img 
+              <img
                 src="/img/logo.png"
-                alt="Hensco Logo" 
+                alt="Hensco Logo"
                 className={styles.logo}
                 onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
+                  e.target.style.display = "none";
+                  e.target.nextSibling.style.display = "flex";
                 }}
               />
               <div className={styles.logoPlaceholder}>
@@ -266,7 +273,9 @@ const Login = () => {
               {features.map((feature, index) => (
                 <span
                   key={feature}
-                  className={`${styles.feature} ${index === activeIndex ? styles.active : ''}`}
+                  className={`${styles.feature} ${
+                    index === activeIndex ? styles.active : ""
+                  }`}
                 >
                   {feature}
                 </span>
@@ -312,8 +321,8 @@ const Login = () => {
                   required
                   className={styles.input}
                 />
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className={styles.passwordToggle}
                   onClick={togglePasswordVisibility}
                 >
@@ -334,34 +343,37 @@ const Login = () => {
                 </span>
                 <span className={styles.optionText}>Keep me signed in</span>
               </label>
-              <a href="#" className={styles.enhancedLink} onClick={(e) => {
-                e.preventDefault();
-                addToast('Password reset instructions sent!', 'info');
-              }}>
+              <a
+                href="#"
+                className={styles.enhancedLink}
+                onClick={(e) => {
+                  e.preventDefault();
+                  addToast("Password reset instructions sent!", "info");
+                }}
+              >
                 <span>Forgot Security Key?</span>
                 <div className={styles.linkTrail}></div>
               </a>
             </div>
 
             {/* Premium Login Button */}
-                                    <button 
-                            type="submit" 
-                            className={`${styles.loginButton} ${loading ? styles.loading : ''}`}
-                            disabled={loading}
-                            >
-                            <span className={styles.buttonContent}>
-                                <span className={styles.buttonText}>
-                                {loading ? "Signing In..." : "Access Dashboard"}
-                                </span>
-                                <span className={styles.buttonIcon}>→</span>
-                            </span>
-                            <div className={styles.buttonGlow}></div>
-                            <div className={styles.buttonParticles}></div>
-                            </button>
-
+            <button
+              type="submit"
+              className={`${styles.loginButton} ${
+                loading ? styles.loading : ""
+              }`}
+              disabled={loading}
+            >
+              <span className={styles.buttonContent}>
+                <span className={styles.buttonText}>
+                  {loading ? "Signing In..." : "Access Dashboard"}
+                </span>
+                <span className={styles.buttonIcon}>→</span>
+              </span>
+              <div className={styles.buttonGlow}></div>
+              <div className={styles.buttonParticles}></div>
+            </button>
           </form>
-
-         
 
           {/* Premium Footer */}
           <div className={styles.premiumFooter}>
@@ -369,7 +381,7 @@ const Login = () => {
               <RiShieldKeyholeFill className={styles.shieldIcon} />
               <span>Enterprise Grade Security</span>
             </div>
-                <p>Designed By Sagar gupta</p>
+            <p>Designed By Sagar gupta</p>
           </div>
         </div>
 
@@ -380,7 +392,6 @@ const Login = () => {
       </div>
 
       {/* Background Audio Toggle */}
-       
     </div>
   );
 };

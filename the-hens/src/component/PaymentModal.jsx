@@ -9,7 +9,7 @@ const PaymentModal = ({
   receivedAmount,
   setReceivedAmount,
   onVerifyPayment,
-  loading = false
+  loading = false,
 }) => {
   if (!isOpen) return null;
 
@@ -17,35 +17,33 @@ const PaymentModal = ({
   const isShortPayment = shortAmount > 0;
   console.log("SUMMARY ===>", selectedPayment?.PaymentSummary);
 
+  const getOnlineAmount = (summaryText) => {
+    if (!summaryText || typeof summaryText !== "string") return 0;
 
-const getOnlineAmount = (summaryText) => {
-  if (!summaryText || typeof summaryText !== "string") return 0;
+    let onlineTotal = 0;
 
-  let onlineTotal = 0;
+    // Split into each mode
+    const parts = summaryText.split("|");
 
-  // Split into each mode
-  const parts = summaryText.split("|");
+    parts.forEach((item) => {
+      const [modeName, amountText] = item.split(":").map((s) => s.trim());
 
-  parts.forEach((item) => {
-    const [modeName, amountText] = item.split(":").map(s => s.trim());
+      const amount = Number(amountText);
 
-    const amount = Number(amountText);
+      if (
+        modeName.toLowerCase().includes("upi") ||
+        modeName.toLowerCase().includes("gpay") ||
+        modeName.toLowerCase().includes("paytm") ||
+        modeName.toLowerCase().includes("online") ||
+        modeName.toLowerCase().includes("bank transfer") ||
+        modeName.toLowerCase().includes("card")
+      ) {
+        onlineTotal += amount;
+      }
+    });
 
-    if (
-      modeName.toLowerCase().includes("upi") ||
-      modeName.toLowerCase().includes("gpay") ||
-      modeName.toLowerCase().includes("paytm") ||
-      modeName.toLowerCase().includes("online") ||
-      modeName.toLowerCase().includes("bank transfer") ||
-      modeName.toLowerCase().includes("card")
-    ) {
-      onlineTotal += amount;
-    }
-  });
-
-  return onlineTotal;
-};
-
+    return onlineTotal;
+  };
 
   const handleSubmit = () => {
     if (!receivedAmount || receivedAmount <= 0) {
@@ -72,29 +70,34 @@ const getOnlineAmount = (summaryText) => {
         <div className={styles.paymentDetails}>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Order ID:</span>
-            <span className={styles.detailValue}>#{selectedPayment?.OrderID}</span>
+            <span className={styles.detailValue}>
+              #{selectedPayment?.OrderID}
+            </span>
           </div>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Customer:</span>
-            <span className={styles.detailValue}>{selectedPayment?.CustomerName}</span>
+            <span className={styles.detailValue}>
+              {selectedPayment?.CustomerName}
+            </span>
           </div>
-         <div className={styles.amountSection}>
-  <div className={styles.originalAmount}>
-    <span className={styles.amountLabel}>Total Amount:</span>
-    <span className={styles.amountValue}>₹{selectedPayment?.Amount}</span>
-  </div>
+          <div className={styles.amountSection}>
+            <div className={styles.originalAmount}>
+              <span className={styles.amountLabel}>Total Amount:</span>
+              <span className={styles.amountValue}>
+                ₹{selectedPayment?.Amount}
+              </span>
+            </div>
 
-  {/* Online Amount (Only if > 0) */}
-  {getOnlineAmount(selectedPayment?.PaymentSummary) > 0 && (
-    <div className={styles.originalAmount}>
-      <span className={styles.amountLabel}>Online Paid:</span>
-      <span className={styles.amountValue}>
-        ₹{getOnlineAmount(selectedPayment?.PaymentSummary)}
-      </span>
-    </div>
-  )}
-</div>
-
+            {/* Online Amount (Only if > 0) */}
+            {getOnlineAmount(selectedPayment?.PaymentSummary) > 0 && (
+              <div className={styles.originalAmount}>
+                <span className={styles.amountLabel}>Online Paid:</span>
+                <span className={styles.amountValue}>
+                  ₹{getOnlineAmount(selectedPayment?.PaymentSummary)}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Input Section */}

@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
- export const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
+export const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // ⭐ SEND HANDOVER DATA TO BACKEND
@@ -9,7 +9,10 @@ export const addDenomination = createAsyncThunk(
   "denomination/add",
   async ({ deliveryManId, denominations }, { rejectWithValue }) => {
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/users/denominations`, { deliveryManId, denominations });
+      const res = await axios.post(`${API_BASE_URL}/api/users/denominations`, {
+        deliveryManId,
+        denominations,
+      });
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -19,13 +22,16 @@ export const addDenomination = createAsyncThunk(
 
 export const handoverCash = createAsyncThunk(
   "denomination/handover",
-  async ({ deliveryManId, totalHandoverAmount, denominationJSON,orderPaymentIds }, { rejectWithValue }) => {
+  async (
+    { deliveryManId, totalHandoverAmount, denominationJSON, orderPaymentIds },
+    { rejectWithValue }
+  ) => {
     try {
       const res = await axios.post(`${API_BASE_URL}/api/users/handover`, {
         deliveryManId,
         totalHandoverAmount,
         denominationJSON,
-         orderPaymentIds  
+        orderPaymentIds,
       });
       return res.data;
     } catch (err) {
@@ -42,19 +48,12 @@ export const fetchPendingCashOrders = createAsyncThunk(
         `${API_BASE_URL}/api/users/cash/prnding/${deliveryManId}`
       );
 
-      
       return res.data;
-     
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
   }
 );
-
- 
-
-
-
 
 const denominationSlice = createSlice({
   name: "denomination",
@@ -62,14 +61,14 @@ const denominationSlice = createSlice({
     loading: false,
     success: "",
     error: "",
-      orders: [],
-  totalCash: 0
+    orders: [],
+    totalCash: 0,
   },
   reducers: {
     clearMessages: (state) => {
       state.success = "";
       state.error = "";
-    }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -86,7 +85,9 @@ const denominationSlice = createSlice({
         state.error = action.payload;
         state.success = "";
       })
-      .addCase(handoverCash.pending, (state) => { state.loading = true; })
+      .addCase(handoverCash.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(handoverCash.fulfilled, (state, action) => {
         state.loading = false;
         state.success = action.payload.message;
@@ -98,19 +99,18 @@ const denominationSlice = createSlice({
         state.success = "";
       })
       .addCase(fetchPendingCashOrders.pending, (state) => {
-  state.loading = true;
-})
-.addCase(fetchPendingCashOrders.fulfilled, (state, action) => {
-  state.loading = false;
-  state.orders = action.payload.orders;
-  state.totalCash = action.payload.totalCash;
-})
-.addCase(fetchPendingCashOrders.rejected, (state, action) => {
-  state.loading = false;
-  state.error = action.payload;
-});
-
-  }
+        state.loading = true;
+      })
+      .addCase(fetchPendingCashOrders.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload.orders;
+        state.totalCash = action.payload.totalCash;
+      })
+      .addCase(fetchPendingCashOrders.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      });
+  },
 });
 
 export const { clearMessages } = denominationSlice.actions;

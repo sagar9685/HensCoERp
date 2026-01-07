@@ -2,8 +2,11 @@ import React from "react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-const ExcelReport = ({ filteredAndSortedList, fileName = "export.xlsx", children }) => {
-
+const ExcelReport = ({
+  filteredAndSortedList,
+  fileName = "export.xlsx",
+  children,
+}) => {
   const handleExport = () => {
     if (!filteredAndSortedList || filteredAndSortedList.length === 0) {
       alert("No data available to export");

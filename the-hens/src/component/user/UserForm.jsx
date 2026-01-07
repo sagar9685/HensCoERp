@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
 import { fetchOrder } from "../../features/orderSlice";
 import AssignOrderModal from "./AssignOrderModal";
 import UserCompleteOrderModal from "./UserCompleteOrderModal";
-import { assignOrder, fetchAssignOrder } from "../../features/assignedOrderSlice";
+import {
+  assignOrder,
+  fetchAssignOrder,
+} from "../../features/assignedOrderSlice";
 import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
 import { useOrderFilter } from "./UserOrderFilter";
@@ -38,7 +41,7 @@ const UserForm = () => {
     getPageNumbers,
     formatPaymentSummary,
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   } = useOrderFilter();
 
   useEffect(() => {
@@ -51,7 +54,9 @@ const UserForm = () => {
       setConfirmOrder(row);
       setCompleteModalOpen(true);
     } else if (newStatus === "Pending") {
-      if (window.confirm("Are you sure you want to mark this order as pending?")) {
+      if (
+        window.confirm("Are you sure you want to mark this order as pending?")
+      ) {
         updateOrderStatusHandler(row, "Pending");
       }
     }
@@ -65,17 +70,18 @@ const UserForm = () => {
       handleCloseCompleteModal();
     } catch (error) {
       toast.error("Failed to update order status", error);
-      
     }
   };
 
   const updateOrderStatusHandler = async (order, status) => {
     try {
-      await dispatch(updateOrderStatus({
-        orderId: order.OrderID,
-        assignedOrderId: order.AssignedOrderID,
-        status: status
-      })).unwrap();
+      await dispatch(
+        updateOrderStatus({
+          orderId: order.OrderID,
+          assignedOrderId: order.AssignedOrderID,
+          status: status,
+        })
+      ).unwrap();
       toast.success(`Order status updated to ${status} successfully!`);
       dispatch(fetchAssignOrder());
     } catch (error) {
@@ -116,12 +122,16 @@ const UserForm = () => {
                 <h3 className="page-title">Order Management</h3>
                 <nav aria-label="breadcrumb">
                   <ol className="breadcrumb">
-                    <li className="breadcrumb-item"><a href="#">Dashboard</a></li>
-                    <li className="breadcrumb-item active" aria-current="page">All Orders</li>
+                    <li className="breadcrumb-item">
+                      <a href="#">Dashboard</a>
+                    </li>
+                    <li className="breadcrumb-item active" aria-current="page">
+                      All Orders
+                    </li>
                   </ol>
                 </nav>
               </div>
-              
+
               <div className="row">
                 <div className="col-12 grid-margin">
                   <div className="card">
@@ -132,18 +142,28 @@ const UserForm = () => {
                           <h4 className={styles.cardTitle}>Orders List</h4>
                           <div className={styles.orderStats}>
                             <div className={styles.statItem}>
-                              <span className={styles.statNumber}>{assignedOrders?.length || 0}</span>
-                              <span className={styles.statLabel}>Total Orders</span>
-                            </div>
-                            <div className={styles.statItem}>
                               <span className={styles.statNumber}>
-                                {assignedOrders?.filter(order => order.OrderStatus === "Complete").length || 0}
+                                {assignedOrders?.length || 0}
                               </span>
-                              <span className={styles.statLabel}>Completed</span>
+                              <span className={styles.statLabel}>
+                                Total Orders
+                              </span>
                             </div>
                             <div className={styles.statItem}>
                               <span className={styles.statNumber}>
-                                {assignedOrders?.filter(order => order.OrderStatus === "Pending").length || 0}
+                                {assignedOrders?.filter(
+                                  (order) => order.OrderStatus === "Complete"
+                                ).length || 0}
+                              </span>
+                              <span className={styles.statLabel}>
+                                Completed
+                              </span>
+                            </div>
+                            <div className={styles.statItem}>
+                              <span className={styles.statNumber}>
+                                {assignedOrders?.filter(
+                                  (order) => order.OrderStatus === "Pending"
+                                ).length || 0}
                               </span>
                               <span className={styles.statLabel}>Pending</span>
                             </div>
@@ -160,7 +180,7 @@ const UserForm = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                               />
                             </div>
-                            <select 
+                            <select
                               className={styles.statusFilter}
                               value={statusFilter}
                               onChange={(e) => setStatusFilter(e.target.value)}
@@ -170,8 +190,13 @@ const UserForm = () => {
                               <option value="completed">Completed</option>
                             </select>
                           </div>
-                          <ExcelExport data={filteredAndSortedOrders} fileName="Orders_List.xlsx">
-                            <button className={`btn btn-success ${styles.actionBtn}`}>
+                          <ExcelExport
+                            data={filteredAndSortedOrders}
+                            fileName="Orders_List.xlsx"
+                          >
+                            <button
+                              className={`btn btn-success ${styles.actionBtn}`}
+                            >
                               <i className="mdi mdi-download"></i> Export
                             </button>
                           </ExcelExport>
@@ -184,14 +209,28 @@ const UserForm = () => {
                           <table className={styles.dataTable}>
                             <thead>
                               <tr>
-                                <th onClick={() => handleSort('ProductName')}>
-                                  Product {sortConfig.key === 'ProductName' && (
-                                    <i className={`mdi mdi-chevron-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>
+                                <th onClick={() => handleSort("ProductName")}>
+                                  Product{" "}
+                                  {sortConfig.key === "ProductName" && (
+                                    <i
+                                      className={`mdi mdi-chevron-${
+                                        sortConfig.direction === "asc"
+                                          ? "up"
+                                          : "down"
+                                      }`}
+                                    ></i>
                                   )}
                                 </th>
-                                <th onClick={() => handleSort('CustomerName')}>
-                                  Customer {sortConfig.key === 'CustomerName' && (
-                                    <i className={`mdi mdi-chevron-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>
+                                <th onClick={() => handleSort("CustomerName")}>
+                                  Customer{" "}
+                                  {sortConfig.key === "CustomerName" && (
+                                    <i
+                                      className={`mdi mdi-chevron-${
+                                        sortConfig.direction === "asc"
+                                          ? "up"
+                                          : "down"
+                                      }`}
+                                    ></i>
                                   )}
                                 </th>
                                 <th>Contact</th>
@@ -200,9 +239,16 @@ const UserForm = () => {
                                 <th>Weight</th>
                                 <th>Qty</th>
                                 <th>Amount</th>
-                                <th onClick={() => handleSort('OrderDate')}>
-                                  Order Date {sortConfig.key === 'OrderDate' && (
-                                    <i className={`mdi mdi-chevron-${sortConfig.direction === 'asc' ? 'up' : 'down'}`}></i>
+                                <th onClick={() => handleSort("OrderDate")}>
+                                  Order Date{" "}
+                                  {sortConfig.key === "OrderDate" && (
+                                    <i
+                                      className={`mdi mdi-chevron-${
+                                        sortConfig.direction === "asc"
+                                          ? "up"
+                                          : "down"
+                                      }`}
+                                    ></i>
                                   )}
                                 </th>
                                 <th>Delivery Date</th>
@@ -217,7 +263,7 @@ const UserForm = () => {
                             <tbody>
                               {currentItems.length > 0 ? (
                                 currentItems.map((row) => (
-                                  <OrderTableRow 
+                                  <OrderTableRow
                                     key={row.OrderID}
                                     row={row}
                                     onStatusChange={handleStatusChange}
@@ -230,11 +276,17 @@ const UserForm = () => {
                                 ))
                               ) : (
                                 <tr>
-                                  <td colSpan="15" className={styles.emptyState}>
+                                  <td
+                                    colSpan="15"
+                                    className={styles.emptyState}
+                                  >
                                     <div className={styles.emptyContent}>
                                       <i className="mdi mdi-package-variant"></i>
                                       <h4>No orders found</h4>
-                                      <p>Try adjusting your search or filter to find what you're looking for.</p>
+                                      <p>
+                                        Try adjusting your search or filter to
+                                        find what you're looking for.
+                                      </p>
                                     </div>
                                   </td>
                                 </tr>
@@ -245,7 +297,7 @@ const UserForm = () => {
                       </div>
 
                       {/* Footer Section */}
-                      <TableFooter 
+                      <TableFooter
                         indexOfFirstItem={indexOfFirstItem}
                         indexOfLastItem={indexOfLastItem}
                         totalItems={filteredAndSortedOrders.length}
@@ -285,9 +337,17 @@ const UserForm = () => {
 };
 
 // Separate component for table row
-const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummary }) => {
+const OrderTableRow = ({
+  row,
+  onStatusChange,
+  onAssignClick,
+  formatPaymentSummary,
+}) => {
   return (
-    <tr key={row.OrderID} className={row.OrderStatus === "Complete" ? styles.completedRow : ""}>
+    <tr
+      key={row.OrderID}
+      className={row.OrderStatus === "Complete" ? styles.completedRow : ""}
+    >
       <td className={styles.productCell}>
         <div className={styles.productInfo}>
           <div className={styles.productImage}>
@@ -312,24 +372,30 @@ const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummar
           {row.ContactNo}
         </a>
       </td>
-      
+
       <td className={styles.areaCell}>{row.Area}</td>
-      
+
       <td className={styles.typeCell}>
         {row.ProductTypes?.split(",").map((item, i) => (
-          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+          <div key={i} className={styles.lineItem}>
+            {item.trim()}
+          </div>
         ))}
       </td>
 
       <td className={styles.weightCell}>
         {row.Weights?.split(",").map((item, i) => (
-          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+          <div key={i} className={styles.lineItem}>
+            {item.trim()}
+          </div>
         ))}
       </td>
 
       <td className={styles.quantityCell}>
         {row.Quantities?.split(",").map((item, i) => (
-          <div key={i} className={styles.lineItem}>{item.trim()}</div>
+          <div key={i} className={styles.lineItem}>
+            {item.trim()}
+          </div>
         ))}
       </td>
 
@@ -337,47 +403,53 @@ const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummar
         <div className={styles.amountInfo}>
           <div>Rate: ₹{row.Rates}</div>
           <div>Delivery: ₹{row.DeliveryCharge}</div>
-          <strong>Total: ₹{Number(row.GrandItemTotal) + Number(row.DeliveryCharge)}</strong>
+          <strong>
+            Total: ₹{Number(row.GrandItemTotal) + Number(row.DeliveryCharge)}
+          </strong>
         </div>
       </td>
 
       <td className={styles.dateCell}>
         {new Date(row.OrderDate)
-          .toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: '2-digit'
+          .toLocaleDateString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "2-digit",
           })
-          .replace(',', '')
-          .replace(' ', '-')}
+          .replace(",", "")
+          .replace(" ", "-")}
       </td>
 
       <td className={styles.dateCell}>
         {row.DeliveryDate
-          ? new Date(row.DeliveryDate).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "2-digit",
-            }).replace(",", "").toLowerCase()
+          ? new Date(row.DeliveryDate)
+              .toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "2-digit",
+              })
+              .replace(",", "")
+              .toLowerCase()
           : "-"}
       </td>
 
       <td className={styles.dateCell}>
         {row.PaymentReceivedDate
-          ? new Date(row.PaymentReceivedDate).toLocaleDateString("en-GB", {
-              day: "2-digit",
-              month: "short",
-              year: "2-digit",
-            }).replace(",", "").toLowerCase()
+          ? new Date(row.PaymentReceivedDate)
+              .toLocaleDateString("en-GB", {
+                day: "2-digit",
+                month: "short",
+                year: "2-digit",
+              })
+              .replace(",", "")
+              .toLowerCase()
           : "-"}
       </td>
 
       <td className={styles.deliveryCell}>
         {row.DeliveryManName ? (
           <div className={styles.deliveryMan}>
-            <div className={styles.avatar}>
-              {row.DeliveryManName.charAt(0)}
-            </div>
+            <div className={styles.avatar}>{row.DeliveryManName.charAt(0)}</div>
             <span>{row.DeliveryManName}</span>
           </div>
         ) : (
@@ -386,9 +458,7 @@ const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummar
       </td>
 
       <td>
-        <span className={styles.remark}>
-          {row.Remark || "-"}
-        </span>
+        <span className={styles.remark}>{row.Remark || "-"}</span>
       </td>
 
       {/* Delivery Status Column */}
@@ -403,7 +473,7 @@ const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummar
             className={styles.statusDropdown}
             value={row.DeliveryStatus}
             onChange={(e) => onStatusChange(row, e.target.value)}
-            disabled={!row.AssignID || row.OrderStatus === "Complete"}  
+            disabled={!row.AssignID || row.OrderStatus === "Complete"}
           >
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
@@ -433,47 +503,52 @@ const OrderTableRow = ({ row, onStatusChange, onAssignClick, formatPaymentSummar
 };
 
 // Separate component for table footer
-const TableFooter = ({ 
-  indexOfFirstItem, 
-  indexOfLastItem, 
-  totalItems, 
-  currentPage, 
-  totalPages, 
-  onPrevPage, 
-  onNextPage, 
-  onPaginate, 
-  getPageNumbers 
+const TableFooter = ({
+  indexOfFirstItem,
+  indexOfLastItem,
+  totalItems,
+  currentPage,
+  totalPages,
+  onPrevPage,
+  onNextPage,
+  onPaginate,
+  getPageNumbers,
 }) => {
   return (
     <div className={styles.tableFooter}>
       <div className={styles.tableInfo}>
-        Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, totalItems)} of {totalItems} orders
+        Showing {indexOfFirstItem + 1} to{" "}
+        {Math.min(indexOfLastItem, totalItems)} of {totalItems} orders
       </div>
       <div className={styles.pagination}>
-        <button 
-          className={styles.pageBtn} 
+        <button
+          className={styles.pageBtn}
           onClick={onPrevPage}
           disabled={currentPage === 1}
         >
           <i className="mdi mdi-chevron-left"></i> Previous
         </button>
-        
-        {getPageNumbers().map((number, index) => (
-          number === '...' ? (
-            <span key={`ellipsis-${index}`} className={styles.paginationInfo}>...</span>
+
+        {getPageNumbers().map((number, index) =>
+          number === "..." ? (
+            <span key={`ellipsis-${index}`} className={styles.paginationInfo}>
+              ...
+            </span>
           ) : (
             <button
               key={number}
-              className={`${styles.pageBtn} ${currentPage === number ? styles.active : ''}`}
+              className={`${styles.pageBtn} ${
+                currentPage === number ? styles.active : ""
+              }`}
               onClick={() => onPaginate(number)}
             >
               {number}
             </button>
           )
-        ))}
-        
-        <button 
-          className={styles.pageBtn} 
+        )}
+
+        <button
+          className={styles.pageBtn}
           onClick={onNextPage}
           disabled={currentPage === totalPages || totalPages === 0}
         >

@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import styles from './AssignOrderModal.module.css';
-import { fetchDeliveryMen } from '../../features/assignedOrderSlice';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useState, useEffect } from "react";
+import styles from "./AssignOrderModal.module.css";
+import { fetchDeliveryMen } from "../../features/assignedOrderSlice";
+import { useDispatch, useSelector } from "react-redux";
 
-const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
+const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
   const dispatch = useDispatch();
 
   const { deliveryMen } = useSelector((state) => state.assignedOrders);
@@ -16,7 +16,6 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
 
   useEffect(() => {
     dispatch(fetchDeliveryMen());
@@ -42,34 +41,32 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  setIsSubmitting(true); // disable button + show processing
+    setIsSubmitting(true); // disable button + show processing
 
-  const payload = {
-    orderId: order.OrderID,
-    deliveryManId:
-      formData.deliveryManId === "other"
-        ? null
-        : Number(formData.deliveryManId),
-    otherDeliveryManName:
-      formData.deliveryManId === "other"
-        ? formData.otherDeliveryManName
-        : null,
-    deliveryDate: formData.deliveryDate,
-    remark: formData.remark,
+    const payload = {
+      orderId: order.OrderID,
+      deliveryManId:
+        formData.deliveryManId === "other"
+          ? null
+          : Number(formData.deliveryManId),
+      otherDeliveryManName:
+        formData.deliveryManId === "other"
+          ? formData.otherDeliveryManName
+          : null,
+      deliveryDate: formData.deliveryDate,
+      remark: formData.remark,
+    };
+
+    try {
+      await onSubmit(payload); // parent function ko data bhejna
+    } catch (error) {
+      console.error("Submit error:", error);
+    } finally {
+      setIsSubmitting(false); // enable button back
+    }
   };
-
-  try {
-    await onSubmit(payload); // parent function ko data bhejna
-  } catch (error) {
-    console.error("Submit error:", error);
-  } finally {
-    setIsSubmitting(false); // enable button back
-  }
-};
-
-
 
   if (!isOpen || !order) return null;
 
@@ -239,22 +236,21 @@ const AssignOrderModal = ({ isOpen, onClose, order,onSubmit }) => {
             <i className="mdi mdi-close"></i>
             Cancel
           </button>
-            <button
-              type="submit"
-              className={styles.assignButton}
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                "Processing..."
-              ) : (
-                <>
-                  <i className="mdi mdi-check-circle"></i>
-                  Assign Order
-                </>
-              )}
-            </button>
-
+          <button
+            type="submit"
+            className={styles.assignButton}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              "Processing..."
+            ) : (
+              <>
+                <i className="mdi mdi-check-circle"></i>
+                Assign Order
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>

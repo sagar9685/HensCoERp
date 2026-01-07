@@ -78,7 +78,8 @@
   align-items: center;
 }
 
-.actionBtn, .closeBtn {
+.actionBtn,
+.closeBtn {
   border: none;
   background: rgba(255, 255, 255, 0.1);
   color: white;
@@ -264,7 +265,7 @@
 }
 
 .dataTable th:not(:last-child)::after {
-  content: '';
+  content: "";
   position: absolute;
   right: 0;
   top: 25%;
@@ -294,12 +295,12 @@
 .orderId {
   font-weight: 600;
   color: #1f2937;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
 }
 
 .invoiceNo {
   color: #6b7280;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
 }
 
 .customerName {
@@ -321,12 +322,13 @@
 .amount {
   font-weight: 600;
   color: #059669;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
 }
 
-.rate, .delivery {
+.rate,
+.delivery {
   color: #6b7280;
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
 }
 
 .date {
@@ -355,7 +357,7 @@
 }
 
 .contact {
-  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-family: "SF Mono", "Monaco", "Consolas", monospace;
   white-space: nowrap;
 }
 
@@ -396,23 +398,29 @@
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(40px) scale(0.95);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
@@ -422,15 +430,15 @@
     max-height: 95vh;
     margin: 10px;
   }
-  
+
   .tableWrapper {
     padding: 12px;
   }
-  
+
   .dataTable {
     font-size: 0.8rem;
   }
-  
+
   .dataTable th,
   .dataTable td {
     padding: 10px 6px;
@@ -444,21 +452,21 @@
     gap: 12px;
     align-items: flex-start;
   }
-  
+
   .headerActions {
     align-self: flex-end;
     margin-top: -40px;
   }
-  
+
   .header h3 {
     font-size: 1.25rem;
   }
-  
+
   .summaryCards {
     grid-template-columns: 1fr;
     padding: 16px;
   }
-  
+
   .tableFooter {
     flex-direction: column;
     gap: 12px;
@@ -473,25 +481,26 @@
     align-items: flex-start;
     gap: 8px;
   }
-  
-  .actionBtn, .closeBtn {
+
+  .actionBtn,
+  .closeBtn {
     width: 36px;
     height: 36px;
     font-size: 1rem;
   }
-  
+
   .summaryCard {
     flex-direction: column;
     text-align: center;
     gap: 12px;
   }
-  
+
   .cardIcon {
     width: 40px;
     height: 40px;
     font-size: 1.25rem;
   }
-  
+
   .cardValue {
     font-size: 1.25rem;
   }
@@ -504,13 +513,13 @@
     background: none;
     display: block;
   }
-  
+
   .modal {
     box-shadow: none;
     max-width: none;
     max-height: none;
   }
-  
+
   .headerActions,
   .closeBtn,
   .actionBtn,

@@ -1,6 +1,5 @@
-import '../App.css'
+import "../App.css";
 
- 
 const Loader = () => {
   return (
     <div className="terminal-container">

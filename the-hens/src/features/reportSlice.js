@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
- 
 export const fetchMonthlyReport = createAsyncThunk(
   "report/fetchMonthlyReport",
   async ({ year, month }, { rejectWithValue }) => {
@@ -30,27 +29,26 @@ export const fetchWeeklyReport = createAsyncThunk(
   }
 );
 
- 
 const reportSlice = createSlice({
   name: "report",
   initialState: {
     monthly: null,
     weekly: [],
     loading: false,
-    error: null
+    error: null,
   },
   reducers: {
-    clearReport: state => {
+    clearReport: (state) => {
       state.monthly = null;
       state.weekly = [];
       state.error = null;
-    }
+    },
   },
-  extraReducers: builder => {
+  extraReducers: (builder) => {
     builder
 
       /* ---------- MONTHLY ---------- */
-      .addCase(fetchMonthlyReport.pending, state => {
+      .addCase(fetchMonthlyReport.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
@@ -64,7 +62,7 @@ const reportSlice = createSlice({
       })
 
       /* ---------- WEEKLY ---------- */
-      .addCase(fetchWeeklyReport.pending, state => {
+      .addCase(fetchWeeklyReport.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
@@ -76,7 +74,7 @@ const reportSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       });
-  }
+  },
 });
 
 export const { clearReport } = reportSlice.actions;

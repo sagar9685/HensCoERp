@@ -9,7 +9,7 @@ import styles from "./UserDashboard.module.css";
 //         <UserNavbar />
 //         <div className={styles.mainContainer}>
 //           <div className={styles.contentWrapper}>
-           
+
 //             {/* Stats Cards */}
 //             <div className="row">
 //               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
@@ -32,7 +32,7 @@ import styles from "./UserDashboard.module.css";
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
 //                 <div className={`card ${styles.statCard}`}>
 //                   <div className="card-body">
@@ -53,7 +53,7 @@ import styles from "./UserDashboard.module.css";
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
 //                 <div className={`card ${styles.statCard}`}>
 //                   <div className="card-body">
@@ -74,7 +74,7 @@ import styles from "./UserDashboard.module.css";
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <div className="col-xl-3 col-sm-6 grid-margin stretch-card">
 //                 <div className={`card ${styles.statCard}`}>
 //                   <div className="card-body">
@@ -96,7 +96,7 @@ import styles from "./UserDashboard.module.css";
 //                 </div>
 //               </div>
 //             </div>
-            
+
 //             {/* Charts and Recent Orders */}
 //             <div className="row">
 //               <div className="col-md-8 grid-margin stretch-card">
@@ -133,7 +133,7 @@ import styles from "./UserDashboard.module.css";
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <div className="col-md-4 grid-margin stretch-card">
 //                 <div className={`card ${styles.orderCard}`}>
 //                   <div className="card-body">
@@ -149,7 +149,7 @@ import styles from "./UserDashboard.module.css";
 //                           <p className={styles.orderAmount}>$245.00</p>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={`${styles.orderItem} ${styles.processing}`}>
 //                         <div className={styles.orderIcon}>
 //                           <span className="mdi mdi-truck-delivery"></span>
@@ -160,7 +160,7 @@ import styles from "./UserDashboard.module.css";
 //                           <p className={styles.orderAmount}>$189.50</p>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={`${styles.orderItem} ${styles.delivered}`}>
 //                         <div className={styles.orderIcon}>
 //                           <span className="mdi mdi-check-circle"></span>
@@ -171,7 +171,7 @@ import styles from "./UserDashboard.module.css";
 //                           <p className={styles.orderAmount}>$325.75</p>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={`${styles.orderItem} ${styles.pending}`}>
 //                         <div className={styles.orderIcon}>
 //                           <span className="mdi mdi-clock"></span>
@@ -187,7 +187,7 @@ import styles from "./UserDashboard.module.css";
 //                 </div>
 //               </div>
 //             </div>
-            
+
 //             {/* Delivery Boys & Stock Status */}
 //             <div className="row">
 //               <div className="col-md-6 grid-margin stretch-card">
@@ -247,7 +247,7 @@ import styles from "./UserDashboard.module.css";
 //                   </div>
 //                 </div>
 //               </div>
-              
+
 //               <div className="col-md-6 grid-margin stretch-card">
 //                 <div className={`card ${styles.stockCard}`}>
 //                   <div className="card-body">
@@ -265,7 +265,7 @@ import styles from "./UserDashboard.module.css";
 //                           <span className={styles.stockCount}>45/60</span>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={styles.stockItem}>
 //                         <div className={styles.stockInfo}>
 //                           <h6>Nike Air Max</h6>
@@ -278,7 +278,7 @@ import styles from "./UserDashboard.module.css";
 //                           <span className={styles.stockCount}>27/60</span>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={styles.stockItem}>
 //                         <div className={styles.stockInfo}>
 //                           <h6>Coffee Maker</h6>
@@ -291,7 +291,7 @@ import styles from "./UserDashboard.module.css";
 //                           <span className={styles.stockCount}>12/60</span>
 //                         </div>
 //                       </div>
-                      
+
 //                       <div className={styles.stockItem}>
 //                         <div className={styles.stockInfo}>
 //                           <h6>Wireless Earbuds</h6>
@@ -309,7 +309,7 @@ import styles from "./UserDashboard.module.css";
 //                 </div>
 //               </div>
 //             </div>
-            
+
 //             {/* Pending Orders Table */}
 //             <div className="row">
 //               <div className="col-12 grid-margin">
@@ -396,7 +396,7 @@ import styles from "./UserDashboard.module.css";
 //                 </div>
 //               </div>
 //             </div>
-            
+
 //           </div>
 //           <UserFooter />
 //         </div>
@@ -407,7 +407,6 @@ import styles from "./UserDashboard.module.css";
 
 // export default UserDashboard;
 
- 
 const UserDashboard = () => {
   return (
     <>

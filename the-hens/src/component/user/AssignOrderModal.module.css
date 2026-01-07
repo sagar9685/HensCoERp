@@ -16,8 +16,12 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* Modal Content */
@@ -35,11 +39,11 @@
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(30px);
   }
-  to { 
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -256,31 +260,31 @@
   .modalOverlay {
     padding: 10px;
   }
-  
+
   .modalContent {
     max-height: 95vh;
   }
-  
+
   .modalHeader {
     padding: 1rem 1.5rem;
   }
-  
+
   .modalBody {
     padding: 1.5rem;
   }
-  
+
   .orderInfoGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .formGrid {
     grid-template-columns: 1fr;
   }
-  
+
   .modalFooter {
     flex-direction: column;
   }
-  
+
   .cancelButton,
   .assignButton {
     width: 100%;
@@ -304,7 +308,8 @@
 
 .modalBody::-webkit-scrollbar-thumb:hover {
   background: #a0aec0;
-}.assignButton:disabled {
+}
+.assignButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

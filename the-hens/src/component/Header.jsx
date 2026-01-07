@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
 import styles from "./Header.module.css";
-import { 
-  FaBell, 
-  FaChartBar, 
-  FaBullhorn, 
-  FaCog, 
-  FaUsers, 
-  FaLayerGroup, 
+import {
+  FaBell,
+  FaChartBar,
+  FaBullhorn,
+  FaCog,
+  FaUsers,
+  FaLayerGroup,
   FaBug,
   FaChevronDown,
   FaSearch,
@@ -17,53 +17,57 @@ import {
   FaCaretDown,
   FaShieldAlt,
   FaLifeRing,
-  FaTimes
+  FaTimes,
 } from "react-icons/fa";
-import { MdSupervisorAccount, MdNotifications, MdDashboard } from "react-icons/md";
+import {
+  MdSupervisorAccount,
+  MdNotifications,
+  MdDashboard,
+} from "react-icons/md";
 import { FaPhoenixFramework } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import {logout} from '../features/authSlice'
+import { logout } from "../features/authSlice";
 import { useNavigate } from "react-router";
- import { useLocation } from "react-router";
-
+import { useLocation } from "react-router";
 
 const Header = () => {
   const [open, setOpen] = useState(false);
- 
+
   const [darkMode, setDarkMode] = useState(false);
   const [activeMenu, setActiveMenu] = useState("dashboard");
   const [searchFocused, setSearchFocused] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const dispatch = useDispatch()
-  const navigate = useNavigate()
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const location = useLocation();
 
-  const user = useSelector((state)=> state.auth.data);
-  console.log(user,"user Data")
-  
+  const user = useSelector((state) => state.auth.data);
+  console.log(user, "user Data");
 
-    const displayName = user?.name || user?.username || user?.email || "Admin User";
+  const displayName =
+    user?.name || user?.username || user?.email || "Admin User";
   const displayRole = user?.role || "Super Admin";
 
-  
   const dropdownRef = useRef(null);
   // const notificationRef = useRef(null);
   const mobileMenuRef = useRef(null);
 
   useEffect(() => {
-  const path = location.pathname.replace("/", ""); 
-  setActiveMenu(path || "dashboard");
-}, [location.pathname]);
-
+    const path = location.pathname.replace("/", "");
+    setActiveMenu(path || "dashboard");
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setOpen(false);
       }
-      
-      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target)) {
+
+      if (
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(event.target)
+      ) {
         setMobileMenuOpen(false);
       }
     };
@@ -73,38 +77,50 @@ const Header = () => {
   }, []);
 
   const menuItems = [
-    { key: "dashboard", icon: <MdDashboard />, label: "Dashboard", path: '/dashboard' },
-    { key: "purchase", icon: <FaLayerGroup />, label: "Purchase", path: '/purchase' },
-    { key: "problems", icon: <FaBug />, label: "Customer", path: '/customer' },
-    { key: "users", icon: <FaUsers />, label: "Frequancy", path: '/customer-analysis' },
+    {
+      key: "dashboard",
+      icon: <MdDashboard />,
+      label: "Dashboard",
+      path: "/dashboard",
+    },
+    {
+      key: "purchase",
+      icon: <FaLayerGroup />,
+      label: "Purchase",
+      path: "/purchase",
+    },
+    { key: "problems", icon: <FaBug />, label: "Customer", path: "/customer" },
+    {
+      key: "users",
+      icon: <FaUsers />,
+      label: "Frequancy",
+      path: "/customer-analysis",
+    },
     { key: "analytics", icon: <FaChartBar />, label: "Analytics" },
     { key: "announcements", icon: <FaBullhorn />, label: "Announcements" },
-    { key: "settings", icon: <FaCog />, label: "Settings" }
+    { key: "settings", icon: <FaCog />, label: "Settings" },
   ];
 
- 
-
   const handleLogot = () => {
-      dispatch(logout());
-      navigate('/')
-  }
+    dispatch(logout());
+    navigate("/");
+  };
 
   // const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
-    <header className={`${styles.header} ${darkMode ? styles.dark : ''}`}>
-      
+    <header className={`${styles.header} ${darkMode ? styles.dark : ""}`}>
       {/* Left Side - Brand Area */}
       <div className={styles.brandArea}>
         <div className={styles.logoContainer}>
           <div className={styles.logoWrapper}>
-            <img 
-              src="/img/logo.png" 
-              alt="Phoenix Admin" 
+            <img
+              src="/img/logo.png"
+              alt="Phoenix Admin"
               className={styles.logo}
               onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
+                e.target.style.display = "none";
+                e.target.nextSibling.style.display = "flex";
               }}
             />
             <div className={styles.logoFallback}>
@@ -113,11 +129,9 @@ const Header = () => {
             <div className={styles.logoGlow}></div>
           </div>
         </div>
-        
- 
 
         {/* Mobile Menu Button */}
-        <button 
+        <button
           className={styles.mobileMenuButton}
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
         >
@@ -128,7 +142,12 @@ const Header = () => {
       </div>
 
       {/* Center - Navigation */}
-      <nav className={`${styles.navigation} ${mobileMenuOpen ? styles.mobileMenuOpen : ''}`} ref={mobileMenuRef}>
+      <nav
+        className={`${styles.navigation} ${
+          mobileMenuOpen ? styles.mobileMenuOpen : ""
+        }`}
+        ref={mobileMenuRef}
+      >
         <div className={styles.mobileMenuHeader}>
           <span>Navigation</span>
           <button onClick={() => setMobileMenuOpen(false)}>
@@ -136,16 +155,17 @@ const Header = () => {
           </button>
         </div>
         {menuItems.map((item) => (
-        <button
-              key={item.key}
-              className={`${styles.navItem} ${activeMenu === item.key ? styles.navItemActive : ''}`}
-              onClick={() => {
-                setActiveMenu(item.key);
-                setMobileMenuOpen(false);
-                if (item.path) navigate(item.path);
-              }}
-            >
-
+          <button
+            key={item.key}
+            className={`${styles.navItem} ${
+              activeMenu === item.key ? styles.navItemActive : ""
+            }`}
+            onClick={() => {
+              setActiveMenu(item.key);
+              setMobileMenuOpen(false);
+              if (item.path) navigate(item.path);
+            }}
+          >
             <span className={styles.navIcon}>{item.icon}</span>
             <span className={styles.navLabel}>{item.label}</span>
             <div className={styles.navIndicator}></div>
@@ -156,11 +176,15 @@ const Header = () => {
       {/* Right Side - Controls */}
       <div className={styles.controls}>
         {/* Search */}
-        <div className={`${styles.searchContainer} ${searchFocused ? styles.searchFocused : ''}`}>
+        <div
+          className={`${styles.searchContainer} ${
+            searchFocused ? styles.searchFocused : ""
+          }`}
+        >
           <FaSearch className={styles.searchIcon} />
-          <input 
-            type="text" 
-            placeholder="Search Products, users, reports..." 
+          <input
+            type="text"
+            placeholder="Search Products, users, reports..."
             className={styles.searchInput}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -168,7 +192,7 @@ const Header = () => {
             onBlur={() => setSearchFocused(false)}
           />
           {searchQuery && (
-            <button 
+            <button
               className={styles.searchClear}
               onClick={() => setSearchQuery("")}
             >
@@ -178,7 +202,7 @@ const Header = () => {
         </div>
 
         {/* Theme Toggle */}
-        <button 
+        <button
           className={styles.themeToggle}
           onClick={() => setDarkMode(!darkMode)}
           aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
@@ -240,7 +264,7 @@ const Header = () => {
 
         {/* User Menu */}
         <div className={styles.userMenu} ref={dropdownRef}>
-          <button 
+          <button
             className={styles.userTrigger}
             onClick={() => setOpen(!open)}
             aria-label="User menu"
@@ -252,7 +276,11 @@ const Header = () => {
               <span className={styles.userName}>{displayName}</span>
               <span className={styles.userRole}>{displayRole}</span>
             </div>
-            <FaCaretDown className={`${styles.chevron} ${open ? styles.chevronRotated : ''}`} />
+            <FaCaretDown
+              className={`${styles.chevron} ${
+                open ? styles.chevronRotated : ""
+              }`}
+            />
           </button>
 
           {open && (
@@ -270,7 +298,7 @@ const Header = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className={styles.dropdownMenu}>
                 <button className={styles.menuOption}>
                   <FaUserCircle />
@@ -285,7 +313,7 @@ const Header = () => {
                   <span>Support Center</span>
                 </button>
               </div>
-              
+
               <div className={styles.dropdownFooter}>
                 <button className={styles.logoutButton} onClick={handleLogot}>
                   <FaSignOutAlt />
@@ -298,6 +326,6 @@ const Header = () => {
       </div>
     </header>
   );
-}
+};
 
 export default Header;

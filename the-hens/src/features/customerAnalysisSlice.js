@@ -50,7 +50,8 @@ const customerAnalysisSlice = createSlice({
           state.loading = false;
 
           if (action.type.includes("WeekWise")) state.weekWise = action.payload;
-          if (action.type.includes("MonthWise")) state.monthWise = action.payload;
+          if (action.type.includes("MonthWise"))
+            state.monthWise = action.payload;
           if (action.type.includes("YearWise")) state.yearWise = action.payload;
         }
       )

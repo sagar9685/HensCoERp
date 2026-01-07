@@ -3,7 +3,6 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const ExcelExport = ({ data, fileName = "export.xlsx", children }) => {
-
   const handleExport = () => {
     if (!data || data.length === 0) {
       alert("No data available to export");

@@ -4,19 +4,20 @@ import axios from "axios";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const fetchProductTypes = createAsyncThunk(
-   "product/fetchProductTypes",
+  "product/fetchProductTypes",
   async () => {
     const res = await axios.get(`${API_BASE_URL}/api/products/types`);
-    return res.data.map(item => item.ProductType);
+    return res.data.map((item) => item.ProductType);
   }
 );
-
 
 export const fetchWeightByType = createAsyncThunk(
   "product/fetchWeightByType",
   async (type, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/api/products/weight/${type}`);
+      const res = await axios.get(
+        `${API_BASE_URL}/api/products/weight/${type}`
+      );
       return res.data.weight;
     } catch (err) {
       return rejectWithValue(
@@ -26,12 +27,13 @@ export const fetchWeightByType = createAsyncThunk(
   }
 );
 
-
 export const fetchRateByProductType = createAsyncThunk(
   "product/fetchRateByProductType",
   async (productType, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/rates/type/${productType}`);
+      const response = await axios.get(
+        `${API_BASE_URL}/api/rates/type/${productType}`
+      );
       const data = response.data;
 
       // if backend returns an array of rate history
@@ -47,18 +49,16 @@ export const fetchRateByProductType = createAsyncThunk(
   }
 );
 
-
-
 const productSlice = createSlice({
   name: "product",
   initialState: {
     types: [],
-    weight : [],
-    rate:0,
+    weight: [],
+    rate: 0,
     loading: false,
     error: null,
   },
-    reducers: {
+  reducers: {
     clearWeight: (state) => {
       state.weight = "";
     },
@@ -77,21 +77,22 @@ const productSlice = createSlice({
         state.loading = false;
         state.error = action.error.message;
       })
-      .addCase(fetchWeightByType.pending, (state)=> {
+      .addCase(fetchWeightByType.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchWeightByType.fulfilled, (state, action)=> {
-          state.loading=false;
-           state.weight = Array.isArray(action.payload) ? action.payload : [action.payload];
+      .addCase(fetchWeightByType.fulfilled, (state, action) => {
+        state.loading = false;
+        state.weight = Array.isArray(action.payload)
+          ? action.payload
+          : [action.payload];
       })
-      .addCase(fetchWeightByType.rejected, (state,action) => {
-        state.loading=true;
-         state.error = action.payload;
+      .addCase(fetchWeightByType.rejected, (state, action) => {
+        state.loading = true;
+        state.error = action.payload;
       })
-        .addCase(fetchRateByProductType.fulfilled, (state, action) => {
-          state.rate = action.payload;
-});
-
+      .addCase(fetchRateByProductType.fulfilled, (state, action) => {
+        state.rate = action.payload;
+      });
   },
 });
 

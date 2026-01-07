@@ -4,20 +4,26 @@ import styles from "./OrderDetailsModal.module.css";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchPendingCashOrders,
-  clearPendingOrders
+  clearPendingOrders,
 } from "../../../features/paymentModeSlice";
-import { FiX, FiPrinter, FiDownload, FiUser, FiCalendar, FiDollarSign } from "react-icons/fi";
+import {
+  FiX,
+  FiPrinter,
+  FiDownload,
+  FiUser,
+  FiCalendar,
+  FiDollarSign,
+} from "react-icons/fi";
 import { HiDocumentText } from "react-icons/hi";
 // import PrintOrderDetails from "./PrintOrderDetails";
- import { printOrderDetails, downloadOrderCSV } from './PrintOrderDetails'
-
+import { printOrderDetails, downloadOrderCSV } from "./PrintOrderDetails";
 
 export default function OrderDetailsModal({ deliveryManId, onClose }) {
   const dispatch = useDispatch();
   const { list: orders, loading } = useSelector(
     (state) => state.pendingCashOrders
   );
-  console.log(orders,"order click on details")
+  console.log(orders, "order click on details");
 
   useEffect(() => {
     if (deliveryManId) {
@@ -30,13 +36,19 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
   }, [deliveryManId, dispatch]);
 
   // Calculate totals
-  const totalCash = orders.reduce((sum, order) => sum + (order.CashAmount || 0), 0);
+  const totalCash = orders.reduce(
+    (sum, order) => sum + (order.CashAmount || 0),
+    0
+  );
   const totalOrders = orders.length;
-  const totalQuantity = orders.reduce((sum, order) => sum + (order.Quantity || 0), 0);
+  const totalQuantity = orders.reduce(
+    (sum, order) => sum + (order.Quantity || 0),
+    0
+  );
   const deliveryManName = orders[0]?.DeliveryManName || deliveryManId;
 
   // Import print utility
- 
+
   // Print function
   const handlePrint = () => {
     printOrderDetails(orders, deliveryManId, deliveryManName);
@@ -64,21 +76,21 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
               </div>
             </div>
             <div className={styles.headerActions}>
-              <button 
+              <button
                 className={styles.actionBtn}
                 onClick={handleDownloadCSV}
                 title="Download CSV"
               >
                 <FiDownload />
               </button>
-              <button 
+              <button
                 className={styles.actionBtn}
                 onClick={handlePrint}
                 title="Print Report"
               >
                 <FiPrinter />
               </button>
-              <button 
+              <button
                 className={styles.closeBtn}
                 onClick={onClose}
                 title="Close"
@@ -115,7 +127,9 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
                 </div>
                 <div className={styles.cardContent}>
                   <span className={styles.cardLabel}>Total Cash</span>
-                  <span className={styles.cardValue}>₹{totalCash.toFixed(2)}</span>
+                  <span className={styles.cardValue}>
+                    ₹{totalCash.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </div>
@@ -133,7 +147,9 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
                   <div className={styles.emptyState}>
                     <HiDocumentText className={styles.emptyIcon} />
                     <h4>No Pending Cash Orders</h4>
-                    <p>There are no pending cash orders for this delivery person.</p>
+                    <p>
+                      There are no pending cash orders for this delivery person.
+                    </p>
                   </div>
                 ) : (
                   <>
@@ -157,37 +173,61 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
                         </thead>
                         <tbody>
                           {orders.map((order) => (
-                            <tr key={order.PaymentID} className={styles.tableRow}>
-                              <td className={styles.orderId}>{order.OrderID}</td>
-                              <td className={styles.invoiceNo}>{order.InvoiceNo}</td>
-                              <td className={styles.customerName}>{order.CustomerName}</td>
-                              <td className={styles.productType}>{order.ProductType}</td>
-                              <td className={styles.textCenter}>{order.Quantity}</td>
-                              <td className={`${styles.textRight} ${styles.rate}`}>
+                            <tr
+                              key={order.PaymentID}
+                              className={styles.tableRow}
+                            >
+                              <td className={styles.orderId}>
+                                {order.OrderID}
+                              </td>
+                              <td className={styles.invoiceNo}>
+                                {order.InvoiceNo}
+                              </td>
+                              <td className={styles.customerName}>
+                                {order.CustomerName}
+                              </td>
+                              <td className={styles.productType}>
+                                {order.ProductType}
+                              </td>
+                              <td className={styles.textCenter}>
+                                {order.Quantity}
+                              </td>
+                              <td
+                                className={`${styles.textRight} ${styles.rate}`}
+                              >
                                 ₹{order.Rate || 0}
                               </td>
-                              <td className={`${styles.textRight} ${styles.delivery}`}>
+                              <td
+                                className={`${styles.textRight} ${styles.delivery}`}
+                              >
                                 ₹{order.DeliveryCharge || 0}
                               </td>
-                              <td className={`${styles.amount} ${styles.textRight}`}>
+                              <td
+                                className={`${styles.amount} ${styles.textRight}`}
+                              >
                                 ₹{order.CashAmount?.toFixed(2)}
                               </td>
                               <td className={styles.date}>
                                 <FiCalendar className={styles.dateIcon} />
                                 {order.PaymentDate?.split("T")[0]}
                               </td>
-                              <td className={styles.address}>{order.Address}</td>
+                              <td className={styles.address}>
+                                {order.Address}
+                              </td>
                               <td className={styles.area}>{order.Area}</td>
-                              <td className={styles.contact}>{order.ContactNo}</td>
+                              <td className={styles.contact}>
+                                {order.ContactNo}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    
+
                     <div className={styles.tableFooter}>
                       <div className={styles.footerInfo}>
-                        Showing <strong>{orders.length}</strong> pending cash orders
+                        Showing <strong>{orders.length}</strong> pending cash
+                        orders
                       </div>
                       <div className={styles.footerTotal}>
                         Total: <span>₹{totalCash.toFixed(2)}</span>

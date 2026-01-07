@@ -1,6 +1,15 @@
 import React, { useEffect, useState } from "react";
 import styles from "./AdminDashboard.module.css";
-import { FaEye, FaEdit, FaPlus, FaSearch, FaFilter, FaSyncAlt, FaShieldAlt,  FaFileInvoiceDollar   } from "react-icons/fa";
+import {
+  FaEye,
+  FaEdit,
+  FaPlus,
+  FaSearch,
+  FaFilter,
+  FaSyncAlt,
+  FaShieldAlt,
+  FaFileInvoiceDollar,
+} from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
@@ -10,9 +19,7 @@ import { toast } from "react-toastify";
 import { fetchOrder } from "../features/orderSlice";
 import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
- import InvoiceGenerator from "./OrderInvoice";
-
-
+import InvoiceGenerator from "./OrderInvoice";
 
 const AdminDashboard = () => {
   const [filters, setFilters] = useState({
@@ -26,39 +33,45 @@ const AdminDashboard = () => {
 
   const [activeTab, setActiveTab] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
-   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
-   const dispatch = useDispatch()
-const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-const [selectedPayment, setSelectedPayment] = useState(null);
-const [receivedAmount, setReceivedAmount] = useState("");
-   const orders = useSelector((state)=> state.order.record);
-   console.log(orders,"fetch admin side oderr");
-   
-   const loading = useSelector((state)=> state.order.loading)
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const dispatch = useDispatch();
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [receivedAmount, setReceivedAmount] = useState("");
+  const orders = useSelector((state) => state.order.record);
+  console.log(orders, "fetch admin side oderr");
 
-   const [filteredData, setFilteredData] = useState([]);
-const [currentPage, setCurrentPage] = useState(1);
-const recordsPerPage = 10;
-const indexOfLastRecord = currentPage * recordsPerPage;
-const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-const currentRecords = filteredData.slice(indexOfFirstRecord, indexOfLastRecord);
-console.log(currentRecords,"currentRecords")
- const totalOrders = orders.length;
- 
+  const loading = useSelector((state) => state.order.loading);
 
-const totalItems = orders.reduce((acc, order) => {
-  const quantities = order.Quantities ? order.Quantities.split(",").map(Number) : [];
-  const totalQty = quantities.reduce((sum, q) => sum + q, 0);
-  return acc + totalQty;
-}, 0);
+  const [filteredData, setFilteredData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredData.slice(
+    indexOfFirstRecord,
+    indexOfLastRecord
+  );
+  console.log(currentRecords, "currentRecords");
+  const totalOrders = orders.length;
 
-const totalDueAmount = orders.reduce((acc, order) => {
-  return acc + (order.ShortAmount || 0);
-}, 0);
+  const totalItems = orders.reduce((acc, order) => {
+    const quantities = order.Quantities
+      ? order.Quantities.split(",").map(Number)
+      : [];
+    const totalQty = quantities.reduce((sum, q) => sum + q, 0);
+    return acc + totalQty;
+  }, 0);
 
-const totalPending = orders.filter(order => order.PaymentVerifyStatus !== "Verified").length;
+  const totalDueAmount = orders.reduce((acc, order) => {
+    return acc + (order.ShortAmount || 0);
+  }, 0);
 
- const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
+  const totalPending = orders.filter(
+    (order) => order.PaymentVerifyStatus !== "Verified"
+  ).length;
+
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
   const handleGenerateInvoice = (orderRow) => {
@@ -70,71 +83,64 @@ const totalPending = orders.filter(order => order.PaymentVerifyStatus !== "Verif
     setIsInvoiceModalOpen(false);
     setSelectedOrderForInvoice(null);
   };
-  console.log(selectedOrderForInvoice,"selectedOrderForInvoice")
+  console.log(selectedOrderForInvoice, "selectedOrderForInvoice");
 
+  const totalPages = Math.ceil(filteredData.length / recordsPerPage);
 
+  const formatPaymentSummary = (summary) => {
+    if (!summary) return "-";
 
-const totalPages = Math.ceil(filteredData.length / recordsPerPage);
+    return summary
+      .split("|")
+      .map((item) => item.trim())
+      .filter((item) => {
+        const amount = parseFloat(item.split(":")[1]);
+        return amount > 0;
+      })
+      .join(" | ");
+  };
 
-const formatPaymentSummary = (summary) => {
-  if (!summary) return "-";
+  useEffect(() => {
+    dispatch(fetchOrder());
+  }, [dispatch]);
 
-  
-  return summary
-    .split("|")
-    .map(item => item.trim())
-    .filter(item => {
-      const amount = parseFloat(item.split(":")[1]);
-      return amount > 0;
-    })
-    .join(" | ");
-};
-
-
-
-  useEffect(()=> {
-      dispatch(fetchOrder())
-  },[dispatch])
-
-  useEffect(()=>{
+  useEffect(() => {
     setFilteredData(orders || []);
+  }, [orders]);
 
-  },[orders])
-  
-   const data = orders || [];
+  const data = orders || [];
 
- 
   const handleChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
+  const handleStatusChange = (row, value) => {
+    // Verified Status
+    if (value === "Verified") {
+      dispatch(markVerified({ paymentId: row.PaymentID }))
+        .unwrap()
+        .then(() => {
+          dispatch(fetchOrder());
+          toast.success("Payment marked as Verified!");
+          setIsPaymentModalOpen(false);
+        })
+        .catch((err) => toast.error(err.message || "Failed to verify"));
+    }
 
-const handleStatusChange = (row, value) => {
+    // Incomplete → Open Modal
+    if (value === "Incomplete") {
+      setSelectedPayment(row);
+      setIsPaymentModalOpen(true);
+    }
+  };
 
-  // Verified Status
-  if (value === "Verified") {
-    dispatch(markVerified({ paymentId: row.PaymentID }))
-      .unwrap()
-      .then(() => {
-        dispatch(fetchOrder());
-        toast.success("Payment marked as Verified!");
-        setIsPaymentModalOpen(false);
+  const handleVerifyPayment = () => {
+    dispatch(
+      verifyPayment({
+        paymentId: selectedPayment.PaymentID,
+        receivedAmount: Number(receivedAmount),
       })
-      .catch((err) => toast.error(err.message || "Failed to verify"));
-  }
-
-  // Incomplete → Open Modal
-  if (value === "Incomplete") {
-    setSelectedPayment(row);
-    setIsPaymentModalOpen(true);
-  }
-};
-
- const handleVerifyPayment = () => {
-    dispatch(verifyPayment({
-      paymentId: selectedPayment.PaymentID,
-      receivedAmount: Number(receivedAmount),
-    }))
+    )
       .unwrap()
       .then(() => {
         setTimeout(() => dispatch(fetchOrder()), 200);
@@ -142,65 +148,57 @@ const handleStatusChange = (row, value) => {
         setIsPaymentModalOpen(false);
         setReceivedAmount("");
       })
-      .catch(err => toast.error(err.message || "Payment verification failed"));
+      .catch((err) =>
+        toast.error(err.message || "Payment verification failed")
+      );
   };
 
+  const handleClear = () => {
+    setFilters({
+      ProductId: "",
+      ProductName: "",
+      ProductType: "",
+      Weight: "",
+      Rate: "",
+      customer: "",
+    });
+    setFilteredData(orders || []);
+  };
 
+  const handleSearch = () => {
+    let filtered = orders;
 
- 
+    Object.keys(filters).forEach((key) => {
+      const value = filters[key].trim().toLowerCase();
+      if (value) {
+        filtered = filtered.filter((item) => {
+          switch (key) {
+            case "ProductId":
+              return item.OrderID?.toString().toLowerCase().includes(value);
+            case "customer":
+              return item.CustomerName?.toLowerCase().includes(value);
+            default:
+              return item[key]?.toString().toLowerCase().includes(value);
+          }
+        });
+      }
+    });
 
- 
+    setFilteredData(filtered);
+    setCurrentPage(1);
+  };
 
-
-                const handleClear = () => {
-          setFilters({
-            ProductId: "",
-            ProductName: "",
-            ProductType: "",
-            Weight: "",
-            Rate: "",
-            customer: "",
-          });
-          setFilteredData(orders || []);
-        };
-
-
-                    const handleSearch = () => {
-                let filtered = orders;
-
-                Object.keys(filters).forEach((key) => {
-                  const value = filters[key].trim().toLowerCase();
-                  if (value) {
-                    filtered = filtered.filter((item) => {
-                      switch (key) {
-                        case "ProductId":
-                          return item.OrderID?.toString().toLowerCase().includes(value);
-                        case "customer":
-                          return item.CustomerName?.toLowerCase().includes(value);
-                        default:
-                          return item[key]?.toString().toLowerCase().includes(value);
-                      }
-                    });
-                  }
-                });
-
-                setFilteredData(filtered);
-                setCurrentPage(1);
-              };
-
-
-
-   const handleAddOrder = (orderData) => {
+  const handleAddOrder = (orderData) => {
     console.log("New order data:", orderData);
     // Here you would typically send the data to your backend API
     // For now, we'll just log it
-    alert('Order created successfully!');
+    alert("Order created successfully!");
   };
 
-    const handleAddCustomer = (customerData) => {
+  const handleAddCustomer = (customerData) => {
     console.log("New customer data:", customerData);
     // Handle customer creation
-    alert('Customer added successfully!');
+    alert("Customer added successfully!");
   };
 
   // const getPaymentStatusClass = (status) => {
@@ -227,28 +225,29 @@ const handleStatusChange = (row, value) => {
             <PiEggBold className={styles.titleIcon} />
             <div>
               <h1 className={styles.mainTitle}>Product Management Dashboard</h1>
-              <p className={styles.subtitle}>Manage and monitor all product records</p>
+              <p className={styles.subtitle}>
+                Manage and monitor all product records
+              </p>
             </div>
           </div>
-         <div className={styles.statsCard}>
-  <div className={styles.statItem}>
-    <span className={styles.statNumber}>{totalOrders}</span>
-    <span className={styles.statLabel}>Total Orders</span>
-  </div>
-  <div className={styles.statItem}>
-    <span className={styles.statNumber}>{totalItems}</span>
-    <span className={styles.statLabel}>Total Items</span>
-  </div>
-  <div className={styles.statItem}>
-    <span className={styles.statNumber}>₹{totalDueAmount}</span>
-    <span className={styles.statLabel}>Total Due Amount</span>
-  </div>
-  <div className={styles.statItem}>
-    <span className={styles.statNumber}>{totalPending}</span>
-    <span className={styles.statLabel}>Total Pending</span>
-  </div>
-</div>
-
+          <div className={styles.statsCard}>
+            <div className={styles.statItem}>
+              <span className={styles.statNumber}>{totalOrders}</span>
+              <span className={styles.statLabel}>Total Orders</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statNumber}>{totalItems}</span>
+              <span className={styles.statLabel}>Total Items</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statNumber}>₹{totalDueAmount}</span>
+              <span className={styles.statLabel}>Total Due Amount</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statNumber}>{totalPending}</span>
+              <span className={styles.statLabel}>Total Pending</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -258,7 +257,9 @@ const handleStatusChange = (row, value) => {
           {["all", "active", "inactive", "pending"].map((tab) => (
             <button
               key={tab}
-              className={`${styles.tab} ${activeTab === tab ? styles.tabActive : ""}`}
+              className={`${styles.tab} ${
+                activeTab === tab ? styles.tabActive : ""
+              }`}
               onClick={() => setActiveTab(tab)}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -275,7 +276,7 @@ const handleStatusChange = (row, value) => {
             <FaFilter className={styles.filterIcon} />
             <h3>Filter Product</h3>
           </div>
-          
+
           <div className={styles.filterGrid}>
             {Object.keys(filters).map((key) => (
               <div key={key} className={styles.inputGroup}>
@@ -284,7 +285,9 @@ const handleStatusChange = (row, value) => {
                 </label>
                 <input
                   type="text"
-                  placeholder={`Search ${key.replace(/([A-Z])/g, " $1").toLowerCase()}`}
+                  placeholder={`Search ${key
+                    .replace(/([A-Z])/g, " $1")
+                    .toLowerCase()}`}
                   name={key}
                   value={filters[key]}
                   onChange={handleChange}
@@ -305,15 +308,17 @@ const handleStatusChange = (row, value) => {
               Search Product
             </button>
 
-             <button className={styles.addOrder}
-             onClick={()=>setIsModalOpen(true)}>
+            <button
+              className={styles.addOrder}
+              onClick={() => setIsModalOpen(true)}
+            >
               <FaPlus className={styles.btnIcon} />
               Add New Order
             </button>
 
-            <button className={styles.addBtn}
-            onClick={()=>setIsCustomerModalOpen(true)
-            }
+            <button
+              className={styles.addBtn}
+              onClick={() => setIsCustomerModalOpen(true)}
             >
               <FaPlus className={styles.btnIcon} />
               Add New Customer
@@ -328,22 +333,19 @@ const handleStatusChange = (row, value) => {
               <FaShieldAlt className={styles.tableIcon} />
               Product Records
             </h3>
-            <span className={styles.tableCounter}>{data.length} records found</span>
+            <span className={styles.tableCounter}>
+              {data.length} records found
+            </span>
           </div>
 
           <div className={styles.tableContainer}>
-                                        {loading && (
-                  <div className={styles.loaderWrapper}>
-                    <Loader />
-                  </div>
-                )}
+            {loading && (
+              <div className={styles.loaderWrapper}>
+                <Loader />
+              </div>
+            )}
 
-
-
-              {
-                data.length === 0 && !loading && <p> No order found...</p>
-              }
-
+            {data.length === 0 && !loading && <p> No order found...</p>}
 
             <table className={styles.table}>
               <thead>
@@ -355,7 +357,7 @@ const handleStatusChange = (row, value) => {
                   <th>Area</th>
                   <th>Contact No</th>
                   <th>Product Type</th>
-                   
+
                   <th>Delivery Charge</th>
                   <th>Order Date</th>
                   <th>Delivery Date</th>
@@ -368,113 +370,153 @@ const handleStatusChange = (row, value) => {
                 </tr>
               </thead>
               <tbody>
-              {currentRecords.length > 0 ? (
-  currentRecords.map((row, index) => (
-    <tr key={row.id} className={index % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd}>
-      <td>
-        <span className={styles.productId}>{row.OrderID}</span>
-      </td>
-      <td className={styles.productName}>{row.ProductNames}</td>
-      <td className={styles.tableData}>{row.CustomerName}</td>
-      <td className={styles.tableData}>{row.Address}</td>
-      <td className={styles.tableData}>{row.Area}</td>
-      <td className={styles.tableData}>{row.ContactNo}</td>
-    <td className={styles.tableData}>
-  <div className={styles.productTable}>
+                {currentRecords.length > 0 ? (
+                  currentRecords.map((row, index) => (
+                    <tr
+                      key={row.id}
+                      className={
+                        index % 2 === 0
+                          ? styles.tableRowEven
+                          : styles.tableRowOdd
+                      }
+                    >
+                      <td>
+                        <span className={styles.productId}>{row.OrderID}</span>
+                      </td>
+                      <td className={styles.productName}>{row.ProductNames}</td>
+                      <td className={styles.tableData}>{row.CustomerName}</td>
+                      <td className={styles.tableData}>{row.Address}</td>
+                      <td className={styles.tableData}>{row.Area}</td>
+                      <td className={styles.tableData}>{row.ContactNo}</td>
+                      <td className={styles.tableData}>
+                        <div className={styles.productTable}>
+                          {(() => {
+                            const types = row.ProductTypes
+                              ? row.ProductTypes.split(",")
+                              : [];
+                            const weights = row.Weights
+                              ? row.Weights.split(",")
+                              : [];
+                            const quantities = row.Quantities
+                              ? row.Quantities.split(",")
+                              : [];
+                            const rates = row.Rates ? row.Rates.split(",") : [];
 
-    {(() => {
-      const types = row.ProductTypes ? row.ProductTypes.split(",") : [];
-      const weights = row.Weights ? row.Weights.split(",") : [];
-      const quantities = row.Quantities ? row.Quantities.split(",") : [];
-      const rates = row.Rates ? row.Rates.split(",") : [];
+                            return types.map((type, i) => (
+                              <div key={i} className={styles.productRow}>
+                                <span className={styles.pType}>
+                                  {type?.trim() || "-"}
+                                </span>
+                                <span className={styles.pWeight}>
+                                  {weights[i]?.trim() || "-"}
+                                </span>
+                                <span className={styles.pQty}>
+                                  Qty: {quantities[i]?.trim() || "-"}
+                                </span>
+                                <span className={styles.pRate}>
+                                  ₹{rates[i]?.trim() || "-"}
+                                </span>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </td>
 
-      return types.map((type, i) => (
-        <div key={i} className={styles.productRow}>
-          <span className={styles.pType}>{type?.trim() || "-"}</span>
-          <span className={styles.pWeight}>{weights[i]?.trim() || "-"}</span>
-          <span className={styles.pQty}>Qty: {quantities[i]?.trim() || "-"}</span>
-          <span className={styles.pRate}>₹{rates[i]?.trim() || "-"}</span>
-        </div>
-      ));
-    })()}
+                      <td className={styles.tableData}>{row.DeliveryCharge}</td>
+                      <td className={styles.tableData}>
+                        {new Date(row.OrderDate)
+                          .toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "2-digit",
+                          })
+                          .replace(",", "")
+                          .replace(" ", "-")}
+                      </td>
 
-  </div>
-</td>
+                      <td className={styles.tableData}>
+                        {new Date(row.DeliveryDate)
+                          .toLocaleDateString("en-GB", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "2-digit",
+                          })
+                          .replace(",", "")
+                          .replace(" ", "-")}
+                      </td>
 
-      <td className={styles.tableData}>{row.DeliveryCharge}</td>
-     <td className={styles.tableData}>
-            {new Date(row.OrderDate).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: '2-digit'
-            }).replace(',', '').replace(' ', '-')}
-          </td>
+                      <td className={styles.tableData}>
+                        {row.DeliveryManName}
+                      </td>
+                      <td>
+                        <span className={styles.paymentModeBadge}>
+                          {formatPaymentSummary(row.PaymentSummary)}
+                        </span>
+                      </td>
+                      <td className={styles.tableData}>{row.OrderTakenBy}</td>
+                      <td className={styles.tableData}>{row.Remark}</td>
 
- <td className={styles.tableData}>
-            {new Date(row.DeliveryDate).toLocaleDateString('en-GB', {
-              day: '2-digit',
-              month: 'short',
-              year: '2-digit'
-            }).replace(',', '').replace(' ', '-')}
-          </td>
+                      {/* payment verify */}
+                      <td>
+                        <select
+                          value={row.PaymentVerifyStatus || "Pending"}
+                          disabled={
+                            row.PaymentVerifyStatus === "Verified" ||
+                            !row.PaymentID
+                          } // <-- disable when done
+                          onChange={(e) =>
+                            handleStatusChange(row, e.target.value)
+                          }
+                          className={styles.paymentDropdown}
+                        >
+                          <option value="Pending">Pending</option>
+                          <option value="Verified">Verified</option>
+                          <option value="Incomplete">Incomplete</option>
+                        </select>
 
-     
-      <td className={styles.tableData}>{row.DeliveryManName}</td>
-      <td>
-        <span className={styles.paymentModeBadge}>
-       {formatPaymentSummary(row.PaymentSummary)}
-        </span>
-      </td>
-      <td className={styles.tableData}>{row.OrderTakenBy}</td>
-      <td className={styles.tableData}>{row.Remark}</td>
-     
-     {/* payment verify */}
-    <td>
-  <select
-    value={row.PaymentVerifyStatus || "Pending"}
-    disabled={row.PaymentVerifyStatus === "Verified" || ! row.PaymentID}   // <-- disable when done
-    onChange={(e) => handleStatusChange(row, e.target.value)}
-    className={styles.paymentDropdown}
-  >
-    <option value="Pending">Pending</option>
-    <option value="Verified">Verified</option>
-    <option value="Incomplete">Incomplete</option>
-  </select>
+                        {/* SHOW DUE AMOUNT IF SHORT */}
+                        {row.ShortAmount > 0 && (
+                          <p className={styles.shortDue}>
+                            Due: ₹{row.ShortAmount}
+                          </p>
+                        )}
+                      </td>
 
-  {/* SHOW DUE AMOUNT IF SHORT */}
-  {row.ShortAmount > 0 && (
-    <p className={styles.shortDue}>Due: ₹{row.ShortAmount}</p>
-  )}
-</td>
+                      {/* edit start */}
 
-
-{/* edit start */}
-
-      <td className={styles.actions}>
-        <button className={styles.actionBtn} title="View Details">
-          <FaEye />
-        </button>
-        <button className={styles.actionBtn} title="Edit Product">
-          <FaEdit />
-        </button>
-        <button 
-            className={styles.actionBtn} 
-            title="Generate Invoice"
-            onClick={() => handleGenerateInvoice(row)} // <-- Trigger the invoice modal
-        >
-          <FaFileInvoiceDollar />
-        </button>
-
-      </td>
-    </tr>
-  ))
-) : (
+                      <td className={styles.actions}>
+                        <button
+                          className={styles.actionBtn}
+                          title="View Details"
+                        >
+                          <FaEye />
+                        </button>
+                        <button
+                          className={styles.actionBtn}
+                          title="Edit Product"
+                        >
+                          <FaEdit />
+                        </button>
+                        <button
+                          className={styles.actionBtn}
+                          title="Generate Invoice"
+                          onClick={() => handleGenerateInvoice(row)} // <-- Trigger the invoice modal
+                        >
+                          <FaFileInvoiceDollar />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
                   <tr>
                     <td colSpan="19" className={styles.noData}>
                       <div className={styles.noDataContent}>
                         <PiEggBold className={styles.noDataIcon} />
                         <h4>No products found</h4>
-                        <p>Try adjusting your search filters or add a new product.</p>
+                        <p>
+                          Try adjusting your search filters or add a new
+                          product.
+                        </p>
                         <button className={styles.addBtn}>
                           <FaPlus className={styles.btnIcon} />
                           Add First Product
@@ -488,7 +530,7 @@ const handleStatusChange = (row, value) => {
           </div>
 
           {/* PAGINATION */}
-                  {filteredData.length > 0 && (
+          {filteredData.length > 0 && (
             <div className={styles.pagination}>
               <button
                 className={styles.paginationBtn}
@@ -502,7 +544,9 @@ const handleStatusChange = (row, value) => {
                 {Array.from({ length: totalPages }, (_, i) => (
                   <span
                     key={i}
-                    className={currentPage === i + 1 ? styles.paginationActive : ""}
+                    className={
+                      currentPage === i + 1 ? styles.paginationActive : ""
+                    }
                     onClick={() => setCurrentPage(i + 1)}
                   >
                     {i + 1}
@@ -521,26 +565,22 @@ const handleStatusChange = (row, value) => {
               </button>
             </div>
           )}
-
         </div>
-        
       </div>
 
- <AddOrderModal
+      <AddOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddOrder={handleAddOrder}
       />
 
+      <AddCustomerModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onAddCustomer={handleAddCustomer}
+      />
 
-<AddCustomerModal 
-  isOpen={isCustomerModalOpen}
-  onClose={()=>setIsCustomerModalOpen(false)}
-  onAddCustomer={handleAddCustomer}
-  />
-
- 
-  <PaymentModal
+      <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => {
           setIsPaymentModalOpen(false);
@@ -550,23 +590,15 @@ const handleStatusChange = (row, value) => {
         receivedAmount={receivedAmount}
         setReceivedAmount={setReceivedAmount}
         onVerifyPayment={handleVerifyPayment}
-       
       />
 
       {isInvoiceModalOpen && (
-  <InvoiceGenerator
-    orderData={selectedOrderForInvoice}
-    onClose={closeInvoiceModal}
-  />
-)}
-
-
-
-
+        <InvoiceGenerator
+          orderData={selectedOrderForInvoice}
+          onClose={closeInvoiceModal}
+        />
+      )}
     </div>
-
-
-     
   );
 };
 

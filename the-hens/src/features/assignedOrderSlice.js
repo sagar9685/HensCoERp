@@ -7,7 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 export const fetchDeliveryMen = createAsyncThunk(
   "assignedOrders/fetchDeliveryMen",
   async () => {
-   const res = await axios.get(`${API_BASE_URL}/api/users/delivery-men`);
+    const res = await axios.get(`${API_BASE_URL}/api/users/delivery-men`);
 
     return res.data;
   }
@@ -17,38 +17,47 @@ export const fetchDeliveryMen = createAsyncThunk(
 export const fetchPaymentModes = createAsyncThunk(
   "assignedOrders/fetchPaymentModes",
   async () => {
-   const res = await axios.get(`${API_BASE_URL}/api/users/payment-modes`);
+    const res = await axios.get(`${API_BASE_URL}/api/users/payment-modes`);
 
     return res.data;
   }
 );
 
-export const fetchCashByDeliveryMen  = createAsyncThunk("/fetchcase",async ()=> {
-   const res = await axios.get(`${API_BASE_URL}/api/users/cash`);
+export const fetchCashByDeliveryMen = createAsyncThunk(
+  "/fetchcase",
+  async () => {
+    const res = await axios.get(`${API_BASE_URL}/api/users/cash`);
     return res.data;
-})
+  }
+);
 
 // ASSIGN ORDER
 export const assignOrder = createAsyncThunk(
   "assignedOrders/assignOrder",
   async (formData) => {
-    const res = await axios.post(`${API_BASE_URL}/api/users/assign-order`, formData);
+    const res = await axios.post(
+      `${API_BASE_URL}/api/users/assign-order`,
+      formData
+    );
     return res.data;
   }
 );
 
-export const fetchAssignOrder = createAsyncThunk('fetchAssignOrder', async () => {
-    const res = await axios.get (`${API_BASE_URL}/api/users/assigned-orders`);
+export const fetchAssignOrder = createAsyncThunk(
+  "fetchAssignOrder",
+  async () => {
+    const res = await axios.get(`${API_BASE_URL}/api/users/assigned-orders`);
     return res.data;
-})
+  }
+);
 
 const assignedOrderSlice = createSlice({
   name: "assignedOrders",
   initialState: {
     deliveryMen: [],
     paymentModes: [],
-     cashList: [], 
-    data : [],
+    cashList: [],
+    data: [],
     loading: false,
     success: false,
     error: null,
@@ -79,15 +88,15 @@ const assignedOrderSlice = createSlice({
       .addCase(assignOrder.rejected, (state, action) => {
         state.error = action.error.message;
       })
-      .addCase(fetchAssignOrder.pending, (state)=> {
+      .addCase(fetchAssignOrder.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchAssignOrder.fulfilled, (state,action)=> {
+      .addCase(fetchAssignOrder.fulfilled, (state, action) => {
         state.loading = false;
         state.data = action.payload;
       })
-      .addCase(fetchAssignOrder.rejected, (state)=> {
-        state.loading= false;
+      .addCase(fetchAssignOrder.rejected, (state) => {
+        state.loading = false;
         state.error = "something went wrong";
       })
       .addCase(fetchCashByDeliveryMen.pending, (state) => {
@@ -95,12 +104,12 @@ const assignedOrderSlice = createSlice({
       })
       .addCase(fetchCashByDeliveryMen.fulfilled, (state, action) => {
         state.loading = false;
-        state.cashList = action.payload.data;     // 👈 store data here
+        state.cashList = action.payload.data; // 👈 store data here
       })
       .addCase(fetchCashByDeliveryMen.rejected, (state) => {
         state.loading = false;
         state.error = "Failed to fetch cash data";
-      })
+      });
   },
 });
 

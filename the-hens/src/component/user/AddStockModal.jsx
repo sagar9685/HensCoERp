@@ -2,21 +2,21 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { addStock, closeStockModal } from "../../features/stockSlice";
 import { fetchWeightByType } from "../../features/productTypeSlice";
-import { fetchProductTypes } from '../../features/productTypeSlice';
+import { fetchProductTypes } from "../../features/productTypeSlice";
 import styles from "./AddStockModal.module.css";
 import { toast } from "react-toastify";
 import { X } from "lucide-react";
 
 const AddStockModal = () => {
   const dispatch = useDispatch();
- 
+
   const [item_name, setItem] = useState("");
   const [weightOptions, setWeightOptions] = useState([]);
   const [weight, setWeight] = useState("");
   const [quantity, setQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const productTypes = useSelector((state) => state.product?.types ?? []);
-//   const loading = useSelector((state) => state.product?.loading ?? false);
+  //   const loading = useSelector((state) => state.product?.loading ?? false);
 
   useEffect(() => {
     dispatch(fetchProductTypes());
@@ -54,7 +54,7 @@ const AddStockModal = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
+
     const formData = {
       item_name,
       weight,
@@ -135,7 +135,9 @@ const AddStockModal = () => {
               )}
             </select>
             {!item_name && (
-              <div className={styles.hint}>Select a product type to see available weights</div>
+              <div className={styles.hint}>
+                Select a product type to see available weights
+              </div>
             )}
           </div>
 
@@ -165,8 +167,8 @@ const AddStockModal = () => {
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className={styles.save}
               disabled={isSubmitting || !item_name || !weight || !quantity}
             >

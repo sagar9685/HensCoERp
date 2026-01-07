@@ -4,15 +4,14 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.35);   /* ⭐ lighter overlay */
-  backdrop-filter: blur(2px);        /* ⭐ reduce blur */
+  background: rgba(0, 0, 0, 0.35); /* ⭐ lighter overlay */
+  backdrop-filter: blur(2px); /* ⭐ reduce blur */
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 999999 !important;
   padding: 20px;
 }
-
 
 .modalContent {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
@@ -22,16 +21,13 @@
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 
-    0 32px 64px rgba(0, 0, 0, 0.2),
-    0 16px 32px rgba(0, 0, 0, 0.1),
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.2), 0 16px 32px rgba(0, 0, 0, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.3);
   position: relative;
   .modalContent {
-  z-index: 1000000 !important;
-}
-
+    z-index: 1000000 !important;
+  }
 }
 
 .modalHeader {
@@ -121,8 +117,7 @@
 .inputField:focus {
   outline: none;
   border-color: #10b981;
-  box-shadow: 
-    0 0 0 3px rgba(16, 185, 129, 0.1),
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1),
     0 2px 8px rgba(16, 185, 129, 0.2);
   transform: translateY(-1px);
 }
@@ -147,8 +142,7 @@
 .textareaField:focus {
   outline: none;
   border-color: #10b981;
-  box-shadow: 
-    0 0 0 3px rgba(16, 185, 129, 0.1),
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1),
     0 2px 8px rgba(16, 185, 129, 0.2);
   transform: translateY(-1px);
 }
@@ -249,25 +243,25 @@
     width: 95%;
     margin: 20px;
   }
-  
+
   .modalHeader {
     padding: 20px;
   }
-  
+
   .modalBody {
     padding: 20px;
   }
-  
+
   .formGrid {
     grid-template-columns: 1fr;
     gap: 15px;
   }
-  
+
   .modalFooter {
     padding: 15px 20px;
     flex-direction: column-reverse;
   }
-  
+
   .cancelButton,
   .submitButton {
     width: 100%;
@@ -279,20 +273,20 @@
   .modalOverlay {
     padding: 10px;
   }
-  
+
   .modalHeader {
     padding: 15px;
   }
-  
+
   .modalBody {
     padding: 15px;
   }
-  
+
   .modalTitle {
     font-size: 1.3rem;
   }
 }
- 
+
 .inputGroup {
   display: flex;
   flex-direction: column;

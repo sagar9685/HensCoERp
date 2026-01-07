@@ -38,17 +38,14 @@ export const fetchAvailableStock = createAsyncThunk(
   }
 );
 
-
-
-
 const stockSlice = createSlice({
   name: "stock",
   initialState: {
     modalOpen: false,
     loading: false,
     lastInwardNo: null,
-     items: [],
-     available: [],
+    items: [],
+    available: [],
   },
   reducers: {
     openStockModal: (state) => {
@@ -72,16 +69,16 @@ const stockSlice = createSlice({
         state.loading = false;
       })
       .addCase(fetchStock.pending, (state) => {
-    state.loading = true;
-  })
-        .addCase(fetchStock.fulfilled, (state, action) => {
-            state.loading = false;
-            state.items = action.payload; // ✅ update stock items
-        })
-        .addCase(fetchStock.rejected, (state) => {
-            state.loading = false;
-        })
-        .addCase(fetchAvailableStock.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchStock.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload; // ✅ update stock items
+      })
+      .addCase(fetchStock.rejected, (state) => {
+        state.loading = false;
+      })
+      .addCase(fetchAvailableStock.pending, (state) => {
         state.loading = true;
       })
       .addCase(fetchAvailableStock.fulfilled, (state, action) => {
@@ -90,8 +87,7 @@ const stockSlice = createSlice({
       })
       .addCase(fetchAvailableStock.rejected, (state) => {
         state.loading = false;
-      })
-
+      });
   },
 });
 
