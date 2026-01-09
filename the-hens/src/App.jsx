@@ -13,6 +13,7 @@ import Stock from "./component/user/Stock";
 import Customer from "./component/Customer";
 import CustomerAnalysis from "./component/CustomerAnalysis";
 import ReportPage from "./component/ReportPage";
+import ImportArea from "./pages/ImportArea";
 
 function App() {
   return (
@@ -63,6 +64,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/area-import"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <ImportArea />
             </ProtectedRoute>
           }
         />

@@ -304,7 +304,10 @@ const Header = () => {
                   <FaUserCircle />
                   <span>My Profile</span>
                 </button>
-                <button className={styles.menuOption}>
+                <button
+                  className={styles.menuOption}
+                  onClick={() => navigate("/area-import")}
+                >
                   <FaCog />
                   <span>Account Settings</span>
                 </button>

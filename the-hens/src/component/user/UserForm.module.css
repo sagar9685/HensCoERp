@@ -65,7 +65,7 @@
 }
 
 .statItem::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -101,7 +101,7 @@
   color: #2c3e50;
   line-height: 1;
   margin-bottom: 0.5rem;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .statLabel {
@@ -159,7 +159,7 @@
   color: #2c3e50;
   background-color: white;
   font-weight: 500;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .searchBox input:focus {
@@ -184,7 +184,7 @@
   min-width: 160px;
   transition: all 0.3s;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   appearance: none;
   background-image: url("data:image/svg+xml;charset=US-ASCII,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 5'><path fill='%23667eea' d='M2 0L0 2h4zm0 5L0 3h4z'/></svg>");
   background-repeat: no-repeat;
@@ -211,7 +211,7 @@
   cursor: pointer;
   box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
   background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-size: 0.85rem;
@@ -267,7 +267,7 @@
   transition: all 0.2s;
   white-space: nowrap;
   position: relative;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -287,7 +287,7 @@
   vertical-align: top;
   color: #2c3e50;
   transition: all 0.2s;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   border-right: 1px solid #f8f9fa;
 }
 
@@ -405,13 +405,18 @@
   transform: translateY(-1px);
 }
 
-.areaCell, .weightCell, .quantityCell, .dateCell {
+.areaCell,
+.weightCell,
+.quantityCell,
+.dateCell {
   white-space: nowrap;
   color: #2c3e50;
   font-weight: 600;
 }
 
-.typeCell, .weightCell, .quantityCell {
+.typeCell,
+.weightCell,
+.quantityCell {
   min-width: 120px;
 }
 
@@ -535,7 +540,7 @@
   font-weight: 600;
   width: 100%;
   min-width: 140px;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -666,7 +671,7 @@
   font-size: 0.9rem;
   color: #5d6d7e;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .pagination {
@@ -691,7 +696,7 @@
   color: #2c3e50;
   min-width: 48px;
   justify-content: center;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
@@ -723,7 +728,7 @@
   padding: 0.875rem 0.75rem;
   color: #5d6d7e;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 /* Enhanced Responsive Design */
@@ -731,15 +736,15 @@
   .cardHeader {
     padding: 1.75rem;
   }
-  
+
   .headerContent {
     gap: 2rem;
   }
-  
+
   .orderStats {
     gap: 1.25rem;
   }
-  
+
   .statItem {
     min-width: 130px;
     padding: 1.5rem 1.25rem;
@@ -752,18 +757,18 @@
     align-items: stretch;
     gap: 2rem;
   }
-  
+
   .headerContent {
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
   }
-  
+
   .headerActions {
     width: 100%;
     justify-content: space-between;
   }
-  
+
   .searchBox input {
     width: 250px;
   }
@@ -774,25 +779,25 @@
     gap: 1rem;
     flex-wrap: wrap;
   }
-  
+
   .statItem {
     min-width: calc(33.333% - 1rem);
     padding: 1.25rem 1rem;
   }
-  
+
   .statNumber {
     font-size: 1.75rem;
   }
-  
+
   .searchBox input {
     width: 200px;
   }
-  
+
   .tableFooter {
     flex-direction: column;
     text-align: center;
   }
-  
+
   .pagination {
     justify-content: center;
   }
@@ -803,61 +808,61 @@
     padding: 1.5rem;
     border-radius: 12px;
   }
-  
+
   .headerContent {
     flex-direction: column;
     gap: 1.5rem;
     align-items: stretch;
   }
-  
+
   .orderStats {
     justify-content: space-between;
     gap: 0.75rem;
   }
-  
+
   .statItem {
     flex: 1;
     min-width: calc(50% - 0.75rem);
     padding: 1.25rem 0.75rem;
   }
-  
+
   .statNumber {
     font-size: 1.5rem;
   }
-  
+
   .headerActions {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .filterControls {
     width: 100%;
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .searchBox {
     width: 100%;
   }
-  
+
   .searchBox input {
     width: 100%;
   }
-  
+
   .statusFilter {
     width: 100%;
   }
-  
+
   .dataTable td {
     padding: 1.25rem 1rem;
   }
-  
+
   .productImage {
     width: 48px;
     height: 48px;
     font-size: 1.5rem;
   }
-  
+
   .pageBtn {
     padding: 0.75rem 1rem;
     font-size: 0.85rem;
@@ -870,40 +875,40 @@
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .statItem {
     min-width: auto;
     width: 100%;
   }
-  
+
   .cardTitle {
     font-size: 1.5rem;
   }
-  
+
   .dataTable td {
     padding: 1rem 0.75rem;
   }
-  
+
   .productImage {
     width: 44px;
     height: 44px;
     font-size: 1.25rem;
   }
-  
+
   .pageBtn {
     padding: 0.7rem 0.9rem;
     font-size: 0.8rem;
     min-width: 42px;
   }
-  
+
   .emptyContent {
     padding: 0 1rem;
   }
-  
+
   .emptyContent i {
     font-size: 4rem;
   }
-  
+
   .emptyContent h4 {
     font-size: 1.5rem;
   }
@@ -998,11 +1003,11 @@
     transition: none;
     animation: none;
   }
-  
+
   .dataTable tbody tr:hover {
     transform: none;
   }
-  
+
   .lineItem:hover {
     transform: none;
   }
@@ -1015,12 +1020,12 @@
   .headerActions {
     display: none;
   }
-  
+
   .tableContainer {
     box-shadow: none;
     border: 1px solid #000;
   }
-  
+
   .dataTable {
     min-width: auto;
   }
