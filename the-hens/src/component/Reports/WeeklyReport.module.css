@@ -1,0 +1,151 @@
+/* WeeklyReport.module.css */
+
+.container {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.header {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 2rem;
+  align-items: center;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filterGroup label {
+  font-weight: 600;
+  color: #333;
+  min-width: 60px;
+}
+
+.filterGroup select {
+  padding: 10px 14px;
+  font-size: 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  min-width: 160px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.filterGroup select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.button {
+  padding: 12px 28px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: white;
+  background-color: #10b981;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.button:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-1px);
+}
+
+.error {
+  color: #dc2626;
+  font-weight: 500;
+  margin: 1rem 0;
+  padding: 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+}
+
+.reportTitle {
+  margin: 2rem 0 1rem;
+  color: #111827;
+  font-size: 1.5rem;
+}
+
+.tableContainer {
+  overflow-x: auto;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.table th,
+.table td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  color: #374151;
+  position: sticky;
+  top: 0;
+}
+
+.table td {
+  color: #4b5563;
+}
+
+.table tr:hover {
+  background: #f9fafb;
+  transition: background 0.15s;
+}
+
+.rightAlign {
+  text-align: right !important;
+}
+
+.noData {
+  margin-top: 2rem;
+  color: #6b7280;
+  font-style: italic;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.chartSection {
+  margin-top: 2.5rem;
+}
+
+.chartContainer {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  padding: 1.5rem;
+  height: 360px;
+}

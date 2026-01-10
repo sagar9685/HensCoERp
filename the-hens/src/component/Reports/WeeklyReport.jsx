@@ -1,28 +1,47 @@
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchWeeklyReport } from "../../features/reportSlice";
+import { Bar } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
+
+import styles from "./WeeklyReport.module.css";
+
+// Register Chart.js (only once)
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const WeeklyReport = () => {
   const dispatch = useDispatch();
   const { weekly, weeklyLoading, error } = useSelector((state) => state.report);
 
-  // Current date se shuru kar rahe hain (January 2026)
-  const currentYear = new Date().getFullYear(); // 2026
-  const currentMonth = new Date().getMonth() + 1; // 1 = January
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [selectedWeek, setSelectedWeek] = useState(1);
 
-  // Month ke last date ke hisaab se max weeks calculate karenge
   const getMaxWeeks = (year, month) => {
-    const lastDay = new Date(year, month, 0).getDate(); // last day of month
+    const lastDay = new Date(year, month, 0).getDate();
     return Math.ceil(lastDay / 7);
   };
 
   const maxWeeks = getMaxWeeks(selectedYear, selectedMonth);
 
-  // Jab month/year change ho to week reset kar do (1 pe)
   useEffect(() => {
     setSelectedWeek(1);
   }, [selectedYear, selectedMonth]);
@@ -37,29 +56,91 @@ const WeeklyReport = () => {
     );
   };
 
-  // Debugging logs (production mein hata sakte ho)
-  console.log(
-    "Current report state:",
-    useSelector((state) => state.report)
-  );
-  console.log("Weekly state full:", weekly);
-  console.log("Weekly data length:", weekly?.data?.length);
+  // Prepare chart data: Top Items Sold by Quantity
+  const itemsSoldData = {
+    labels:
+      weekly?.data
+        ?.reduce((acc, row) => {
+          const name = row.ProductName || row.ProductType || "Unknown";
+          const qty = Number(row.QuantitySold) || 0;
+          const existing = acc.find((item) => item.name === name);
+          if (existing) {
+            existing.qty += qty;
+          } else {
+            acc.push({ name, qty });
+          }
+          return acc;
+        }, [])
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 10)
+        .map((item) => item.name) || [],
+
+    datasets: [
+      {
+        label: "Quantity Sold",
+        data:
+          weekly?.data
+            ?.reduce((acc, row) => {
+              const name = row.ProductName || row.ProductType || "Unknown";
+              const qty = Number(row.QuantitySold) || 0;
+              const existing = acc.find((item) => item.name === name);
+              if (existing) {
+                existing.qty += qty;
+              } else {
+                acc.push({ name, qty });
+              }
+              return acc;
+            }, [])
+            .sort((a, b) => b.qty - a.qty)
+            .slice(0, 10)
+            .map((item) => item.qty) || [],
+        backgroundColor: "#3b82f6",
+        borderColor: "#1d4ed8",
+        borderWidth: 1,
+        borderRadius: 6,
+        hoverBackgroundColor: "#2563eb",
+      },
+    ],
+  };
+
+  const itemsChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: true,
+        text: "Top 10 Items Sold by Quantity (Week)",
+        font: { size: 18, weight: "bold" },
+        color: "#111827",
+        padding: { top: 10, bottom: 20 },
+      },
+      tooltip: {
+        backgroundColor: "rgba(0,0,0,0.8)",
+        titleFont: { size: 14 },
+        bodyFont: { size: 13 },
+        callbacks: {
+          label: (context) => `${context.parsed.y} units`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: {
+        beginAtZero: true,
+        grid: { color: "#e5e7eb" },
+        ticks: { font: { size: 12 } },
+      },
+    },
+  };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto" }}>
-      <h3>Weekly Report</h3>
+    <div className={styles.container}>
+      <h3 className={styles.header}>Weekly Report</h3>
 
-      {/* Year & Month Selector */}
-      <div
-        style={{
-          marginBottom: "20px",
-          display: "flex",
-          gap: "15px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <label>Year: </label>
+      <div className={styles.filters}>
+        <div className={styles.filterGroup}>
+          <label>Year:</label>
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
@@ -70,8 +151,8 @@ const WeeklyReport = () => {
           </select>
         </div>
 
-        <div>
-          <label>Month: </label>
+        <div className={styles.filterGroup}>
+          <label>Month:</label>
           <select
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(Number(e.target.value))}
@@ -86,8 +167,8 @@ const WeeklyReport = () => {
           </select>
         </div>
 
-        <div>
-          <label>Week: </label>
+        <div className={styles.filterGroup}>
+          <label>Week:</label>
           <select
             value={selectedWeek}
             onChange={(e) => setSelectedWeek(Number(e.target.value))}
@@ -109,83 +190,81 @@ const WeeklyReport = () => {
       </div>
 
       <button
+        className={styles.button}
         onClick={fetchData}
         disabled={weeklyLoading}
-        style={{
-          padding: "10px 20px",
-          background: weeklyLoading ? "#ccc" : "#4CAF50",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: weeklyLoading ? "not-allowed" : "pointer",
-        }}
       >
         {weeklyLoading ? "Loading..." : "Get Weekly Report"}
       </button>
 
-      {error && (
-        <p style={{ color: "red", marginTop: "15px" }}>Error: {error}</p>
-      )}
+      {error && <div className={styles.error}>Error: {error}</div>}
 
-      {/* Result Display */}
       {weeklyLoading ? (
-        <p>Loading report...</p>
+        <p className={styles.noData}>Loading report...</p>
       ) : weekly?.data?.length > 0 ? (
-        <div style={{ marginTop: "25px" }}>
-          <h4>
-            Week {selectedWeek} ({selectedMonth}/{selectedYear}) Report
+        <>
+          <h4 className={styles.reportTitle}>
+            Week {selectedWeek} Report ({selectedMonth}/{selectedYear})
           </h4>
 
-          <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginTop: "15px",
-                background: "#fff",
-                boxShadow: "0 1px 5px rgba(0,0,0,0.1)",
-              }}
-            >
+          <div className={styles.tableContainer}>
+            <table className={styles.table}>
               <thead>
-                <tr style={{ background: "#f0f8ff" }}>
-                  <th style={tableHeaderStyle}>Date</th>
-                  <th style={tableHeaderStyle}>Orders</th>
-                  <th style={tableHeaderStyle}>Total Sales</th>
-                  <th style={tableHeaderStyle}>Product</th>
-                  <th style={tableHeaderStyle}>Qty Sold</th>
-                  <th style={tableHeaderStyle}>Amount</th>
+                <tr>
+                  <th>Date</th>
+                  <th>Orders</th>
+                  <th>Total Sales</th>
+                  <th>Product</th>
+                  <th className={styles.rightAlign}>Qty Sold</th>
+                  <th className={styles.rightAlign}>Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {weekly.data.map((row, index) => (
-                  <tr key={index} style={index % 2 === 0 ? evenRow : oddRow}>
-                    <td style={cellStyle}>
-                      {new Date(row.OrderDate).toLocaleDateString()}
+                  <tr key={index}>
+                    <td>
+                      {new Date(row.OrderDate)
+                        .toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "2-digit",
+                        })
+                        .replace(/ /g, "-")}
                     </td>
-                    <td style={cellStyle}>{row.Orders}</td>
-                    <td style={cellStyle}>
-                      ₹{Number(row.TotalSales).toFixed(2)}
+                    <td>{row.Orders}</td>
+                    <td>
+                      ₹
+                      {Number(row.TotalSales || 0).toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                      })}
                     </td>
-                    <td style={cellStyle}>
-                      {row.ProductName || row.ProductType || "—"}
-                    </td>
-                    <td style={{ ...cellStyle, textAlign: "right" }}>
+                    <td>{row.ProductName || row.ProductType || "—"}</td>
+                    <td className={styles.rightAlign}>
                       {row.QuantitySold || 0}
                     </td>
-                    <td style={{ ...cellStyle, textAlign: "right" }}>
+                    <td className={styles.rightAlign}>
                       ₹
                       {Number(
                         row.ProductTotalAmount || row.ProductSales || 0
-                      ).toFixed(2)}
+                      ).toLocaleString("en-IN", {
+                        minimumFractionDigits: 2,
+                      })}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+
+          {/* Professional Chart: Items Sold by Quantity */}
+          <div className={styles.chartSection}>
+            <div className={styles.chartContainer}>
+              <Bar data={itemsSoldData} options={itemsChartOptions} />
+            </div>
+          </div>
+        </>
       ) : (
-        <p style={{ marginTop: "20px", color: "#666" }}>
+        <p className={styles.noData}>
           No data available for Week {selectedWeek} of {selectedMonth}/
           {selectedYear}
         </p>
@@ -193,21 +272,5 @@ const WeeklyReport = () => {
     </div>
   );
 };
-
-// Table styling
-const tableHeaderStyle = {
-  padding: "12px",
-  border: "1px solid #ddd",
-  background: "#f0f8ff",
-  textAlign: "left",
-};
-
-const cellStyle = {
-  padding: "10px",
-  border: "1px solid #ddd",
-};
-
-const evenRow = { background: "#f9f9f9" };
-const oddRow = { background: "#ffffff" };
 
 export default WeeklyReport;
