@@ -1,9 +1,6 @@
 const XLSX = require("xlsx");
 const { sql, poolPromise } = require("../utils/db");
 
-/**
- * GET AREA LIST
- */
 exports.getAreaName = async (req, res) => {
   try {
     const pool = await poolPromise;
@@ -14,16 +11,12 @@ exports.getAreaName = async (req, res) => {
   }
 };
 
-/**
- * IMPORT AREAS FROM EXCEL (SINGLE COLUMN)
- */
 exports.importAreaExcel = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "Excel file is required" });
     }
 
-    // Read Excel
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
