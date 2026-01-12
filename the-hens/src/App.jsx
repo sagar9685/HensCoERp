@@ -14,6 +14,7 @@ import Customer from "./component/Customer";
 import CustomerAnalysis from "./component/CustomerAnalysis";
 import ReportPage from "./component/ReportPage";
 import ImportArea from "./pages/ImportArea";
+import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
 
 function App() {
   return (
@@ -64,6 +65,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/analysis"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AnalysisDashboard />
             </ProtectedRoute>
           }
         />

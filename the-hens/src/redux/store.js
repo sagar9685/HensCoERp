@@ -14,6 +14,7 @@ import purchaseOrderReducer from "../features/purchaseOrderSlice";
 import stockReducer from "../features/stockSlice";
 import customerAnalysisReducer from "../features/customerAnalysisSlice";
 import reportReducer from "../features/reportSlice";
+import analysisReducer from "../features/analysisSlice";
 
 const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ const store = configureStore({
     purchaseOrder: purchaseOrderReducer,
     customerAnalysis: customerAnalysisReducer,
     report: reportReducer,
+    analysis: analysisReducer,
   },
 });
 
