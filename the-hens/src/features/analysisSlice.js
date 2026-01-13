@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_BASE_URL = "http://localhost:5000/api/analytics"; // Adjust to your backend URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL; // Adjust to your backend URL
 
 // Async thunks for each API
 export const fetchAreaWiseOrders = createAsyncThunk(
