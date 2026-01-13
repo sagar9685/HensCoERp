@@ -5,103 +5,104 @@ and uses a modal for on-screen preview.
 */
 
 :root {
-    --primary-color: rgb(219, 32, 36); /* Blue for highlights and buttons */
-    --secondary-color: #6c757d; /* Grey for borders and secondary text */
-    --accent-color: #28a745; /* Green for success/download */
-    --text-dark: #343a40;
-    --text-light: #6a6f74;
-    --border-light: #dee2e6;
-    --background-light: #f8f9fa;
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --primary-color: rgb(219, 32, 36); /* Blue for highlights and buttons */
+  --secondary-color: #6c757d; /* Grey for borders and secondary text */
+  --accent-color: #28a745; /* Green for success/download */
+  --text-dark: #343a40;
+  --text-light: #6a6f74;
+  --border-light: #dee2e6;
+  --background-light: #f8f9fa;
+  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 body {
-    -webkit-print-color-adjust: exact !important; /* Forces background/colors to print */
-    print-color-adjust: exact !important;
+  -webkit-print-color-adjust: exact !important; /* Forces background/colors to print */
+  print-color-adjust: exact !important;
 }
 
 /* Modal Overlay and Content for Preview */
 .modalOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
 }
 
 .modalContent {
-    background-color: #ffffff;
-    border-radius: 8px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    width: 90%;
-    max-width: 900px; /* Max width for comfortable preview */
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 900px; /* Max width for comfortable preview */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .modalHeader {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    background-color: var(--primary-color);
-    color: #ffffff;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    flex-shrink: 0; /* Prevents header from shrinking */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: rgb(219, 32, 36);
+  color: #ffffff;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  flex-shrink: 0; /* Prevents header from shrinking */
 }
 
 .modalHeader h2 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .btnClose {
-    background: none;
-    border: none;
-    color: #ffffff;
-    font-size: 1.5rem;
-    cursor: pointer;
-    opacity: 0.8;
-    transition: opacity 0.2s;
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
 }
 
 .btnClose:hover {
-    opacity: 1;
+  opacity: 1;
 }
 
 .invoiceWrapper {
-    overflow-y: auto; /* Allows scrolling if content exceeds modal height */
-    padding: 20px;
-    flex-grow: 1;
+  overflow-y: auto; /* Allows scrolling if content exceeds modal height */
+  padding: 20px;
+  flex-grow: 1;
 }
 
 .invoiceBody {
-    background: #ffffff;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    min-height: 297mm; /* Simulate A4 height */
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  min-height: 297mm; /* Simulate A4 height */
 }
 
 /*
 *** Base Invoice Content Styles (for Preview) ***
 */
 .invoiceContainer {
-    padding: 20px;
-    color: var(--text-dark);
-    font-family: var(--font-family);
-    font-size: 10px; /* Smaller base font for compact layout */
-    line-height: 1.4;
+  padding: 20px;
+  color: var(--text-dark);
+  font-family: var(--font-family);
+  font-size: 10px; /* Smaller base font for compact layout */
+  line-height: 1.4;
 }
 
 /*
@@ -110,129 +111,135 @@ This is the most critical section to ensure a single-page A4 print/PDF.
 We force a smaller font size and tighter padding.
 */
 .printMode {
-    width: 210mm; /* A4 width */
-    height: 297mm; /* A4 height - Important for single-page rendering */
-    max-height: 297mm;
-    overflow: hidden; /* Crucial to prevent content from overflowing to a second page */
-    box-sizing: border-box;
-    padding: 5mm;
-    margin: 0;
-    font-size: 9pt; /* Smaller font for maximum content density */
+  width: 210mm; /* A4 width */
+  height: 297mm; /* A4 height - Important for single-page rendering */
+  max-height: 297mm;
+  overflow: hidden; /* Crucial to prevent content from overflowing to a second page */
+  box-sizing: border-box;
+  padding: 5mm;
+  margin: 0;
+  font-size: 9pt; /* Smaller font for maximum content density */
 }
 
 /* Utility classes for alignment */
-.textCenter { text-align: center !important;  font-weight: bold; }
-.textRight { text-align: right !important; }
+.textCenter {
+  text-align: center !important;
+  font-weight: bold;
+}
+.textRight {
+  text-align: right !important;
+}
 
 /*
 *** Header Section ***
 */
 .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 3px solid var(--primary-color);
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    flex-wrap: wrap;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid rgb(219, 32, 36);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 
 .companyInfo {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-    width: 65%; /* Allocate more space for company details */
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  width: 65%; /* Allocate more space for company details */
 }
 
 .logoContainer {
-    width: 50px; /* Small logo size to save space */
-    height: 50px;
-    flex-shrink: 0;
+  width: 50px; /* Small logo size to save space */
+  height: 50px;
+  flex-shrink: 0;
 }
 
 .logoImage {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .brandInfo {
-    line-height: 1.3;
+  line-height: 1.3;
 }
 
 .companyDetails p {
-    margin: 2px 0;
-    font-size: 0.9em;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  margin: 2px 0;
+  font-size: 0.9em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .companyDetails strong {
-    font-size: 1.1em;
-    color: var(--primary-color);
+  font-size: 1.1em;
+  color: var(--primary-color);
 }
 
 .invoiceMeta {
-    text-align: right;
-    width: 30%;
-    flex-shrink: 0;
+  text-align: right;
+  width: 30%;
+  flex-shrink: 0;
 }
 
 .invoiceMeta h1 {
-    font-size: 1.2rem;
-    color: var(--primary-color);
-    margin: 0 0 5px 0;
-    font-weight: 700;
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  margin: 0 0 5px 0;
+  font-weight: 700;
 }
 
 .invoiceDetails p {
-    margin: 2px 0;
-    font-size: 0.9em;
+  margin: 2px 0;
+  font-size: 0.9em;
 }
-
 
 /*
 *** Customer & Order Details Section ***
 Uses flexbox for side-by-side layout.
 */
 .customerDetails {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
-    gap: 10px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  gap: 10px;
 }
 
 .detailBox {
-    border: 1px solid var(--border-light);
-    padding: 8px 12px;
-    border-radius: 4px;
-    width: 49%;
+  border: 1px solid var(--border-light);
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 49%;
 }
 
 .detailBox h3 {
-    margin: 0 0 5px 0;
-    font-size: 1.1em;
-    color: var(--secondary-color);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  margin: 0 0 5px 0;
+  font-size: 1.1em;
+  color: var(--secondary-color);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
-.customerInfo p, .orderInfo p {
-    margin: 1px 0;
-    font-size: 0.9em;
+.customerInfo p,
+.orderInfo p {
+  margin: 1px 0;
+  font-size: 0.9em;
 }
 
 .customerName {
-    font-size: 1.1em;
-    font-weight: 700;
-    color: var(--text-dark);
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--text-dark);
 }
 
-.customerAddress, .customerContact {
-    color: var(--text-light);
+.customerAddress,
+.customerContact {
+  color: var(--text-light);
 }
 
 /*
@@ -240,44 +247,45 @@ Uses flexbox for side-by-side layout.
 Critical area for space saving.
 */
 .tableContainer {
-    margin-bottom: 10px;
+  margin-bottom: 10px;
 }
 
 .productsTable {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9em;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
 }
 
 .productsTable thead tr {
-    background-color: var(--primary-color);
-    color: #ffffff;
-    font-weight: 600;
+  background-color: var(--primary-color);
+  color: #ffffff;
+  font-weight: 600;
 }
 
-.productsTable th, .productsTable td {
-    padding: 4px 6px; /* Reduced padding for more rows */
-    border: 1px solid var(--border-light);
-    vertical-align: middle;
+.productsTable th,
+.productsTable td {
+  padding: 4px 6px; /* Reduced padding for more rows */
+  border: 1px solid var(--border-light);
+  vertical-align: middle;
 }
 
 .productsTable th {
-    font-size: 0.95em;
-    white-space: nowrap;
+  font-size: 0.95em;
+  white-space: nowrap;
 }
 
 .productsTable tbody tr:nth-child(even) {
-    background-color: var(--background-light);
+  background-color: var(--background-light);
 }
 
 .productsTable td strong {
-    font-weight: 600;
+  font-weight: 600;
 }
 
 .productsTable td small {
-    display: block;
-    font-size: 0.8em;
-    color: var(--text-light);
+  display: block;
+  font-size: 0.8em;
+  color: var(--text-light);
 }
 
 /*
@@ -285,289 +293,287 @@ Critical area for space saving.
 Uses CSS Grid to manage three columns for optimal use of horizontal space.
 */
 .footerSection {
-    display: grid;
-    grid-template-columns: 35% 35% 30%; /* Balanced columns */
-    gap: 10px;
-    border: 1px solid var(--border-light);
-    padding: 8px;
+  display: grid;
+  grid-template-columns: 35% 35% 30%; /* Balanced columns */
+  gap: 10px;
+  border: 1px solid var(--border-light);
+  padding: 8px;
 }
 
 .footerColumn {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; /* Space for alignment */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Space for alignment */
 }
 
 /* Column 1: Amount in Words & Terms */
 .amountInWords {
-    border-bottom: 1px solid var(--border-light);
-    padding-bottom: 5px;
-    margin-bottom: 5px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 5px;
+  margin-bottom: 5px;
 }
 
 .amountInWords span {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 700;
-    color: var(--primary-color);
-    font-size: 1em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 1em;
 }
 
 .amountInWords p {
-    margin: 5px 0 0 0;
-    font-style: italic;
-    font-size: 0.95em;
-    font-weight: 600;
-    text-transform: capitalize;
+  margin: 5px 0 0 0;
+  font-style: italic;
+  font-size: 0.95em;
+  font-weight: 600;
+  text-transform: capitalize;
 }
 
 .termsBox h4 {
-    margin: 0 0 5px 0;
-    font-size: 1em;
-    color: var(--secondary-color);
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  margin: 0 0 5px 0;
+  font-size: 1em;
+  color: var(--secondary-color);
+  display: flex;
+  align-items: center;
+  gap: 5px;
 }
 
 .termsBox ul {
-    list-style: none;
-    padding-left: 0;
-    margin: 0 0 5px 0;
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 5px 0;
 }
 
 .termsBox li {
-    font-size: 0.85em;
-    margin-bottom: 2px;
+  font-size: 0.85em;
+  margin-bottom: 2px;
 }
 
 .qrTermContainer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 5px;
 }
 
 .qrSmall {
-    width: 30px;
-    height: 30px;
-    border: 1px solid var(--border-light);
-    padding: 2px;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border-light);
+  padding: 2px;
 }
 
 .qrText p {
-    margin: 0;
-    font-size: 0.8em;
-    line-height: 1;
+  margin: 0;
+  font-size: 0.8em;
+  line-height: 1;
 }
 
 /* Column 2: Payment Details & QR */
 .paymentInfo {
-    border-right: 1px dashed var(--border-light);
-    padding-right: 8px;
-    height: 100%;
+  border-right: 1px dashed var(--border-light);
+  padding-right: 8px;
+  height: 100%;
 }
 
 .paymentInfo h4 {
-    margin: 0 0 5px 0;
-    font-size: 1.1em;
-    color: var(--primary-color);
-    font-weight: 700;
+  margin: 0 0 5px 0;
+  font-size: 1.1em;
+  color: var(--primary-color);
+  font-weight: 700;
 }
 
 .payQrBox {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 5px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 5px;
 }
 
 .qrPaymentImg {
-    width: 60px; /* Small QR for space saving */
-    height: 60px;
-    border: 1px solid var(--border-light);
-    padding: 3px;
-    flex-shrink: 0;
+  width: 60px; /* Small QR for space saving */
+  height: 60px;
+  border: 1px solid var(--border-light);
+  padding: 3px;
+  flex-shrink: 0;
 }
 
 .bankDetailsText p {
-    margin: 1px 0;
-    font-size: 0.85em;
-    line-height: 1.2;
+  margin: 1px 0;
+  font-size: 0.85em;
+  line-height: 1.2;
 }
 
 .bankDetailsText strong {
-    font-weight: 600;
-    width: 70px; /* Align text vertically */
-    display: inline-block;
-    color: var(--text-dark);
+  font-weight: 600;
+  width: 70px; /* Align text vertically */
+  display: inline-block;
+  color: var(--text-dark);
 }
 
 .paymentNote {
-    font-size: 0.8em;
-    color: #dc3545; /* Alert color for note */
-    margin-top: 5px;
-    font-weight: 500;
+  font-size: 0.8em;
+  color: #dc3545; /* Alert color for note */
+  margin-top: 5px;
+  font-weight: 500;
 }
 
 .noQrMessage {
-    text-align: center;
-    padding: 10px 5px;
-    background-color: var(--background-light);
-    border: 1px solid var(--border-light);
-    border-radius: 4px;
-    width: 100%;
-    font-size: 0.8em;
+  text-align: center;
+  padding: 10px 5px;
+  background-color: var(--background-light);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  width: 100%;
+  font-size: 0.8em;
 }
 
 /* Column 3: Totals & Signature */
 .totalsBox {
-    border: 2px solid var(--accent-color);
-    padding: 5px;
-    margin-bottom: 10px;
-    background-color: #e6f7ed; /* Light green background */
-    border-radius: 4px;
+  border: 2px solid var(--accent-color);
+  padding: 5px;
+  margin-bottom: 10px;
+  background-color: #e6f7ed; /* Light green background */
+  border-radius: 4px;
 }
 
 .totalRow {
-    display: flex;
-    justify-content: space-between;
-    margin: 1px 0;
-    font-size: 0.95em;
-    font-weight: 500;
-    padding: 1px 0;
+  display: flex;
+  justify-content: space-between;
+  margin: 1px 0;
+  font-size: 0.95em;
+  font-weight: 500;
+  padding: 1px 0;
 }
 
 .grandTotalRow {
-    display: flex;
-    justify-content: space-between;
-    font-size: 1.1em;
-    font-weight: 700;
-    color: var(--accent-color);
-    border-top: 1px solid var(--accent-color);
-    padding-top: 5px;
-    margin-top: 5px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--accent-color);
+  border-top: 1px solid var(--accent-color);
+  padding-top: 5px;
+  margin-top: 5px;
 }
 
 .signatureSection {
-    text-align: center;
-    padding-top: 5px;
+  text-align: center;
+  padding-top: 5px;
 }
 
 .signatureContainer {
-    position: relative;
-    display: inline-block;
-    padding-bottom: 10px;
-    margin-bottom: 5px;
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+  margin-bottom: 5px;
 }
 
 .signImg {
-    height: 100px; /* Small height for signature image */
-    width: auto;
-    object-fit: contain;
-    margin-bottom: -5px;
-    opacity: 0.8;
+  height: 100px; /* Small height for signature image */
+  width: auto;
+  object-fit: contain;
+  margin-bottom: -5px;
+  opacity: 0.8;
 }
 
 .signatureLine {
-    border-top: 1px solid var(--text-dark);
-    width: 150px;
-    margin: 0 auto;
+  border-top: 1px solid var(--text-dark);
+  width: 150px;
+  margin: 0 auto;
 }
 
 .authText {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-weight: 600;
-    font-size: 0.9em;
-    margin-top: 2px;
-    color: var(--primary-color);
-    justify-content: center;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-top: 2px;
+  color: var(--primary-color);
+  justify-content: center;
 }
 
 .companyStamp p {
-    margin: 0;
-    font-size: 0.9em;
-    font-style: italic;
-    color: var(--text-light);
+  margin: 0;
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--text-light);
 }
-
 
 /*
 *** Footer Notes ***
 */
 .footerNotes {
-    margin-top: 10px;
-    border-top: 1px solid var(--border-light);
-    padding-top: 5px;
-    text-align: center;
+  margin-top: 10px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 5px;
+  text-align: center;
 }
 
 .noteBox p {
-    font-size: 0.8em;
-    margin: 0;
-    color: var(--secondary-color);
-    font-style: italic;
+  font-size: 0.8em;
+  margin: 0;
+  color: var(--secondary-color);
+  font-style: italic;
 }
-
 
 /*
 *** Modal Action Buttons ***
 */
 .modalActions {
-    padding: 15px 20px;
-    border-top: 1px solid var(--border-light);
-    display: flex;
-    justify-content: flex-end;
-    gap: 15px;
-    background-color: var(--background-light);
-    flex-shrink: 0;
+  padding: 15px 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  background-color: var(--background-light);
+  flex-shrink: 0;
 }
 
 .btn {
-    padding: 8px 15px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background-color 0.2s, opacity 0.2s;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s, opacity 0.2s;
 }
 
 .btnDownload {
-    background-color: var(--accent-color);
-    color: #ffffff;
+  background-color: var(--accent-color);
+  color: #ffffff;
 }
 
 .btnDownload:hover {
-    background-color: #1e7e34;
+  background-color: #1e7e34;
 }
 
 .btnPrint {
-    background-color: var(--primary-color);
-    color: #ffffff;
+  background-color: var(--primary-color);
+  color: #ffffff;
 }
 
 .btnPrint:hover {
-    background-color: #0056b3;
+  background-color: #0056b3;
 }
 
 .modalActions .btnClose {
-    background-color: var(--secondary-color);
-    color: #ffffff;
-    font-size: 1em;
-    padding: 8px 15px;
-    border-radius: 4px;
+  background-color: var(--secondary-color);
+  color: #ffffff;
+  font-size: 1em;
+  padding: 8px 15px;
+  border-radius: 4px;
 }
 
 .modalActions .btnClose:hover {
-    background-color: #5a6268;
-    opacity: 1;
+  background-color: #5a6268;
+  opacity: 1;
 }
 
 /*
@@ -575,57 +581,59 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 This is the final, crucial step to try and enforce a single page.
 */
 @media print {
-    /* Hide the modal overlay and action buttons for printing */
-    body > div:first-child:not(#invoice-print-content) {
-        display: none !important;
-    }
-    
-    /* Ensure only the invoice content is visible and takes full page */
-    .modalOverlay, .modalActions {
-        display: none !important;
-    }
+  /* Hide the modal overlay and action buttons for printing */
+  body > div:first-child:not(#invoice-print-content) {
+    display: none !important;
+  }
 
-    /* Print styling on the actual invoice content */
-    .invoiceContainer {
-        width: 100%;
-        max-width: 210mm; /* A4 width */
-        margin: 0;
-        box-shadow: none;
-        padding: 0 !important;
-        font-size: 9pt !important; /* Force small font for density */
-    }
+  /* Ensure only the invoice content is visible and takes full page */
+  .modalOverlay,
+  .modalActions {
+    display: none !important;
+  }
 
-    /* Override print background color for print */
-    .productsTable thead tr {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background-color: var(--primary-color) !important;
-        color: #ffffff !important;
-    }
-    
-    .totalsBox {
-         -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        background-color: #e6f7ed !important;
-        border-color: var(--accent-color) !important;
-    }
+  /* Print styling on the actual invoice content */
+  .invoiceContainer {
+    width: 100%;
+    max-width: 210mm; /* A4 width */
+    margin: 0;
+    box-shadow: none;
+    padding: 0 !important;
+    font-size: 9pt !important; /* Force small font for density */
+  }
 
-    /* Enforce single page. html2canvas uses the .printMode, but this helps the native print dialog too */
-    @page {
-        size: A4;
-        margin: 0; /* Minimal margins for maximum content space */
-    }
-    
-    html, body {
-        height: 297mm;
-        width: 210mm;
-        margin: 0;
-    }
-    
-    .invoiceBody {
-        min-height: auto;
-        height: 297mm;
-        max-height: 297mm;
-        overflow: hidden; /* Prevent native print from adding pages */
-    }
+  /* Override print background color for print */
+  .productsTable thead tr {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: var(--primary-color) !important;
+    color: #ffffff !important;
+  }
+
+  .totalsBox {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #e6f7ed !important;
+    border-color: var(--accent-color) !important;
+  }
+
+  /* Enforce single page. html2canvas uses the .printMode, but this helps the native print dialog too */
+  @page {
+    size: A4;
+    margin: 0; /* Minimal margins for maximum content space */
+  }
+
+  html,
+  body {
+    height: 297mm;
+    width: 210mm;
+    margin: 0;
+  }
+
+  .invoiceBody {
+    min-height: auto;
+    height: 297mm;
+    max-height: 297mm;
+    overflow: hidden; /* Prevent native print from adding pages */
+  }
 }
