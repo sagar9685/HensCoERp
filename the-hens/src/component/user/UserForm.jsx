@@ -10,6 +10,7 @@ import UserCompleteOrderModal from "./UserCompleteOrderModal";
 import {
   assignOrder,
   fetchAssignOrder,
+  updateAssignedOrder,
 } from "../../features/assignedOrderSlice";
 import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
@@ -28,11 +29,14 @@ const UserForm = () => {
     setSearchTerm,
     statusFilter,
     setStatusFilter,
+    areaFilter,
+    setAreaFilter,
+    deliveryManFilter,
+    setDeliveryManFilter,
     sortConfig,
     currentPage,
     currentItems,
     totalPages,
-    filteredAndSortedOrders,
     assignedOrders,
     handleSort,
     paginate,
@@ -42,6 +46,7 @@ const UserForm = () => {
     formatPaymentSummary,
     indexOfFirstItem,
     indexOfLastItem,
+    filteredAndSortedOrders,
   } = useOrderFilter();
 
   useEffect(() => {
@@ -89,14 +94,33 @@ const UserForm = () => {
     }
   };
 
+  // UserForm.js ke andar handleAssignSubmit function ko replace karein:
+
   const handleAssignSubmit = async (payload) => {
     try {
-      await dispatch(assignOrder(payload)).unwrap();
-      toast.success("Order assigned successfully!");
+      // Note: Check if your table row data uses 'AssignID' (uppercase/lowercase)
+      const assignmentId = selectedOrder?.AssignID;
+
+      if (assignmentId) {
+        console.log("Action: Reassigning Order ID", assignmentId);
+        await dispatch(
+          updateAssignedOrder({
+            assignmentId: assignmentId,
+            ...payload,
+          })
+        ).unwrap();
+        toast.success("Order reassigned successfully");
+      } else {
+        console.log("Action: First time assignment");
+        await dispatch(assignOrder(payload)).unwrap();
+        toast.success("Order assigned successfully");
+      }
+
       dispatch(fetchAssignOrder());
       handleCloseModal();
-    } catch (error) {
-      toast.error("Failed to assign order", error);
+    } catch (err) {
+      console.error("UI ERROR:", err);
+      toast.error(err.message || "Failed to process assignment");
     }
   };
 
@@ -152,25 +176,19 @@ const UserForm = () => {
                             <div className={styles.statItem}>
                               <span className={styles.statNumber}>
                                 {assignedOrders?.filter(
-                                  (order) => order.OrderStatus === "Complete"
+                                  (o) => o.OrderStatus === "Complete"
                                 ).length || 0}
                               </span>
                               <span className={styles.statLabel}>
                                 Completed
                               </span>
                             </div>
-                            <div className={styles.statItem}>
-                              <span className={styles.statNumber}>
-                                {assignedOrders?.filter(
-                                  (order) => order.OrderStatus === "Pending"
-                                ).length || 0}
-                              </span>
-                              <span className={styles.statLabel}>Pending</span>
-                            </div>
                           </div>
                         </div>
+
                         <div className={styles.headerActions}>
                           <div className={styles.filterControls}>
+                            {/* Search */}
                             <div className={styles.searchBox}>
                               <i className="mdi mdi-magnify"></i>
                               <input
@@ -180,6 +198,49 @@ const UserForm = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                               />
                             </div>
+
+                            {/* Dynamic Area Filter */}
+                            <select
+                              className={styles.statusFilter}
+                              value={areaFilter}
+                              onChange={(e) => setAreaFilter(e.target.value)}
+                            >
+                              <option value="all">All Areas</option>
+                              {[...new Set(assignedOrders?.map((i) => i.Area))]
+                                .filter(Boolean)
+                                .sort()
+                                .map((a) => (
+                                  <option key={a} value={a}>
+                                    {a}
+                                  </option>
+                                ))}
+                            </select>
+
+                            {/* Dynamic Delivery Boy Filter */}
+                            <select
+                              className={styles.statusFilter}
+                              value={deliveryManFilter}
+                              onChange={(e) =>
+                                setDeliveryManFilter(e.target.value)
+                              }
+                            >
+                              <option value="all">All Delivery Boys</option>
+                              {[
+                                ...new Set(
+                                  assignedOrders
+                                    ?.filter((o) => o.DeliveryManName)
+                                    .map((o) => o.DeliveryManName)
+                                ),
+                              ]
+                                .sort()
+                                .map((n) => (
+                                  <option key={n} value={n}>
+                                    {n}
+                                  </option>
+                                ))}
+                            </select>
+
+                            {/* Status Filter */}
                             <select
                               className={styles.statusFilter}
                               value={statusFilter}
@@ -187,16 +248,15 @@ const UserForm = () => {
                             >
                               <option value="all">All Status</option>
                               <option value="pending">Pending</option>
-                              <option value="completed">Completed</option>
+                              <option value="complete">Completed</option>
                             </select>
                           </div>
+
                           <ExcelExport
                             data={filteredAndSortedOrders}
-                            fileName="Orders_List.xlsx"
+                            fileName="Filtered_Orders.xlsx"
                           >
-                            <button
-                              className={`btn btn-success ${styles.actionBtn}`}
-                            >
+                            <button className="btn btn-success">
                               <i className="mdi mdi-download"></i> Export
                             </button>
                           </ExcelExport>
@@ -359,22 +419,18 @@ const OrderTableRow = ({
           </div>
         </div>
       </td>
-
       <td>
         <div className={styles.customerInfo}>
           <strong>{row.CustomerName}</strong>
           <span>{row.Address}</span>
         </div>
       </td>
-
       <td className={styles.contactCell}>
         <a href={`tel:${row.ContactNo}`} className={styles.contactLink}>
           {row.ContactNo}
         </a>
       </td>
-
       <td className={styles.areaCell}>{row.Area}</td>
-
       <td className={styles.typeCell}>
         {row.ProductTypes?.split(",").map((item, i) => (
           <div key={i} className={styles.lineItem}>
@@ -382,7 +438,6 @@ const OrderTableRow = ({
           </div>
         ))}
       </td>
-
       <td className={styles.weightCell}>
         {row.Weights?.split(",").map((item, i) => (
           <div key={i} className={styles.lineItem}>
@@ -390,7 +445,6 @@ const OrderTableRow = ({
           </div>
         ))}
       </td>
-
       <td className={styles.quantityCell}>
         {row.Quantities?.split(",").map((item, i) => (
           <div key={i} className={styles.lineItem}>
@@ -398,7 +452,6 @@ const OrderTableRow = ({
           </div>
         ))}
       </td>
-
       <td className={styles.amountCell}>
         <div className={styles.amountInfo}>
           <div>Rate: ₹{row.Rates}</div>
@@ -408,7 +461,6 @@ const OrderTableRow = ({
           </strong>
         </div>
       </td>
-
       <td className={styles.dateCell}>
         {new Date(row.OrderDate)
           .toLocaleDateString("en-GB", {
@@ -419,7 +471,6 @@ const OrderTableRow = ({
           .replace(",", "")
           .replace(" ", "-")}
       </td>
-
       <td className={styles.dateCell}>
         {row.DeliveryDate
           ? new Date(row.DeliveryDate)
@@ -432,7 +483,6 @@ const OrderTableRow = ({
               .toLowerCase()
           : "-"}
       </td>
-
       <td className={styles.dateCell}>
         {row.PaymentReceivedDate
           ? new Date(row.PaymentReceivedDate)
@@ -445,7 +495,6 @@ const OrderTableRow = ({
               .toLowerCase()
           : "-"}
       </td>
-
       <td className={styles.deliveryCell}>
         {row.DeliveryManName ? (
           <div className={styles.deliveryMan}>
@@ -456,11 +505,9 @@ const OrderTableRow = ({
           "-"
         )}
       </td>
-
       <td>
         <span className={styles.remark}>{row.Remark || "-"}</span>
       </td>
-
       {/* Delivery Status Column */}
       <td>
         {row.OrderStatus === "Complete" ? (
@@ -482,17 +529,19 @@ const OrderTableRow = ({
           </select>
         )}
       </td>
-
+      {/* // Inside OrderTableRow component */}
+      {/* // OrderTableRow.jsx */}
       <td>
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={onAssignClick}
-          disabled={row.AssignID !== null}
-        >
-          Assign
-        </button>
+        {row.AssignID ? (
+          <button className="btn btn-warning btn-sm" onClick={onAssignClick}>
+            Reassign
+          </button>
+        ) : (
+          <button className="btn btn-primary btn-sm" onClick={onAssignClick}>
+            Assign
+          </button>
+        )}
       </td>
-
       <td>
         <span className={styles.paymentMode}>
           {formatPaymentSummary(row.PaymentSummary)}

@@ -22,15 +22,53 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (order) {
+    if (!order) {
       setFormData({
         deliveryDate: "",
         deliveryManId: "",
         otherDeliveryManName: "",
         remark: "",
       });
+      return;
     }
+
+    console.log("Prefilling with:", {
+      DeliveryDate: order.DeliveryDate,
+      DeliveryManID: order.DeliveryManID,
+      OtherDeliveryManName: order.OtherDeliveryManName,
+      Remark: order.Remark,
+    });
+
+    setFormData({
+      deliveryDate: order.DeliveryDate
+        ? new Date(order.DeliveryDate).toISOString().split("T")[0]
+        : "",
+      deliveryManId: order.DeliveryManID
+        ? String(order.DeliveryManID)
+        : order.OtherDeliveryManName
+        ? "other"
+        : "",
+      otherDeliveryManName: order.OtherDeliveryManName || "",
+      remark: order.Remark || "",
+    });
   }, [order]);
+
+  useEffect(() => {
+    if (isOpen && order) {
+      setFormData({
+        deliveryDate: order.DeliveryDate
+          ? order.DeliveryDate.split("T")[0]
+          : "",
+        deliveryManId: order.DeliveryManID
+          ? String(order.DeliveryManID)
+          : order.OtherDeliveryManName
+          ? "other"
+          : "",
+        otherDeliveryManName: order.OtherDeliveryManName || "",
+        remark: order.Remark || "",
+      });
+    }
+  }, [isOpen, order]); // Reset data only when modal opens or order changes
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -74,9 +112,10 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
         <div className={styles.modalHeader}>
+          {/* // AssignOrderModal.jsx */}
           <h2 className={styles.modalTitle}>
             <i className="mdi mdi-truck-delivery"></i>
-            Assign Order #{order.OrderID}
+            {order?.AssignID ? "Reassign" : "Assign"} Order #{order?.OrderID}
           </h2>
           <button className={styles.closeButton} onClick={onClose}>
             <i className="mdi mdi-close"></i>
@@ -242,14 +281,11 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
             onClick={handleSubmit}
             disabled={isSubmitting}
           >
-            {isSubmitting ? (
-              "Processing..."
-            ) : (
-              <>
-                <i className="mdi mdi-check-circle"></i>
-                Assign Order
-              </>
-            )}
+            {isSubmitting
+              ? "Processing..."
+              : order?.AssignID
+              ? "Reassign Order"
+              : "Assign Order"}
           </button>
         </div>
       </div>

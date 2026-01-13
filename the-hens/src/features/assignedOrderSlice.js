@@ -51,6 +51,51 @@ export const fetchAssignOrder = createAsyncThunk(
   }
 );
 
+// assignedOrderSlice.js
+
+// ────────────────────────────────────────────────
+//  Add this new thunk
+// ────────────────────────────────────────────────
+// updateAssignedOrder thunk mein check karein ki URL sahi hai
+export const updateAssignedOrder = createAsyncThunk(
+  "assignedOrders/update",
+  async ({ assignmentId, ...formData }, { rejectWithValue }) => {
+    console.log("FRONTEND: Attempting Reassign for ID:", assignmentId);
+
+    try {
+      const payload = {
+        ...formData,
+        // Match the logic with your backend expectations
+        deliveryManId:
+          formData.deliveryManId === "other"
+            ? null
+            : Number(formData.deliveryManId),
+        otherDeliveryManName:
+          formData.deliveryManId === "other"
+            ? formData.otherDeliveryManName
+            : null,
+        deliveryDate: formData.deliveryDate || null,
+      };
+
+      const res = await axios.put(
+        `${API_BASE_URL}/api/users/assigned-orders/${assignmentId}`,
+        payload
+      );
+
+      console.log("FRONTEND: Reassign Success:", res.data);
+      return res.data;
+    } catch (err) {
+      console.error(
+        "FRONTEND ERROR: Reassign failed:",
+        err.response?.data || err.message
+      );
+      // Return the error message to the component
+      return rejectWithValue(err.response?.data || "Something went wrong");
+    }
+  }
+);
+// You can also add it to extraReducers if you want to handle loading/error
+
 const assignedOrderSlice = createSlice({
   name: "assignedOrders",
   initialState: {

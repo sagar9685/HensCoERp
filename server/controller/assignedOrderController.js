@@ -129,39 +129,47 @@ ORDER BY O.OrderID DESC;
 };
 
 // UPDATE Assigned Order
+// e.g. in your assigned orders controller / route
+
 exports.updateAssignedOrder = async (req, res) => {
   const { id } = req.params;
-  const {
-    deliveryManId,
-    otherDeliveryManName,
-    paymentModeId,
-    deliveryDate,
-    remark,
-  } = req.body;
+  const { deliveryManId, otherDeliveryManName, deliveryDate, remark } =
+    req.body;
+
+  console.log("BACKEND: Update Request Received for ID:", id);
+  console.log("BACKEND: Payload:", req.body);
 
   try {
     const pool = await poolPromise;
-
-    await pool
+    // Inside your controller updateAssignedOrder function
+    const result = await pool
       .request()
       .input("AssignID", sql.Int, id)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
-      .input("PaymentModeID", sql.Int, paymentModeId)
-      .input("DeliveryDate", sql.Date, deliveryDate)
-      .input("Remark", sql.NVarChar, remark).query(`
-        UPDATE AssignedOrders
-        SET 
+      .input("DeliveryDate", sql.Date, deliveryDate || null)
+      .input("Remark", sql.NVarChar, remark || null).query(`
+      UPDATE AssignedOrders
+      SET
           DeliveryManID = @DeliveryManID,
           OtherDeliveryManName = @OtherDeliveryManName,
-          PaymentModeID = @PaymentModeID,
           DeliveryDate = @DeliveryDate,
           Remark = @Remark
-        WHERE AssignID = @AssignID
-      `);
+          -- Removed UpdatedAt line because the column doesn't exist
+      WHERE AssignID = @AssignID
+  `);
 
-    res.status(200).json({ message: "Assigned order updated successfully" });
+    console.log("BACKEND: Rows Affected:", result.rowsAffected);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+    res.json({ message: "Assignment updated successfully" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    // THIS LOG IS CRUCIAL: It will show the exact SQL error in your terminal
+    console.error("BACKEND ERROR [updateAssignedOrder]:", err.message);
+    res
+      .status(500)
+      .json({ message: "Internal Server Error", error: err.message });
   }
 };

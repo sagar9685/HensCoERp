@@ -49,7 +49,7 @@ VALUES
     request.input(
       "Credit_Limit",
       sql.Decimal(18, 2),
-      Credit_Limit !== undefined ? Credit_Limit : 0
+      Credit_Limit ? parseFloat(Credit_Limit) : 0
     );
 
     await request.query(query);
@@ -57,10 +57,17 @@ VALUES
   } catch (error) {
     console.error("Error adding customer:", error);
 
-    // SQL Server duplicate key error
+    // Duplicate mobile
     if (error.number === 2627 || error.number === 2601) {
       return res.status(409).json({
-        message: "This mobile number already exists",
+        message: "This mobile number is already registered",
+      });
+    }
+
+    // Credit limit / decimal error
+    if (error.code === "EPARAM") {
+      return res.status(400).json({
+        message: "Invalid credit limit",
       });
     }
 

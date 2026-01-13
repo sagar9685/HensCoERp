@@ -15,6 +15,7 @@ import stockReducer from "../features/stockSlice";
 import customerAnalysisReducer from "../features/customerAnalysisSlice";
 import reportReducer from "../features/reportSlice";
 import analysisReducer from "../features/analysisSlice";
+import uiReducer from "../features/uiSlice";
 
 const store = configureStore({
   reducer: {
@@ -32,6 +33,7 @@ const store = configureStore({
     customerAnalysis: customerAnalysisReducer,
     report: reportReducer,
     analysis: analysisReducer,
+    ui: uiReducer,
   },
 });
 
