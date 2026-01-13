@@ -56,9 +56,17 @@ VALUES
     res.status(200).json({ message: "Customer added successfully!" });
   } catch (error) {
     console.error("Error adding customer:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+
+    // SQL Server duplicate key error
+    if (error.number === 2627 || error.number === 2601) {
+      return res.status(409).json({
+        message: "This mobile number already exists",
+      });
+    }
+
+    res.status(500).json({
+      message: "Internal server error",
+    });
   }
 };
 
