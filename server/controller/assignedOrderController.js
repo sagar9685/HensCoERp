@@ -173,3 +173,46 @@ exports.updateAssignedOrder = async (req, res) => {
       .json({ message: "Internal Server Error", error: err.message });
   }
 };
+
+exports.updateDeliveryStatus = async (req, res) => {
+  const { id } = req.params; // AssignID
+  const { status } = req.body; // Complete / In Progress / Cancelled
+
+  try {
+    const pool = await poolPromise;
+
+    let query = `
+      UPDATE AssignedOrders
+      SET DeliveryStatus = @status
+    `;
+
+    // If completed, set system dates
+    if (status === "Complete") {
+      query += `,
+        ActualDeliveryDate = GETDATE(),
+        PaymentReceivedDate = GETDATE()
+      `;
+    }
+
+    query += ` WHERE AssignID = @id`;
+
+    const result = await pool
+      .request()
+      .input("id", sql.Int, id)
+      .input("status", sql.NVarChar, status)
+      .query(query);
+
+    if (result.rowsAffected[0] === 0) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+
+    res.json({
+      assignId: id,
+      status,
+      message: "Delivery status updated",
+    });
+  } catch (err) {
+    console.error("Status update error:", err);
+    res.status(500).json({ message: err.message });
+  }
+};

@@ -96,6 +96,22 @@ export const updateAssignedOrder = createAsyncThunk(
 );
 // You can also add it to extraReducers if you want to handle loading/error
 
+export const updateDeliveryStatus = createAsyncThunk(
+  "assignedOrders/updateStatus",
+  async ({ assignId, status }, { rejectWithValue }) => {
+    try {
+      const res = await axios.put(
+        `${API_BASE_URL}/api/users/assigned-orders/${assignId}/status`,
+        { status }
+      );
+
+      return res.data; // { assignId, status }
+    } catch (err) {
+      return rejectWithValue(err.response?.data || "Failed to update status");
+    }
+  }
+);
+
 const assignedOrderSlice = createSlice({
   name: "assignedOrders",
   initialState: {
@@ -154,6 +170,24 @@ const assignedOrderSlice = createSlice({
       .addCase(fetchCashByDeliveryMen.rejected, (state) => {
         state.loading = false;
         state.error = "Failed to fetch cash data";
+      })
+      .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+        // Action payload se data nikalein
+        const { assignId, status } = action.meta.arg; // Ya action.payload agar backend return kar raha hai
+
+        const index = state.data.findIndex((o) => o.AssignID == assignId);
+
+        if (index !== -1) {
+          // State mutation (Immer handles this)
+          state.data[index].OrderStatus = status;
+          state.data[index].DeliveryStatus = status;
+
+          if (status === "Complete") {
+            const now = new Date().toISOString();
+            state.data[index].ActualDeliveryDate = now;
+            state.data[index].PaymentReceivedDate = now;
+          }
+        }
       });
   },
 });

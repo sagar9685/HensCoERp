@@ -40,14 +40,15 @@ export const handoverCash = createAsyncThunk(
   }
 );
 
+// denominationSlice.js mein update karein
 export const fetchPendingCashOrders = createAsyncThunk(
   "denomination/fetchPendingOrders",
   async (deliveryManId, { rejectWithValue }) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/users/cash/prnding/${deliveryManId}`
+        // 'prnding' ko 'pending' karein (agar backend mein yahi spelling hai)
+        `${API_BASE_URL}/api/users/cash/pending/${deliveryManId}`
       );
-
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
@@ -68,6 +69,10 @@ const denominationSlice = createSlice({
     clearMessages: (state) => {
       state.success = "";
       state.error = "";
+    },
+    clearOrders: (state) => {
+      state.orders = [];
+      state.totalCash = 0;
     },
   },
   extraReducers: (builder) => {
@@ -101,10 +106,14 @@ const denominationSlice = createSlice({
       .addCase(fetchPendingCashOrders.pending, (state) => {
         state.loading = true;
       })
+      // denominationSlice.js
       .addCase(fetchPendingCashOrders.fulfilled, (state, action) => {
         state.loading = false;
-        state.orders = action.payload.orders;
-        state.totalCash = action.payload.totalCash;
+        // Agar API direct array bhej rahi hai to:
+        state.orders = Array.isArray(action.payload)
+          ? action.payload
+          : action.payload.orders || [];
+        state.totalCash = action.payload.totalCash || 0;
       })
       .addCase(fetchPendingCashOrders.rejected, (state, action) => {
         state.loading = false;
@@ -113,6 +122,6 @@ const denominationSlice = createSlice({
   },
 });
 
-export const { clearMessages } = denominationSlice.actions;
+export const { clearMessages, clearOrders } = denominationSlice.actions;
 
 export default denominationSlice.reducer;

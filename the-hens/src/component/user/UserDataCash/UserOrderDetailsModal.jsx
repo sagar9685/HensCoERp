@@ -17,19 +17,21 @@ import {
 import { HiDocumentText } from "react-icons/hi";
 // import PrintOrderDetails from "./PrintOrderDetails";
 import { printOrderDetails, downloadOrderCSV } from "./PrintOrderDetails";
+// import { clearOrders } from "../../../features/denominationSlice";
 
 export default function OrderDetailsModal({ deliveryManId, onClose }) {
   const dispatch = useDispatch();
-  const { list: orders, loading } = useSelector(
-    (state) => state.pendingCashOrders
-  );
+  const pendingData = useSelector((state) => state.pendingCashOrders);
+  const orders = pendingData?.list || [];
+  const loading = pendingData?.loading;
   console.log(orders, "order click on details");
+
+  const safeOrders = orders || [];
 
   useEffect(() => {
     if (deliveryManId) {
       dispatch(fetchPendingCashOrders(deliveryManId));
     }
-
     return () => {
       dispatch(clearPendingOrders());
     };
@@ -37,16 +39,15 @@ export default function OrderDetailsModal({ deliveryManId, onClose }) {
 
   // Calculate totals
   const totalCash = orders.reduce(
-    (sum, order) => sum + (order.CashAmount || 0),
+    (sum, order) => sum + (Number(order.CashAmount) || 0),
     0
   );
   const totalOrders = orders.length;
   const totalQuantity = orders.reduce(
-    (sum, order) => sum + (order.Quantity || 0),
+    (sum, order) => sum + (Number(order.Quantity) || 0),
     0
   );
-  const deliveryManName = orders[0]?.DeliveryManName || deliveryManId;
-
+  const deliveryManName = safeOrders[0]?.DeliveryManName || "Delivery Man";
   // Import print utility
 
   // Print function
