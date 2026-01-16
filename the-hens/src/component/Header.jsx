@@ -96,9 +96,19 @@ const Header = () => {
       label: "Frequancy",
       path: "/customer-analysis",
     },
-    { key: "analytics", icon: <FaChartBar />, label: "Analytics" },
-    { key: "announcements", icon: <FaBullhorn />, label: "Announcements" },
-    { key: "settings", icon: <FaCog />, label: "Settings" },
+    {
+      key: "analytics",
+      icon: <FaChartBar />,
+      label: "Analytics",
+      path: "/analysis",
+    },
+    {
+      key: "reports",
+      icon: <FaBullhorn />,
+      label: "Reports",
+      path: "/reports",
+    },
+    // { key: "settings", icon: <FaCog />, label: "Settings" },
   ];
 
   const handleLogot = () => {
@@ -300,10 +310,10 @@ const Header = () => {
               </div>
 
               <div className={styles.dropdownMenu}>
-                <button className={styles.menuOption}>
+                {/* <button className={styles.menuOption}>
                   <FaUserCircle />
                   <span>My Profile</span>
-                </button>
+                </button> */}
                 <button
                   className={styles.menuOption}
                   onClick={() => navigate("/area-import")}
@@ -311,7 +321,10 @@ const Header = () => {
                   <FaCog />
                   <span>Account Settings</span>
                 </button>
-                <button className={styles.menuOption}>
+                <button
+                  className={styles.menuOption}
+                  onClick={() => navigate("/support")}
+                >
                   <FaLifeRing />
                   <span>Support Center</span>
                 </button>

@@ -15,6 +15,7 @@ import CustomerAnalysis from "./component/CustomerAnalysis";
 import ReportPage from "./component/ReportPage";
 import ImportArea from "./pages/ImportArea";
 import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
+import Support from "./component/Support";
 
 function App() {
   return (
@@ -83,6 +84,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ImportArea />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/support"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <Support />
             </ProtectedRoute>
           }
         />
