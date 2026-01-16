@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "./Support.module.css";
 import {
   Mail,
@@ -12,15 +12,22 @@ import {
   Linkedin,
   Github,
   ExternalLink,
+  MessageCircle,
 } from "lucide-react";
 
 const Support = () => {
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [message, setMessage] = useState(
+    "I need help with an issue. Are you available?"
+  );
+
   const contactInfo = {
     email: "sagargupta12396@gmail.com",
     phone: "+91 96851 67586",
     portfolio: "https://sagar-gupta12396.vercel.app/",
     linkedin: "https://www.linkedin.com/in/sagargupta12396/",
     github: "https://github.com/sagar9685",
+    whatsapp: "+919685167586",
   };
 
   const handleEmailClick = () => {
@@ -35,8 +42,120 @@ const Support = () => {
     window.open(url, "_blank", "noopener noreferrer");
   };
 
+  const handleWhatsAppClick = () => {
+    setShowWhatsAppModal(true);
+  };
+
+  const sendWhatsAppMessage = () => {
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${contactInfo.whatsapp}?text=${encodedMessage}`;
+    window.open(whatsappUrl, "_blank", "noopener noreferrer");
+    setShowWhatsAppModal(false);
+  };
+
+  const defaultMessages = [
+    "I need help with an issue. Are you available?",
+    "I have a question about an update/change request.",
+    "I need technical support for a problem.",
+    "Can we discuss a project requirement?",
+  ];
+
+  const handleQuickMessage = (msg) => {
+    setMessage(msg);
+    setTimeout(() => {
+      sendWhatsAppMessage();
+    }, 300);
+  };
+
   return (
     <div className={styles.container}>
+      {/* WhatsApp Floating Button */}
+      <div className={styles.whatsappFloating} onClick={handleWhatsAppClick}>
+        <div className={styles.whatsappIcon}>
+          <MessageCircle size={28} />
+        </div>
+        <span className={styles.whatsappLabel}>Chat on WhatsApp</span>
+        <div className={styles.pulseRing}></div>
+      </div>
+
+      {/* WhatsApp Modal */}
+      {showWhatsAppModal && (
+        <div
+          className={styles.modalOverlay}
+          onClick={() => setShowWhatsAppModal(false)}
+        >
+          <div
+            className={styles.whatsappModal}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={styles.modalHeader}>
+              <div className={styles.modalIcon}>
+                <MessageCircle size={32} />
+              </div>
+              <h3>Send WhatsApp Message</h3>
+              <button
+                className={styles.closeModal}
+                onClick={() => setShowWhatsAppModal(false)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <p className={styles.modalSubtitle}>
+                Your message will open in WhatsApp
+              </p>
+
+              <div className={styles.quickMessages}>
+                <h4>Quick Messages:</h4>
+                <div className={styles.quickMessageGrid}>
+                  {defaultMessages.map((msg, index) => (
+                    <button
+                      key={index}
+                      className={styles.quickMessageBtn}
+                      onClick={() => handleQuickMessage(msg)}
+                    >
+                      {msg}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.customMessage}>
+                <h4>Or Type Your Own Message:</h4>
+                <textarea
+                  className={styles.messageInput}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  rows="4"
+                  placeholder="Type your message here..."
+                />
+                <div className={styles.charCount}>
+                  {message.length}/500 characters
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setShowWhatsAppModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.sendWhatsappBtn}
+                onClick={sendWhatsAppMessage}
+                disabled={message.trim().length === 0}
+              >
+                <MessageCircle size={18} />
+                Send via WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className={styles.header}>
         <div className={styles.headerContent}>
@@ -53,6 +172,10 @@ const Support = () => {
             <div className={styles.statItem}>
               <Clock size={20} />
               <span>24h Response Time</span>
+            </div>
+            <div className={styles.statItem}>
+              <MessageCircle size={20} />
+              <span>WhatsApp Available</span>
             </div>
             <div className={styles.statItem}>
               <Shield size={20} />
@@ -113,6 +236,27 @@ const Support = () => {
               >
                 <Phone size={16} />
                 <span>Call Now</span>
+              </button>
+            </div>
+
+            {/* WhatsApp Card */}
+            <div className={`${styles.contactCard} ${styles.whatsappCard}`}>
+              <div className={styles.cardHeader}>
+                <div className={`${styles.cardIcon} ${styles.whatsappIcon}`}>
+                  <MessageCircle size={24} />
+                </div>
+                <h3>WhatsApp Support</h3>
+              </div>
+              <p className={styles.contactDetail}>{contactInfo.whatsapp}</p>
+              <p className={styles.contactDesc}>
+                Quick chat for instant messaging and file sharing
+              </p>
+              <button
+                className={`${styles.actionBtn} ${styles.whatsappActionBtn}`}
+                onClick={handleWhatsAppClick}
+              >
+                <MessageCircle size={16} />
+                <span>Chat on WhatsApp</span>
               </button>
             </div>
           </div>
@@ -194,28 +338,30 @@ const Support = () => {
         {/* Quick Response Section */}
         <div className={styles.section}>
           <div className={`${styles.responseCard} ${styles.gradientCard}`}>
-            <Shield size={48} className={styles.responseIcon} />
             <div className={styles.responseContent}>
-              <h2>Need Immediate Assistance?</h2>
+              <div className={styles.responseHeader}>
+                <MessageCircle size={48} className={styles.responseIcon} />
+                <h2>Need Immediate Assistance?</h2>
+              </div>
               <p>
-                For urgent technical issues or deployment problems, please call
-                directly. I prioritize quick responses to ensure minimal
-                disruption to your workflow.
+                For urgent technical issues or quick queries, WhatsApp is the
+                fastest way to reach me. I typically respond within minutes
+                during business hours.
               </p>
               <div className={styles.responseActions}>
                 <button
-                  className={`${styles.actionBtn} ${styles.primaryBtn}`}
-                  onClick={handleCallClick}
+                  className={`${styles.actionBtn} ${styles.whatsappPrimaryBtn}`}
+                  onClick={handleWhatsAppClick}
                 >
-                  <Phone size={16} />
-                  <span>Call Now: {contactInfo.phone}</span>
+                  <MessageCircle size={16} />
+                  <span>Chat on WhatsApp</span>
                 </button>
                 <button
                   className={`${styles.actionBtn} ${styles.secondaryBtn}`}
-                  onClick={handleEmailClick}
+                  onClick={handleCallClick}
                 >
-                  <Mail size={16} />
-                  <span>Email for Details</span>
+                  <Phone size={16} />
+                  <span>Call Now</span>
                 </button>
               </div>
             </div>
@@ -225,8 +371,12 @@ const Support = () => {
         {/* Footer Note */}
         <div className={styles.footerNote}>
           <p className={styles.note}>
-            <strong>Response Time:</strong> Typically within 24 hours |
-            <strong> Working Hours:</strong> Mon-Sat, 9 AM - 6 PM IST
+            <strong>Response Time:</strong> WhatsApp: Within minutes | Email: 24
+            hours |<strong> Business Hours:</strong> Mon-Sat, 9 AM - 6 PM IST
+          </p>
+          <p className={styles.whatsappNote}>
+            💬 <strong>WhatsApp Preferred:</strong> For fastest response, use
+            WhatsApp
           </p>
         </div>
       </div>

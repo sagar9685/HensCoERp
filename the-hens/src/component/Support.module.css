@@ -453,3 +453,389 @@
     font-size: 1.5rem;
   }
 }
+/* WhatsApp Floating Button */
+.whatsappFloating {
+  position: fixed;
+  left: 20px;
+  bottom: 30px;
+  display: flex;
+  align-items: center;
+  background: #25d366;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 50px;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+  cursor: pointer;
+  z-index: 1000;
+  transition: all 0.3s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.whatsappFloating:hover {
+  transform: scale(1.05) translateY(-5px);
+  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.6);
+}
+
+.whatsappIcon {
+  background: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: #25d366;
+  flex-shrink: 0;
+}
+
+.whatsappLabel {
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.pulseRing {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60px;
+  height: 60px;
+  border: 2px solid #25d366;
+  border-radius: 50%;
+  animation: pulse-ring 2s infinite;
+  z-index: -1;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: translate(-50%, -50%) scale(0.8);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* WhatsApp Modal */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.whatsappModal {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 500px;
+  overflow: hidden;
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modalHeader {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.modalIcon {
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.modalHeader h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.closeModal {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 2rem;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s;
+}
+
+.closeModal:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.modalBody {
+  padding: 2rem;
+}
+
+.modalSubtitle {
+  color: #718096;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.quickMessages h4 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.quickMessageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.quickMessageBtn {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+  color: #4a5568;
+}
+
+.quickMessageBtn:hover {
+  background: #edf2f7;
+  border-color: #cbd5e0;
+  transform: translateY(-2px);
+}
+
+.customMessage h4 {
+  color: #2d3748;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+}
+
+.messageInput {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  resize: vertical;
+  transition: border 0.3s;
+}
+
+.messageInput:focus {
+  outline: none;
+  border-color: #25d366;
+}
+
+.charCount {
+  text-align: right;
+  color: #a0aec0;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.modalFooter {
+  padding: 1.5rem 2rem;
+  background: #f7fafc;
+  display: flex;
+  gap: 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.cancelBtn {
+  flex: 1;
+  padding: 0.875rem;
+  background: white;
+  border: 2px solid #cbd5e0;
+  border-radius: 10px;
+  font-weight: 600;
+  color: #4a5568;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.cancelBtn:hover {
+  background: #f7fafc;
+  border-color: #a0aec0;
+}
+
+.sendWhatsappBtn {
+  flex: 2;
+  padding: 0.875rem;
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.3s;
+}
+
+.sendWhatsappBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);
+}
+
+.sendWhatsappBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* WhatsApp Card Styles */
+.whatsappCard:hover {
+  border-color: #25d366;
+}
+
+.whatsappIconBg {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: white;
+}
+
+.whatsappActionBtn {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: white;
+}
+
+.whatsappActionBtn:hover {
+  background: linear-gradient(135deg, #128c7e, #075e54);
+  transform: scale(1.02);
+}
+
+/* WhatsApp Primary Button */
+.whatsappPrimaryBtn {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: white;
+  flex: 1;
+}
+
+.whatsappPrimaryBtn:hover {
+  background: linear-gradient(135deg, #128c7e, #075e54);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(37, 211, 102, 0.2);
+}
+
+/* WhatsApp Note */
+.whatsappNote {
+  color: #25d366;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Responsive WhatsApp Button */
+@media (max-width: 768px) {
+  .whatsappFloating {
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 20px;
+    width: auto;
+  }
+
+  .whatsappLabel {
+    display: none;
+  }
+
+  .whatsappIcon {
+    margin-right: 0;
+  }
+
+  .pulseRing {
+    width: 50px;
+    height: 50px;
+  }
+
+  .modalBody {
+    padding: 1.5rem;
+  }
+
+  .quickMessageGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalFooter {
+    flex-direction: column;
+  }
+
+  .cancelBtn,
+  .sendWhatsappBtn {
+    flex: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .whatsappModal {
+    width: 95%;
+    margin: 1rem;
+  }
+
+  .modalHeader {
+    padding: 1rem;
+  }
+
+  .modalHeader h3 {
+    font-size: 1.25rem;
+  }
+}
