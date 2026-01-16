@@ -17,6 +17,11 @@ const UserSideBar = () => {
     { path: "/userForm", icon: "mdi mdi-playlist-play", label: "Assign Order" },
     { path: "/datatable", icon: "mdi mdi-table-large", label: "Delivery Cash" },
     { path: "/stock", icon: "mdi mdi-package-variant", label: "Stock" },
+    {
+      path: "/rejected",
+      icon: "mdi mdi-package-variant",
+      label: "Rejected Stock",
+    },
   ];
 
   const handleToggle = () => dispatch(toggleSidebar());

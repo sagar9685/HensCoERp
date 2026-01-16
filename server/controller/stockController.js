@@ -110,3 +110,78 @@ exports.getAvailableStock = async (req, res) => {
     res.status(500).json({ error: "Error fetching available stock" });
   }
 };
+
+exports.rejectStock = async (req, res) => {
+  const { reject_date, items, reason } = req.body;
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items required" });
+    }
+
+    await transaction.begin();
+
+    for (let item of items) {
+      let remainingQty = item.quantity;
+
+      // ✅ Check stock available
+      const stockResult = await transaction
+        .request()
+        .input("item_name", sql.NVarChar, item.item_name).query(`
+          SELECT ID, Quantity
+          FROM Stock
+          WHERE item_name = @item_name AND Quantity > 0
+          ORDER BY ID ASC
+        `);
+
+      if (stockResult.recordset.length === 0) {
+        throw new Error(`${item.item_name} is out of stock`);
+      }
+
+      // ✅ FIFO stock minus
+      for (let row of stockResult.recordset) {
+        if (remainingQty <= 0) break;
+
+        const deductQty = Math.min(row.Quantity, remainingQty);
+
+        await transaction
+          .request()
+          .input("qty", sql.Int, deductQty)
+          .input("id", sql.Int, row.ID).query(`
+            UPDATE Stock
+            SET Quantity = Quantity - @qty
+            WHERE ID = @id
+          `);
+
+        remainingQty -= deductQty;
+      }
+
+      if (remainingQty > 0) {
+        throw new Error(`Not enough stock for ${item.item_name}`);
+      }
+
+      // ✅ Insert into RejectedStock
+      await transaction
+        .request()
+        .input("reject_date", sql.Date, reject_date)
+        .input("item_name", sql.NVarChar, item.item_name)
+        .input("weight", sql.NVarChar, item.weight || "")
+        .input("quantity", sql.Int, item.quantity)
+        .input("reason", sql.NVarChar, reason || "").query(`
+          INSERT INTO RejectedStock
+          (reject_date, item_name, weight, quantity, reason)
+          VALUES
+          (@reject_date, @item_name, @weight, @quantity, @reason)
+        `);
+    }
+
+    await transaction.commit();
+
+    res.json({ message: "Rejected stock processed successfully" });
+  } catch (error) {
+    await transaction.rollback();
+    res.status(400).json({ message: error.message });
+  }
+};
