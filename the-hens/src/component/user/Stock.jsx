@@ -257,7 +257,7 @@ const Stock = () => {
                   Low Stock
                 </span>
                 <span
-                  className={`${styles.filterTag} ${styles.tagout} ${
+                  className={`${styles.filterTag} ${styles.tagOut} ${
                     activeFilter === "out" ? styles.active : ""
                   }`}
                   onClick={() => setActiveFilter("out")}

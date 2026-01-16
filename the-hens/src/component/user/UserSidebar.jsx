@@ -13,7 +13,7 @@ const UserSideBar = () => {
   const user = useSelector((state) => state.auth.user);
 
   const menuItems = [
-    { path: "/user", icon: "mdi mdi-speedometer", label: "Dashboard" },
+    // { path: "/user", icon: "mdi mdi-speedometer", label: "Dashboard" },
     { path: "/userForm", icon: "mdi mdi-playlist-play", label: "Assign Order" },
     { path: "/datatable", icon: "mdi mdi-table-large", label: "Delivery Cash" },
     { path: "/stock", icon: "mdi mdi-package-variant", label: "Stock" },
