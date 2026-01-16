@@ -19,6 +19,7 @@ const Stock = () => {
   const dispatch = useDispatch();
   const { available, loading } = useSelector((state) => state.stock);
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all"); // Naya state
   const [filteredStock, setFilteredStock] = useState([]);
   const [stockStats, setStockStats] = useState({
     totalItems: 0,
@@ -42,8 +43,9 @@ const Stock = () => {
       // Calculate stats
       const stats = {
         totalItems: available.length,
-        lowStockItems: available.filter((item) => item.available_stock < 10)
-          .length,
+        lowStockItems: available.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10
+        ).length,
         outOfStock: available.filter((item) => item.available_stock === 0)
           .length,
         totalQuantity: available.reduce(
@@ -54,6 +56,40 @@ const Stock = () => {
       setStockStats(stats);
     }
   }, [available, searchTerm]);
+
+  useEffect(() => {
+    if (available) {
+      let filtered = available.filter((item) =>
+        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+
+      if (activeFilter == "low") {
+        filtered = filtered.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10
+        );
+      } else if (activeFilter == "out") {
+        filtered = filtered.filter((item) => item.available_stock === 0);
+      } else if (activeFilter == "high") {
+        filtered = filtered.filter((item) => item.available_stock >= 30);
+      }
+
+      setFilteredStock(filtered);
+
+      const stats = {
+        totalItems: available.length,
+        lowStockItems: available.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10
+        ).length,
+        outOfStock: available.filter((item) => item.available_stock === 0)
+          .length,
+        totalQuantity: available.reduce(
+          (sum, item) => sum + (item.available_stock || 0),
+          0
+        ),
+      };
+      setStockStats(stats);
+    }
+  }, [available, searchTerm, activeFilter]);
 
   const handleRefresh = () => {
     dispatch(fetchAvailableStock());
@@ -202,16 +238,40 @@ const Stock = () => {
                 )}
               </div>
               <div className={styles.filterTags}>
-                <span className={`${styles.filterTag} ${styles.tagAll}`}>
+                <span
+                  className={`${styles.filterTag} ${styles.tagAll} ${
+                    activeFilter === "all" ? styles.active : ""
+                  }`}
+                  onClick={() => setActiveFilter("all")}
+                  style={{ cursor: "pointer" }}
+                >
                   All Items
                 </span>
-                <span className={`${styles.filterTag} ${styles.tagLow}`}>
+                <span
+                  className={`${styles.filterTag} ${styles.tagLow} ${
+                    activeFilter === "low" ? styles.active : ""
+                  }`}
+                  onClick={() => setActiveFilter("low")}
+                  style={{ cursor: "pointer" }}
+                >
                   Low Stock
                 </span>
-                <span className={`${styles.filterTag} ${styles.tagOut}`}>
+                <span
+                  className={`${styles.filterTag} ${styles.tagout} ${
+                    activeFilter === "out" ? styles.active : ""
+                  }`}
+                  onClick={() => setActiveFilter("out")}
+                  style={{ cursor: "pointer" }}
+                >
                   Out of Stock
                 </span>
-                <span className={`${styles.filterTag} ${styles.tagHigh}`}>
+                <span
+                  className={`${styles.filterTag} ${styles.tagHigh} ${
+                    activeFilter === "high" ? styles.active : ""
+                  }`}
+                  onClick={() => setActiveFilter("high")}
+                  style={{ cursor: "pointer" }}
+                >
                   High Stock
                 </span>
               </div>
