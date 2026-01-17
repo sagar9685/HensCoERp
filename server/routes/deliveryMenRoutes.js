@@ -10,4 +10,7 @@ router.get(
   deliveryController.getDeliveryManPendingCashOrders
 );
 
+router.post("/allByDay",deliveryController.getDeliverySummaryByDateAndBoy)
+
+
 module.exports = router;
