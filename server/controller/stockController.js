@@ -112,7 +112,7 @@ exports.getAvailableStock = async (req, res) => {
 };
 
 exports.rejectStock = async (req, res) => {
-  const { reject_date, items, reason } = req.body;
+  const { reject_date, items } = req.body;
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
@@ -169,7 +169,7 @@ exports.rejectStock = async (req, res) => {
         .input("item_name", sql.NVarChar, item.item_name)
         .input("weight", sql.NVarChar, item.weight || "")
         .input("quantity", sql.Int, item.quantity)
-        .input("reason", sql.NVarChar, reason || "").query(`
+        .input("reason", sql.NVarChar,  item.reason || "").query(`
           INSERT INTO RejectedStock
           (reject_date, item_name, weight, quantity, reason)
           VALUES
@@ -183,5 +183,25 @@ exports.rejectStock = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     res.status(400).json({ message: error.message });
+  }
+};
+
+
+exports.getrejectStock = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    if (!pool) {
+      return res.status(500).json({ message: "Database connection failed." });
+    }
+
+    const result = await pool
+      .request()
+      .query("  select * from RejectedStock order by id desc");
+    res.status(200).json(result.recordset);
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+    res
+      .status(500)
+      .json({ message: "Internal server error", error: error.message });
   }
 };

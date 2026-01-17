@@ -16,6 +16,7 @@ import ReportPage from "./component/ReportPage";
 import ImportArea from "./pages/ImportArea";
 import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
 import Support from "./component/Support";
+import RejectStock from "./component/user/RejectStock";
 
 function App() {
   return (
@@ -139,6 +140,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Stock />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/rejected-stock"
+          element={
+            <ProtectedRoute>
+              <RejectStock />
             </ProtectedRoute>
           }
         />

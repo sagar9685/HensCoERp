@@ -7,5 +7,6 @@ router.post("/add", stockController.addStock);
 router.get("/", stockController.getStock);
 router.get("/avilable", stockController.getAvailableStock);
 router.post("/rejected-stock", stockController.rejectStock);
+router.get("/rejected-stock", stockController.getrejectStock);
 
 module.exports = router;
