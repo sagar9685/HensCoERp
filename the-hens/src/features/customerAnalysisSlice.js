@@ -1,7 +1,9 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/customer-analysis";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = `${API_BASE_URL}/api/customer-analysis`;
+ 
 
 export const fetchWeekWise = createAsyncThunk(
   "customerAnalysis/fetchWeekWise",
@@ -36,33 +38,32 @@ const customerAnalysisSlice = createSlice({
     loading: false,
     error: null,
   },
-  extraReducers: (builder) => {
-    builder
-      .addMatcher(
-        (action) => action.type.endsWith("/pending"),
-        (state) => {
-          state.loading = true;
-        }
-      )
-      .addMatcher(
-        (action) => action.type.endsWith("/fulfilled"),
-        (state, action) => {
-          state.loading = false;
+ extraReducers: (builder) => {
+  builder
+    .addCase(fetchWeekWise.pending, (state) => {
+      state.loading = true;
+    })
+    .addCase(fetchWeekWise.fulfilled, (state, action) => {
+      state.loading = false;
+      state.weekWise = action.payload;
+    })
+    .addCase(fetchMonthWise.fulfilled, (state, action) => {
+      state.loading = false;
+      state.monthWise = action.payload;
+    })
+    .addCase(fetchYearWise.fulfilled, (state, action) => {
+      state.loading = false;
+      state.yearWise = action.payload;
+    })
+    .addMatcher(
+      (action) => action.type.endsWith("/rejected"),
+      (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      }
+    );
+}
 
-          if (action.type.includes("WeekWise")) state.weekWise = action.payload;
-          if (action.type.includes("MonthWise"))
-            state.monthWise = action.payload;
-          if (action.type.includes("YearWise")) state.yearWise = action.payload;
-        }
-      )
-      .addMatcher(
-        (action) => action.type.endsWith("/rejected"),
-        (state, action) => {
-          state.loading = false;
-          state.error = action.error.message;
-        }
-      );
-  },
 });
 
 export default customerAnalysisSlice.reducer;

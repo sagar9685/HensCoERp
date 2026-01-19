@@ -17,6 +17,7 @@ import ImportArea from "./pages/ImportArea";
 import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
 import Support from "./component/Support";
 import RejectStock from "./component/user/RejectStock";
+import DeliverySummary from "./component/user/DeliverySummary";
 
 function App() {
   return (
@@ -149,6 +150,15 @@ function App() {
           element={
             <ProtectedRoute>
               <RejectStock />
+            </ProtectedRoute>
+          }
+        />
+
+         <Route
+          path="/delivery-summary"
+          element={
+            <ProtectedRoute>
+            <DeliverySummary/>
             </ProtectedRoute>
           }
         />

@@ -150,7 +150,7 @@ exports.getDeliverySummaryByDateAndBoy = async (req, res) => {
       .input("ToDeliveryDate", sql.Date, toDeliveryDate)
       .input("DeliveryManID", sql.Int, deliveryManId ?? null)
       .query(`
-/* ================= DELIVERY SUMMARY QUERY ================= */
+/* ================= DELIVERY SUMMARY ================= */
 
 SELECT 
     O.OrderID,
@@ -168,6 +168,7 @@ SELECT
 
     -- ITEMS
     IT.Items,
+    IT.ItemQuantities,
     IT.TotalQty,
     IT.Weights,
     IT.Rates,
@@ -191,11 +192,25 @@ LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
 LEFT JOIN (
     SELECT 
         OrderID,
-        STRING_AGG(ProductName, ', ') AS Items,
+
+        -- Item Names
+        STRING_AGG(ProductType, ', ') AS Items,
+
+        -- Item + Quantity (Milk(5), Curd(3))
+        STRING_AGG(
+            CONCAT(ProductType, '(', Quantity, ')'),
+            ', '
+        ) AS ItemQuantities,
+
+        -- Total Quantity
         SUM(Quantity) AS TotalQty,
+
         STRING_AGG(CAST(Weight AS VARCHAR(10)), ', ') AS Weights,
         STRING_AGG(CAST(Rate AS VARCHAR(10)), ', ') AS Rates,
+
+        -- Items Total
         SUM(Total) AS ItemsTotal
+
     FROM OrderItems
     GROUP BY OrderID
 ) IT ON IT.OrderID = O.OrderID
@@ -221,7 +236,7 @@ WHERE
 ORDER BY A.DeliveryDate DESC, O.OrderID DESC;
       `);
 
-    // 🔹 SUMMARY CALCULATION (SAFE)
+    // 🔹 SUMMARY CALCULATION
     const summary = result.recordset.reduce(
       (acc, r) => {
         acc.totalSales += r.OrderTotal || 0;
