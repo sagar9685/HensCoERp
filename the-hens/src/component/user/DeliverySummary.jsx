@@ -109,40 +109,65 @@ const DeliverySummary = () => {
     return pageNumbers;
   };
 
-  const exportToPDF = () => {
-  const doc = new jsPDF("landscape");
+const exportToPDF = () => {
+  const doc = new jsPDF("landscape", "mm", "a4");
 
-  // Title
-  doc.setFontSize(18);
-  doc.text("Delivery Summary Report", 14, 15);
-  
-  // Summary Data
-  doc.setFontSize(10);
-  doc.text(`Total Sales: Rs. ${summary.totalSales} | Cash: ${summary.cash}`, 14, 25);
+  // Header Background
+  doc.setFillColor(63, 102, 241);
+  doc.rect(0, 0, 297, 20, 'F');
 
-  // Table
-  const tableColumn = ["#", "Customer", "Delivery Boy", "Date", "Items", "Qty", "Total", "Payment Modes"];
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.text("DELIVERY SUMMARY REPORT", 148, 13, { align: "center" });
+
+  // Summary Row in PDF
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(9);
+  doc.text(`Total Sales: Rs. ${summary.totalSales} | Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+
+  const tableColumn = [
+    "#", "Customer", "Address", "Area", "Delivery Boy", 
+    "Date", "Items", "Qty", "Items Total", "Charges", "Total", "Payment Info"
+  ];
+
   const tableRows = orders.map((o, i) => [
     i + 1,
     o.CustomerName,
+    o.Address.substring(0, 20) + "...",
+    o.Area,
     o.DeliveryBoyName,
-    o.DeliveryDate?.slice(0, 10),
-    o.Items,
+   formatDate( o.DeliveryDate?.slice(0, 10)),
+    o.Items.substring(0, 15),
     o.TotalQty,
-    `Rs. ${o.OrderTotal}`,
-    `Cash: ${o.Cash}, GPay: ${o.GPay}, Bank: ${o.BankTransfer}`
+    o.ItemsTotal,
+    o.DeliveryCharge,
+    o.OrderTotal,
+    `C:${o.Cash} G:${o.GPay} B:${o.BankTransfer}`
   ]);
 
   autoTable(doc, {
     startY: 35,
     head: [tableColumn],
     body: tableRows,
-    theme: 'grid',
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [79, 70, 229] }
+    theme: 'striped',
+    styles: { fontSize: 6.5, cellPadding: 2 },
+    headStyles: { fillColor: [63, 102, 241] },
+    margin: { left: 5, right: 5 }
   });
 
-  doc.save("Delivery_Summary.pdf");
+  doc.save(`Delivery_Summary_${new Date().getTime()}.pdf`);
+};
+
+const formatDate = (dateString) => {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (isNaN(date)) return "";
+
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-GB', { month: 'short' }); // Jan, Feb, etc.
+  const year = String(date.getFullYear()).slice(-2); // 26
+
+  return `${day}-${month}-${year}`;
 };
 
 const exportToExcel = () => {
@@ -160,7 +185,7 @@ const exportToExcel = () => {
       'Area': o.Area,
       'Contact No': o.ContactNo,
       'Delivery Boy': o.DeliveryBoyName,
-      'Delivery Date': o.DeliveryDate?.slice(0, 10) || '',
+      'Delivery Date':  formatDate(o.DeliveryDate?.slice(0, 10)) || '',
       'Items Detail': o.Items,
       'Weight': o.Weights || '',
       'Item Qty': o.ItemQuantities || '',
@@ -168,7 +193,7 @@ const exportToExcel = () => {
       'Rate': o.Rates || '',
       'Delivery Charge': o.DeliveryCharge || 0,
       'Items Total': o.ItemsTotal || 0,
-      'Payment Date': o.PaymentReceivedDate?.slice(0, 10) || '',
+      'Payment Date': formatDate(o.PaymentReceivedDate?.slice(0, 10)) || '',
       'Cash (₹)': o.Cash || 0,
       'GPay (₹)': o.GPay || 0,
       'Bank Transfer (₹)': o.BankTransfer || 0,
@@ -353,7 +378,7 @@ const exportToExcel = () => {
                         <td>{o.Area}</td>
                         <td>{o.ContactNo}</td>
                         <td>{o.DeliveryBoyName}</td>
-                        <td>{o.DeliveryDate?.slice(0, 10)}</td>
+                        <td>{formatDate(o.DeliveryDate?.slice(0, 10))}</td>
                         <td>{o.Items}</td>
                         <td>{o.Weights}</td>
                         <td>{o.ItemQuantities}</td>
@@ -362,7 +387,7 @@ const exportToExcel = () => {
                         <td>₹ {o.DeliveryCharge}</td>
                         <td>₹ {o.ItemsTotal}</td>
                         
-                        <td>{o.PaymentReceivedDate?.slice(0, 10)}</td>
+                        <td>{formatDate(o.PaymentReceivedDate?.slice(0, 10))}</td>
                         <td className={styles.paymentModeCell}>
                           <div>Cash: ₹ {o.Cash}</div>
                           <div>GPay: ₹ {o.GPay}</div>

@@ -1,249 +1,126 @@
+/* Container and Layout */
 .container {
-  padding: 20px;
-  background-color: #f8f9fa;
+  padding: 24px;
+  background-color: #f8fafc; /* Light Slate background */
   min-height: 100vh;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 
 .heading {
+  font-size: 28px;
+  font-weight: 800;
   color: #1e293b;
-  font-weight: 700;
-  margin-bottom: 25px;
-  font-size: 24px;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
 }
 
-/* Filters Styling */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 15px;
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  margin-bottom: 25px;
-  align-items: center;
-}
-
-.filters input, .filters select {
-  padding: 10px 15px;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  outline: none;
-  font-size: 14px;
-  min-width: 180px;
-}
-
-.filters button {
-  padding: 10px 20px;
-  border-radius: 8px;
-  border: none;
-  background: #4f46e5;
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.filters button:hover { background: #4338ca; }
-
-.resetBtn { background: #64748b !important; }
-
-/* Export Buttons */
-.exportButtons {
-  margin-left: auto;
-  display: flex;
-  gap: 10px;
-}
-
-.pdfBtn { background: #ef4444 !important; }
-.excelBtn { background: #10b981 !important; }
-
-/* Summary Cards */
-.summaryGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 15px;
-  margin-bottom: 25px;
-}
-
-.card {
-  background: white;
-  padding: 15px;
-  border-radius: 12px;
-  border-left: 4px solid #4f46e5;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  display: flex;
-  flex-direction: column;
-}
-
-.card span { color: #64748b; font-size: 12px; text-transform: uppercase; }
-.card strong { color: #1e293b; font-size: 18px; margin-top: 5px; }
-
-/* Table Styling - Optimized for No Scroll */
-.tableContainer {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  overflow-x: auto; /* Table wide hai toh scroll sirf table level pe hoga */
-  margin-bottom: 20px;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-th {
-  background: #f1f5f9;
-  color: #475569;
-  padding: 12px 15px;
-  text-align: left;
-  font-weight: 600;
-  border-bottom: 2px solid #e2e8f0;
-  white-space: nowrap;
-}
-
-td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
-  vertical-align: middle;
-}
-
-tr:hover { background-color: #f8fafc; }
-
-.paymentModeCell div {
-  font-size: 11px;
-  color: #64748b;
-  line-height: 1.4;
-}
-
-.bold { font-weight: 700; color: #1e293b; }
-
-/* Pagination */
-.pagination {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  padding: 20px 0;
-}
-
-.pageButton {
-  padding: 8px 16px;
-  border: 1px solid #e2e8f0;
-  background: white;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.activePage {
-  background: #4f46e5 !important;
-  color: white;
-  border-color: #4f46e5;
-}
-
-.pageButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}/* DeliverySummary.module.css */
-
-.container {
-  padding: 25px;
-  background-color: #f4f7fe;
-  min-height: 100vh;
-}
-
-.heading {
-  font-size: 26px;
-  font-weight: 700;
-  color: #2b3674;
-  margin-bottom: 20px;
-}
-
-/* Modern Filter Bar */
+/* Glassmorphism Filters Section */
 .filters {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 16px;
   background: #ffffff;
-  padding: 20px;
-  border-radius: 15px;
-  margin-bottom: 25px;
-  box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.03);
+  padding: 24px;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  border: 1px solid #e2e8f0;
 }
 
 .filters input, .filters select {
-  border: 1px solid #e0e5f2;
-  padding: 10px 15px;
+  padding: 10px 14px;
+  border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  color: #2b3674;
+  font-size: 14px;
+  color: #475569;
   outline: none;
-}
-
-.filters button {
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
+  min-width: 160px;
   transition: all 0.2s ease;
 }
 
-.searchBtn { background: #4318FF; color: white; }
-.resetBtn { background: #E9EDF7; color: #2b3674; }
-
-.exportButtons {
-  margin-left: auto;
-  display: flex;
-  gap: 8px;
+.filters input:focus, .filters select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-.pdfBtn { background: #ff5f5f !important; color: white; }
-.excelBtn { background: #01b574 !important; color: white; }
+.filters button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: transform 0.1s active, background 0.2s;
+  background: #6366f1; /* Indigo */
+  color: white;
+}
 
-/* Dashboard Summary Cards */
+.filters button:hover { background: #4f46e5; }
+
+.resetBtn { background: #94a3b8 !important; }
+.resetBtn:hover { background: #64748b !important; }
+
+/* Export Buttons with Colors */
+.exportButtons {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.pdfBtn { background: #ef4444 !important; } /* Red */
+.pdfBtn:hover { background: #dc2626 !important; }
+
+.excelBtn { background: #10b981 !important; } /* Emerald */
+.excelBtn:hover { background: #059669 !important; }
+
+/* Summary Grid Cards */
 .summaryGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 20px;
+  gap: 16px;
   margin-bottom: 30px;
 }
 
 .card {
   background: white;
   padding: 20px;
-  border-radius: 15px;
-  text-align: center;
-  box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+  border-bottom: 4px solid #6366f1;
+  transition: transform 0.2s;
 }
 
+.card:hover { transform: translateY(-5px); }
+
 .card span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 700;
+  text-transform: uppercase;
   display: block;
-  font-size: 13px;
-  color: #a3aed0;
-  margin-bottom: 5px;
-  font-weight: 600;
+  margin-bottom: 8px;
 }
 
 .card strong {
-  font-size: 20px;
-  color: #2b3674;
+  font-size: 22px;
+  color: #1e293b;
+  display: block;
 }
 
-/* Table Design: Full Width, No internal box scroll */
+/* Professional Table Styling */
 .tableContainer {
   background: white;
-  border-radius: 15px;
-  padding: 15px;
-  box-shadow: 0px 5px 20px rgba(0, 0, 0, 0.02);
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
 }
 
 .tableWrapper {
-  overflow-x: auto; /* Sirf width zyada hone par horizontal scroll aayega, vertical nahi */
+  overflow-x: auto;
 }
 
 table {
@@ -252,45 +129,74 @@ table {
 }
 
 th {
-  background: #f7fafc;
-  padding: 15px 10px;
+  background: #f8fafc;
+  padding: 16px;
   text-align: left;
   font-size: 12px;
+  font-weight: 700;
+  color: #475569;
   text-transform: uppercase;
-  color: #a3aed0;
-  border-bottom: 1px solid #e0e5f2;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
 }
 
 td {
-  padding: 14px 10px;
-  font-size: 13px;
-  color: #2b3674;
-  border-bottom: 1px solid #f4f7fe;
+  padding: 16px;
+  font-size: 13.5px;
+  color: #334155;
+  border-bottom: 1px solid #f1f5f9;
 }
+
+tr:last-child td { border-bottom: none; }
+tr:hover { background-color: #f1f5f9; }
 
 .paymentModeCell div {
   font-size: 11px;
+  color: #64748b;
+  line-height: 1.5;
   margin-bottom: 2px;
 }
 
-/* Pagination */
+.bold { font-weight: 700; color: #1e293b; font-size: 15px; }
+
+/* Pagination Styling */
 .pagination {
-  margin-top: 25px;
   display: flex;
   justify-content: center;
-  gap: 5px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 30px;
 }
 
 .pageButton {
-  border: 1px solid #e0e5f2;
-  background: white;
-  padding: 8px 14px;
+  padding: 8px 16px;
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #475569;
+  font-weight: 500;
   cursor: pointer;
-  color: #2b3674;
 }
 
 .activePage {
-  background: #4318FF !important;
-  color: white;
+  background: #6366f1 !important;
+  color: white !important;
+  border-color: #6366f1 !important;
+}
+
+.pageButton:disabled {
+  background: #f1f5f9;
+  cursor: not-allowed;
+  color: #cbd5e1;
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+  .exportButtons { margin-left: 0; width: 100%; }
+  .filters { flex-direction: column; align-items: stretch; }
+}
+
+@media (max-width: 640px) {
+  .heading { font-size: 22px; }
+  .summaryGrid { grid-template-columns: 1fr 1fr; }
 }
