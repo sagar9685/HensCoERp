@@ -34,7 +34,7 @@ const OrderForm = ({ onClose }) => {
     deliveryCharge: '',
     orderDate: '',
      orderTakenBy: '' ,
-     
+     otherOrderTakenBy: ''
   });
 
   // State to handle multiple order items
@@ -276,6 +276,9 @@ console.log(stockList, "stovk");
         Quantity: Number(item.quantity),
         Rate: Number(item.rate),
       }));
+      const finalOrderTakenBy = formData.orderTakenBy === "Others" 
+      ? formData.otherOrderTakenBy 
+      : formData.orderTakenBy;
 
       const orderData = {
         CustomerName: formData.customerName,
@@ -284,7 +287,7 @@ console.log(stockList, "stovk");
         ContactNo: formData.contactNo,
         DeliveryCharge: Number(formData.deliveryCharge),
         OrderDate: formData.orderDate,
-          OrderTakenBy: formData.orderTakenBy, 
+          OrderTakenBy: finalOrderTakenBy, 
         Items: formattedItems
       };
 
@@ -419,7 +422,7 @@ const getTotalAmount = () => {
               {errors.orderDate && <span className={styles.error}>{errors.orderDate}</span>}
             </div>
 
-            <div className={styles.inputGroup}>
+            {/* <div className={styles.inputGroup}>
             <label className={styles.inputLabel}>
               Order Taken By <span className={styles.required}>*</span>
             </label>
@@ -441,8 +444,43 @@ const getTotalAmount = () => {
 
 
             {errors.orderTakenBy && <span className={styles.error}>{errors.orderTakenBy}</span>}
-          </div>
+          </div> */}
 
+          <div className={styles.inputGroup}>
+  <label className={styles.inputLabel}>
+    Order Taken By <span className={styles.required}>*</span>
+  </label>
+  <select
+    name="orderTakenBy"
+    value={formData.orderTakenBy}
+    onChange={handleChange}
+    className={styles.inputField}
+  >
+    <option value="">Select Name</option>
+    {Array.isArray(takenByList) &&
+      takenByList.map((d, idx) => (
+        <option key={idx} value={d.Name || d.name}>
+          {d.Name || d.name}
+        </option>
+      ))}
+    <option value="Others">Others</option> {/* Others option add kiya */}
+  </select>
+
+  {/* Agar Others select hai toh ye input field dikhega */}
+  {formData.orderTakenBy === "Others" && (
+    <input
+      type="text"
+      name="otherOrderTakenBy"
+      value={formData.otherOrderTakenBy}
+      onChange={handleChange}
+      placeholder="Write Name"
+      className={`${styles.inputField} ${styles.mt2}`} // mt2 spacing ke liye
+      style={{ marginTop: '10px' }}
+    />
+  )}
+
+  {errors.orderTakenBy && <span className={styles.error}>{errors.orderTakenBy}</span>}
+</div>
             
           </div>
         </section>

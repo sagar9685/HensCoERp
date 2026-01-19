@@ -12,6 +12,7 @@ import PurchaseTable from './PurchaseTable';
 import StatsCards from './StatsCard';
 import FilterSection from './FilterSection';
 import { fetchPurchaseOrders, createPurchaseOrder } from '../../features/purchaseOrderSlice';
+import { generatePurchasePDF } from '../utils/PurchaseOrderPDF';
 
 const Purchase = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -149,48 +150,9 @@ const Purchase = () => {
     return `${day}-${month}-${year}`;
   };
 
-  const downloadPurchaseOrder = (purchase) => {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    
-    let y = 40;
-    
-    doc.setFontSize(18);
-    doc.text("Phoenix Poultry", 220, y);
-    y += 30;
-    
-    doc.setFontSize(18);
-    doc.text("Purchase Order", 220, y);
-    y += 30;
-    
-    doc.setFontSize(12);
-    doc.text(`PO Number: ${purchase.po_number}`, 40, y);  
-    y += 20;
-    
-    doc.text(`Order Date: ${formatShortDate(purchase.order_date)}`, 40, y);
-    y += 20;
-    
-    doc.text(`Total Quantity: ${purchase.total_qty}`, 40, y);
-    y += 30;
-    
-    doc.line(40, y, 550, y);
-    y += 25;
-    
-    doc.setFontSize(14);
-    doc.text("Items", 40, y);
-    y += 25;
-    
-    doc.setFontSize(12);
-    
-    purchase.items.forEach((item, index) => {
-      doc.text(`${index + 1}. ${item.item_name}`, 40, y);
-      doc.text(`Weight: ${item.weight}`, 220, y);
-      doc.text(`Qty: ${item.qty}`, 400, y);
-      y += 20;
-    });
-    
-    doc.save(`PurchaseOrder_${purchase.po_number}.pdf`);
+ const downloadPurchaseOrder = (purchase) => {
+    generatePurchasePDF(purchase);
   };
-
   const exportAllPurchases = () => {
     if (sortedPurchases.length === 0) {
       toast.warning('No purchase orders to export');
