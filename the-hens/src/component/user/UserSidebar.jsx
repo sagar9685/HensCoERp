@@ -22,6 +22,11 @@ const UserSideBar = () => {
       icon: "mdi mdi-package-variant",
       label: "Rejected Stock",
     },
+     {
+      path: "/delivery-summary",
+      icon: "mdi mdi-truck-delivery", // Updated professional icon
+      label: "DeliveryBoy Report",
+    },
   ];
 
   const handleToggle = () => dispatch(toggleSidebar());
