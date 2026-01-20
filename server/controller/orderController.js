@@ -259,3 +259,101 @@ exports.getOrderTakenByList = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch names" });
   }
 };
+
+exports.cancelOrder = async (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+
+  console.log("➡️ Cancel request for AssignID:", id);
+  console.log("➡️ Reason:", reason);
+
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    await transaction.begin();
+    console.log("✅ Transaction started");
+
+    // 1️⃣ Check Assigned Order
+    const check = await transaction.request()
+      .input("id", sql.Int, id)
+      .query(`
+        SELECT DeliveryStatus, OrderID
+        FROM AssignedOrders
+        WHERE AssignID = @id
+      `);
+
+    console.log("🔍 AssignedOrder check:", check.recordset);
+
+    if (check.recordset.length === 0) {
+      throw new Error("Invalid AssignID");
+    }
+
+    if (check.recordset[0].DeliveryStatus === "Cancel") {
+      throw new Error("Order already cancelled");
+    }
+
+    const orderId = check.recordset[0].OrderID;
+
+    // 2️⃣ Update AssignedOrders → Cancel
+    const updateRes = await transaction.request()
+      .input("id", sql.Int, id)
+      .input("reason", sql.NVarChar, reason || "Cancelled")
+      .query(`
+        UPDATE AssignedOrders
+        SET DeliveryStatus = 'Cancel',
+            CompletionRemarks = @reason
+        WHERE AssignID = @id
+      `);
+
+    console.log("✅ Order update rows:", updateRes.rowsAffected);
+
+    // 3️⃣ Get Order Items
+    const itemsResult = await transaction.request()
+      .input("orderId", sql.Int, orderId)
+      .query(`
+        SELECT ProductType, Quantity
+        FROM OrderItems
+        WHERE OrderID = @orderId
+      `);
+
+    // 4️⃣ Revert Stock (FIFO – update only, no insert)
+    for (let item of itemsResult.recordset) {
+      const stockResult = await transaction.request()
+        .input("itemName", sql.NVarChar, item.ProductType)
+        .query(`
+          SELECT TOP 1 ID
+          FROM Stock
+          WHERE item_name = @itemName
+          ORDER BY ID ASC
+        `);
+
+      if (stockResult.recordset.length === 0) {
+        throw new Error(`Stock not found for ${item.ProductType}`);
+      }
+
+      const stockId = stockResult.recordset[0].ID;
+
+      await transaction.request()
+        .input("qty", sql.Int, item.Quantity)
+        .input("id", sql.Int, stockId)
+        .query(`
+          UPDATE Stock
+          SET Quantity = Quantity + @qty
+          WHERE ID = @id
+        `);
+    }
+
+    await transaction.commit();
+    console.log("✅ Transaction committed");
+
+    res.json({ message: "Order cancelled & stock reverted" });
+
+  } catch (err) {
+    console.error("❌ Cancel Order Error:", err.message);
+    await transaction.rollback();
+    console.log("↩️ Transaction rolled back");
+
+    res.status(500).json({ message: err.message });
+  }
+};

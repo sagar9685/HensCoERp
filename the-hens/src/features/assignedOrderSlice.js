@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-
+import { completeOrder } from "./orderCompletionSlice";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // FETCH DELIVERY MEN
@@ -42,6 +42,18 @@ export const assignOrder = createAsyncThunk(
     return res.data;
   }
 );
+
+export const cancelAssignedOrder = createAsyncThunk(
+  "assignedOrder/cancel",
+  async ({ assignId, reason }) => {
+    const res = await axios.post(
+      `${API_BASE_URL}/api/orders/cancel/${assignId}`,
+      { reason }
+    );
+    return res.data;
+  }
+);
+
 
 export const fetchAssignOrder = createAsyncThunk(
   "fetchAssignOrder",
@@ -171,24 +183,77 @@ const assignedOrderSlice = createSlice({
         state.loading = false;
         state.error = "Failed to fetch cash data";
       })
-      .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
-        // Action payload se data nikalein
-        const { assignId, status } = action.meta.arg; // Ya action.payload agar backend return kar raha hai
+      // .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+      //   // Action payload se data nikalein
+      //   const { assignId, status } = action.meta.arg; // Ya action.payload agar backend return kar raha hai
 
-        const index = state.data.findIndex((o) => o.AssignID == assignId);
+      //   const index = state.data.findIndex((o) => o.AssignID == assignId);
 
-        if (index !== -1) {
-          // State mutation (Immer handles this)
-          state.data[index].OrderStatus = status;
-          state.data[index].DeliveryStatus = status;
+      //   if (index !== -1) {
+      //     // State mutation (Immer handles this)
+      //     state.data[index].OrderStatus = status;
+      //     state.data[index].DeliveryStatus = status;
 
-          if (status === "Complete") {
+      //     if (status === "Complete") {
+      //       const now = new Date().toISOString();
+      //       state.data[index].ActualDeliveryDate = now;
+      //       state.data[index].PaymentReceivedDate = now;
+      //     }
+      //   }
+      // })
+      // assignedOrderSlice.js ke extraReducers mein:
+
+// assignedOrderSlice.js mein updateDeliveryStatus.fulfilled badlein:
+
+.addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+    // action.meta.arg mein wo data hota hai jo aapne dispatch karte waqt bheja tha
+    const { assignId, status } = action.meta.arg;
+    
+    // Loose equality (==) use karein taaki string/number mismatch na ho
+    const index = state.data.findIndex((o) => o.AssignID == assignId);
+
+    if (index !== -1) {
+        // Direct state update (Immer handle kar lega)
+        state.data[index].DeliveryStatus = status;
+        state.data[index].OrderStatus = status; 
+
+        if (status === "Complete") {
             const now = new Date().toISOString();
             state.data[index].ActualDeliveryDate = now;
             state.data[index].PaymentReceivedDate = now;
-          }
         }
-      });
+        
+        // Success flag ko true karein taaki UI re-render ho
+        state.success = true;
+    }
+})
+.addCase(cancelAssignedOrder.fulfilled, (state, action) => {
+    const { assignId, reason } = action.meta.arg;
+    const index = state.data.findIndex((o) => o.AssignID == assignId);
+
+    if (index !== -1) {
+        state.data[index].DeliveryStatus = "Cancel";
+        state.data[index].OrderStatus = "Cancel";
+        state.data[index].Remark = reason;
+    }
+})
+.addCase(completeOrder.fulfilled, (state, action) => {
+    // action.payload se orderId ya assignedOrderId nikalen (jo bhi backend return kar raha hai)
+    const { assignedOrderId } = action.meta.arg; // meta.arg mein payload data hota hai
+    
+    const index = state.data.findIndex((o) => o.AssignID == assignedOrderId);
+
+    if (index !== -1) {
+        state.data[index].DeliveryStatus = "Complete";
+        state.data[index].OrderStatus = "Complete";
+        
+        // Instant dates update
+        const now = new Date().toISOString();
+        state.data[index].ActualDeliveryDate = now;
+        state.data[index].PaymentReceivedDate = now;
+    }
+})
+
   },
 });
 

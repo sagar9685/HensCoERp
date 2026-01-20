@@ -1,3 +1,4 @@
+// for production
 const sql = require("mssql");
 
 const config = {
@@ -11,6 +12,8 @@ const config = {
   },
 };
 
+
+
 const poolPromise = new sql.ConnectionPool(config)
   .connect()
   .then((pool) => {
@@ -23,3 +26,30 @@ const poolPromise = new sql.ConnectionPool(config)
   });
 
 module.exports = { sql, poolPromise };
+
+// for local
+
+//      const sql = require("mssql");
+
+// const config = {
+//   user: "sa",              // 👈 Updated to use SQL Login
+//   password: "123",         // 👈 The password you set in SSMS
+//   server: "DESKTOP-51HB5ST",
+//   database: "hensCoErp",
+//   options: {
+//     encrypt: false,        // Keep false for local development
+//     trustServerCertificate: true,
+//   }
+// };
+
+// const poolPromise = new sql.ConnectionPool(config)
+//   .connect()
+//   .then(pool => {
+//     console.log("✅ SQL Server Connected successfully with 'sa' account!");
+//     return pool;
+//   })
+//   .catch(err => {
+//     console.error("❌ SQL Connection Error:", err.message);
+//   });
+
+// module.exports = { sql, poolPromise };

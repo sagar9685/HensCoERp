@@ -167,12 +167,10 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validateForm()) {
-      return; // stop submit
-    }
+  
+const handleSubmit = async () => {
+    if (!validateForm()) return;
 
-    // proceed with submit
     const paymentSettlement = {};
     selectedPaymentMethods.forEach((modeName) => {
       const amountKey = makeAmountKey(modeName);
@@ -188,9 +186,22 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
       paymentSettlement,
     };
 
-    console.log("FINAL PAYLOAD ====>", payload);
-    dispatch(completeOrder(payload));
-  };
+    try {
+        // .unwrap() se hum result ka wait karenge
+        await dispatch(completeOrder(payload)).unwrap();
+        
+        // Instant Feedback
+        toast.success("Order Completed Successfully!");
+        
+        // Modal band karein
+        onClose();
+        
+        // Optional: Reset store
+        dispatch(resetOrderState());
+    } catch (err) {
+        toast.error("Failed to complete order");
+    }
+};
 
   if (!isOpen || !order) return null;
 

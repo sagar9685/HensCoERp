@@ -12,10 +12,12 @@ import {
   fetchAssignOrder,
   updateAssignedOrder,
   updateDeliveryStatus,
+  cancelAssignedOrder
 } from "../../features/assignedOrderSlice";
 import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
 import { useOrderFilter } from "./UserOrderFilter";
+import CancelOrderModal from "./CancelOrderModal";
 
 const UserForm = () => {
   const dispatch = useDispatch();
@@ -23,6 +25,9 @@ const UserForm = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmOrder, setConfirmOrder] = useState(null);
   const [isCompleteModalOpen, setCompleteModalOpen] = useState(false);
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+const [cancelOrder, setCancelOrder] = useState(null);
+
 
   // Use the custom hook for filtering and pagination
   const {
@@ -55,95 +60,108 @@ const UserForm = () => {
     dispatch(fetchAssignOrder());
   }, [dispatch]);
 
-  // const handleStatusChange = (row, newStatus) => {
-  //   dispatch(
-  //     updateDeliveryStatus({
-  //       assignId: row.AssignID,
-  //       status: newStatus,
-  //     })
-  //   );
-  // };
+  ;
 
-  // const handleCompleteOrder = async () => {
-  //   await dispatch(
-  //     updateDeliveryStatus({
-  //       assignId: confirmOrder.AssignID,
-  //       status: "Complete",
-  //     })
-  //   );
-  //   toast.success("Order completed");
-  //   handleCloseCompleteModal();
-  // };
+//   const handleStatusChange = (row, newStatus) => {
+//   if (newStatus === "Cancel") {
+//     setCancelOrder(row);
+//     setCancelModalOpen(true); // ❗ cancel modal open
+//     return;
+//   }
 
-  // const updateOrderStatusHandler = async (order, status) => {
-  //   try {
-  //     await dispatch(
-  //       updateOrderStatus({
-  //         orderId: order.OrderID,
-  //         assignedOrderId: order.AssignedOrderID,
-  //         status: status,
-  //       })
-  //     ).unwrap();
-  //     toast.success(`Order status updated to ${status} successfully!`);
-  //     dispatch(fetchAssignOrder());
-  //     dispatch(fetchOrder());
-  //   } catch (error) {
-  //     toast.error("Failed to update order status", error);
-  //   }
-  // };
+//   if (newStatus === "Complete") {
+//     setConfirmOrder(row);
+//     setCompleteModalOpen(true); // already hai
+//     return;
+//   }
 
-  // UserForm.js ke andar handleAssignSubmit function ko replace karein:
+//   dispatch(updateDeliveryStatus({
+//     assignId: row.AssignID,
+//     status: newStatus,
+//   }));
+// };
+ 
+// UserForm.js ke handleStatusChange mein:
 
-  // Handle simple status changes (Pending, In Progress, Cancel)
-  const handleStatusChange = async (row, newStatus) => {
-    if (newStatus === "Complete") {
-      setConfirmOrder(row);
-      setCompleteModalOpen(true);
-    } else {
-      try {
-        // Hum unwrap use karenge taaki humein confirm ho jaye ki DB update ho gaya
-        await dispatch(
-          updateDeliveryStatus({
-            assignId: row.AssignID,
-            status: newStatus,
-          })
-        ).unwrap();
+const handleStatusChange = async (row, newStatus) => {
+  if (newStatus === "Cancel") {
+    setCancelOrder(row);
+    setCancelModalOpen(true);
+    return;
+  }
 
-        toast.success(`Status updated to ${newStatus}`);
-        // Slice mein extraReducers khud hi state update kar dega,
-        // toh page refresh ki zaroorat nahi padegi.
-      } catch (err) {
-        toast.error("Failed to update status");
-      }
-    }
-  };
+  if (newStatus === "Complete") {
+    setConfirmOrder(row);
+    setCompleteModalOpen(true);
+    return;
+  }
+
+  try {
+    // unwrap() use karne se UI wait karega jab tak Redux state update na ho jaye
+    await dispatch(updateDeliveryStatus({
+      assignId: row.AssignID,
+      status: newStatus,
+    })).unwrap();
+    
+    toast.success(`Status updated to ${newStatus}`);
+    
+    // AGAR ABHI BHI INSTANT UPDATE NA HO, toh neeche wali line uncomment karein:
+    // dispatch(fetchAssignOrder()); 
+    
+  } catch (err) {
+    toast.error("Failed to update status",err);
+  }
+};
+
+const handleCancelSubmit = async (reason) => {
+  try {
+    // unwrap() use karne se humein pakka pata chalta hai ki API success hui
+    await dispatch(cancelAssignedOrder({
+      assignId: cancelOrder.AssignID,
+      reason,
+    })).unwrap();
+
+    toast.success("Order cancelled successfully");
+    
+    // UI sync ke liye optionally refresh bhi kar sakte hain (par slice update kafi hai)
+    // dispatch(fetchAssignOrder()); 
+
+    setCancelModalOpen(false);
+    setCancelOrder(null);
+  } catch (err) {
+    console.error("Cancel API Error:", err);
+    toast.error("Database update failed. Please try again.");
+  }
+};
+
 
   // Handle Complete Order from Modal
-  const handleCompleteOrder = async () => {
+ // UserForm.js mein handleCompleteOrder function:
+
+const handleCompleteOrder = async () => {
     try {
-      // 1. Wait for dispatch to finish
-      await dispatch(
-        updateDeliveryStatus({
-          assignId: confirmOrder.AssignID,
-          status: "Complete",
-        })
-      ).unwrap();
+        // 1. Dispatch action and wait for it to finish in Redux
+        await dispatch(
+            updateDeliveryStatus({
+                assignId: confirmOrder.AssignID,
+                status: "Complete",
+            })
+        ).unwrap();
 
-      toast.success("Order completed");
+        toast.success("Order completed successfully");
 
-      // 2. Modal ko turant band karein
-      handleCloseCompleteModal();
+        // 2. Modal band karein
+        setCompleteModalOpen(false);
+        setConfirmOrder(null);
 
-      // 3. Optional: Background mein data refresh karein bina UI block kiye
-      // Isse extra security milti hai ki data sync rahe
-      dispatch(fetchAssignOrder());
-      dispatch(fetchOrder());
+        // 3. AGAR abhi bhi update nahi dikh raha, toh niche wali line ko uncomment karein:
+        // dispatch(fetchAssignOrder()); 
+
     } catch (err) {
-      console.error("Complete Order Error:", err);
-      toast.error("Failed to complete order");
+        console.error("Complete Order Error:", err);
+        toast.error("Failed to update status");
     }
-  };
-
+};
   const handleAssignSubmit = async (payload) => {
     try {
       // Note: Check if your table row data uses 'AssignID' (uppercase/lowercase)
@@ -317,18 +335,7 @@ const UserForm = () => {
                           <table className={styles.dataTable}>
                             <thead>
                               <tr>
-                                {/* <th onClick={() => handleSort("ProductName")}>
-                                  Product{" "}
-                                  {sortConfig.key === "ProductName" && (
-                                    <i
-                                      className={`mdi mdi-chevron-${
-                                        sortConfig.direction === "asc"
-                                          ? "up"
-                                          : "down"
-                                      }`}
-                                    ></i>
-                                  )}
-                                </th> */}
+                                
                                 <th onClick={() => handleSort("CustomerName")}>
                                   Customer{" "}
                                   {sortConfig.key === "CustomerName" && (
@@ -440,6 +447,14 @@ const UserForm = () => {
         onSubmit={handleCompleteOrder}
         order={confirmOrder}
       />
+
+      <CancelOrderModal
+  isOpen={cancelModalOpen}
+  order={cancelOrder}
+  onClose={() => setCancelModalOpen(false)}
+  onSubmit={handleCancelSubmit}
+/>
+
     </>
   );
 };
@@ -451,22 +466,14 @@ const OrderTableRow = ({
   onAssignClick,
   formatPaymentSummary,
 }) => {
+  const isLocked = row.OrderStatus === "Complete" || row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel";
+
   return (
     <tr
       key={row.OrderID}
       className={row.OrderStatus === "Complete" ? styles.completedRow : ""}
     >
-      {/* <td className={styles.productCell}>
-        <div className={styles.productInfo}>
-          <div className={styles.productImage}>
-            <i className="mdi mdi-package-variant"></i>
-          </div>
-          <div className={styles.productDetails}>
-            <strong>{row.ProductName}</strong>
-            <small>{row.ProductType}</small>
-          </div>
-        </div>
-      </td> */}
+      
       <td>
         <div className={styles.customerInfo}>
           <strong>{row.CustomerName}</strong>
@@ -556,19 +563,19 @@ const OrderTableRow = ({
       <td>
         <span className={styles.remark}>{row.Remark || "-"}</span>
       </td>
-      {/* Delivery Status Column */}
-      <td>
-        {row.OrderStatus === "Complete" || row.DeliveryStatus === "Complete" ? (
-          <span className={styles.completedBadge}>
-            <i className="mdi mdi-check-circle"></i>
-            Completed
+     
+{/* <td>
+        {isLocked ? (
+          <span className={row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel" ? styles.cancelledBadge : styles.completedBadge}>
+            <i className={`mdi ${row.OrderStatus === "Complete" ? "mdi-check-circle" : "mdi-close-circle"}`}></i>
+            {row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel" ? "Cancelled" : "Completed"}
           </span>
         ) : (
           <select
             className={styles.statusDropdown}
             value={row.DeliveryStatus}
             onChange={(e) => onStatusChange(row, e.target.value)}
-            disabled={!row.AssignID || row.OrderStatus === "Complete"}
+            disabled={!row.AssignID}
           >
             <option value="Pending">Pending</option>
             <option value="In Progress">In Progress</option>
@@ -576,39 +583,48 @@ const OrderTableRow = ({
             <option value="Cancel">Cancel</option>
           </select>
         )}
-      </td>
-      {/* // Inside OrderTableRow component */}
-      {/* // OrderTableRow.jsx */}
-      <td>
-        {row.AssignID ? (
-          <button
-            className="btn btn-warning btn-sm"
-            onClick={onAssignClick}
-            disabled={row.OrderStatus === "Complete"}
-            title={
-              row.OrderStatus === "Complete"
-                ? "Completed orders cannot be reassigned"
-                : ""
-            }
-          >
-            Reassign
-          </button>
-        ) : (
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={onAssignClick}
-            disabled={row.OrderStatus === "Complete"}
-            title={
-              row.OrderStatus === "Complete"
-                ? "Completed orders cannot be assigned"
-                : ""
-            }
-          >
-            Assign
-          </button>
-        )}
-      </td>
+      </td> */}
 
+      {/* // OrderTableRow component mein Badge logic */}
+<td>
+  {isLocked ? (
+    <span className={
+      (row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel") 
+      ? styles.cancelledBadge  // Make sure this is red in your CSS
+      : styles.completedBadge
+    }>
+      <i className={`mdi ${row.OrderStatus === "Complete" ? "mdi-check-circle" : "mdi-close-circle"}`}></i>
+      { (row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel") ? "Cancelled" : "Completed"}
+    </span>
+  ) : (
+    <select
+      className={styles.statusDropdown}
+      value={row.DeliveryStatus}
+      onChange={(e) => onStatusChange(row, e.target.value)}
+      disabled={!row.AssignID}
+    >
+      <option value="Pending">Pending</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Complete">Complete</option>
+      <option value="Cancel">Cancel</option>
+    </select>
+  )}
+</td>
+
+     
+      {/* // OrderTableRow.jsx */}
+     <td>
+        <button
+          className={`btn ${row.AssignID ? "btn-warning" : "btn-primary"} btn-sm`}
+          onClick={onAssignClick}
+          // Yahan 'isLocked' use karne se Cancel par bhi button disable ho jayega
+          disabled={isLocked} 
+          title={isLocked ? "This order is locked and cannot be changed" : ""}
+        >
+          {row.AssignID ? "Reassign" : "Assign"}
+        </button>
+      </td>
+      
       <td>
         <span className={styles.paymentMode}>
           {formatPaymentSummary(row.PaymentSummary)}
@@ -631,6 +647,7 @@ const TableFooter = ({
   getPageNumbers,
 }) => {
   return (
+    <>
     <div className={styles.tableFooter}>
       <div className={styles.tableInfo}>
         Showing {indexOfFirstItem + 1} to{" "}
@@ -670,8 +687,14 @@ const TableFooter = ({
         >
           Next <i className="mdi mdi-chevron-right"></i>
         </button>
+        
       </div>
+       
     </div>
+   
+
+    </>
+    
   );
 };
 

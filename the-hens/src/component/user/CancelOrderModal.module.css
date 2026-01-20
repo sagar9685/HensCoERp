@@ -1,0 +1,83 @@
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modalContent {
+  background: #ffffff;
+  width: 420px;
+  max-width: 90%;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.25s ease-in-out;
+}
+
+.modalContent h3 {
+  margin-bottom: 12px;
+  color: #dc3545;
+  font-size: 18px;
+}
+
+.modalContent textarea {
+  width: 100%;
+  min-height: 90px;
+  resize: none;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  outline: none;
+  font-size: 14px;
+}
+
+.modalContent textarea:focus {
+  border-color: #dc3545;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.modalFooter button {
+  padding: 8px 14px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.modalFooter button:first-child {
+  background: #6c757d;
+  color: #fff;
+}
+
+.modalFooter button:last-child {
+  background: #dc3545;
+  color: #fff;
+}
+
+.modalFooter button:last-child:hover {
+  background: #c82333;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
