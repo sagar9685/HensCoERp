@@ -6,6 +6,7 @@
   min-height: calc(100vh - 70px);
   margin-top: 65px;
   width: 100%;
+  min-width: 110%
 }
 
 .headerCard {

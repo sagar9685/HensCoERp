@@ -12,6 +12,7 @@
   font-family: 'Inter', sans-serif; /* Use a modern, clean font */
   box-sizing: border-box;
   margin-top: 50px;
+  min-width: 105%;
 }
 
 /* Ensure the main content area occupies the full width of the page-body-wrapper */

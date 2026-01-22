@@ -4,6 +4,7 @@
   background-color: #f8fafc; /* Light Slate background */
   min-height: 100vh;
   font-family: 'Inter', -apple-system, sans-serif;
+  min-width: 110%
 }
 
 .heading {
