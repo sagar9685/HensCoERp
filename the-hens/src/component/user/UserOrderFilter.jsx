@@ -46,7 +46,8 @@ export const useOrderFilter = () => {
         const matchesStatus =
           statusFilter === "all" ||
           (statusFilter === "complete" && status?.includes("complete")) ||
-          (statusFilter === "pending" && status?.includes("pending"));
+          (statusFilter === "pending" && status?.includes("pending")) ||
+            (statusFilter === "cancel" && status?.includes("cancel"))
 
         // 3. Area Logic
         const matchesArea = areaFilter === "all" || order.Area === areaFilter;

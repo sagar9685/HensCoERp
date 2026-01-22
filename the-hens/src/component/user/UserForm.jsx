@@ -315,6 +315,7 @@ const handleCompleteOrder = async () => {
                               <option value="all">All Status</option>
                               <option value="pending">Pending</option>
                               <option value="complete">Completed</option>
+                              <option value="cancel">Cancel</option>
                             </select>
                           </div>
 

@@ -83,7 +83,8 @@
 
 /* Status Colors */
 .completedRow {
-  background-color: #f0f9ff !important; /* Light blue for completed */
+ /* background-color: #f3e8ff; pink */
+ background-color: #ecfdf5;
 }
 
 .completedRow:hover {
@@ -99,7 +100,7 @@
 }
 
 .dataTable tbody tr[data-status="cancelled"] {
-  background-color: #f8d7da !important; /* Light red for cancelled */
+  background-color: #f3e8ff;; /* Light red for cancelled */
 }
 
 .dataTable tbody tr[data-status="cancelled"]:hover {
