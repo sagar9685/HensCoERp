@@ -39,7 +39,17 @@ const AdminDashboard = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
   const orders = useSelector((state) => state.order.record);
-  console.log(orders, "fetch admin side oderr");
+ console.log(orders,"admin side")
+
+ const getStatusClass = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'pending': return styles.statusPending;
+    case 'complete': return styles.statusCompleted;
+    case 'cancel': return styles.statusCancelled;
+    case 'processing': return styles.statusProcessing;
+    default: return "";
+  }
+};
 
   const loading = useSelector((state) => state.order.loading);
 
@@ -48,11 +58,16 @@ const AdminDashboard = () => {
   const recordsPerPage = 10;
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  // Debugging ke liye ye consoles add karein
+console.log("Full Orders from Redux:", orders);
+console.log("Filtered Data State:", filteredData);
+console.log("Current Page:", currentPage);
   const currentRecords = filteredData.slice(
     indexOfFirstRecord,
     indexOfLastRecord
   );
-  console.log(currentRecords, "currentRecords");
+  console.log("Records for Current Table Page:", currentRecords);
+
   const totalOrders = orders.length;
 
   const totalItems = orders.reduce((acc, order) => {
@@ -201,20 +216,7 @@ const AdminDashboard = () => {
     alert("Customer added successfully!");
   };
 
-  // const getPaymentStatusClass = (status) => {
-  //   switch(status?.toLowerCase()) {
-  //     case 'completed':
-  //       return styles.paymentCompleted;
-  //     case 'pending':
-  //       return styles.paymentPending;
-  //     case 'failed':
-  //       return styles.paymentFailed;
-  //     case 'processing':
-  //       return styles.paymentProcessing;
-  //     default:
-  //       return styles.paymentPending;
-  //   }
-  // };
+ 
 
   return (
     <div className={styles.container}>
@@ -362,6 +364,7 @@ const AdminDashboard = () => {
                   <th>Order Date</th>
                   <th>Delivery Date</th>
                   <th>Delivery Man</th>
+                  <th> Order Status</th>
                   <th>Payment Mode</th>
                   <th>Order Taken By</th>
                   <th>Remark</th>
@@ -380,6 +383,7 @@ const AdminDashboard = () => {
                           : styles.tableRowOdd
                       }
                     >
+                       
                       <td>
                         <span className={styles.productId}>{row.OrderID}</span>
                       </td>
@@ -448,6 +452,11 @@ const AdminDashboard = () => {
                       <td className={styles.tableData}>
                         {row.DeliveryManName}
                       </td>
+                       <td className={styles.tableData}>
+  <span className={`${styles.statusBadge} ${getStatusClass(row.OrderStatus)}`}>
+    {row.OrderStatus || "N/A"}
+  </span>
+</td>
                       <td>
                         <span className={styles.paymentModeBadge}>
                           {formatPaymentSummary(row.PaymentSummary)}
