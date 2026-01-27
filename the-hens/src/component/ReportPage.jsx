@@ -1,6 +1,7 @@
 import { useState } from "react";
 import MonthlyReport from "./Reports/MonthlyReport";
 import WeeklyReport from "./Reports/WeeklyReport";
+import DailyReport from "./Reports/DailyReport";
 import styles from "./ReportPage.module.css";
 import Header from "./Header";
 
@@ -28,12 +29,21 @@ const ReportPage = () => {
           >
             Weekly Report
           </button>
+
+           <button
+            className={activeTab === "daily" ? styles.active : ""}
+            onClick={() => setActiveTab("daily")}
+          >
+            Daily Report
+          </button>
+
         </div>
 
         {/* CONTENT */}
         <div className={styles.content}>
           {activeTab === "monthly" && <MonthlyReport />}
           {activeTab === "weekly" && <WeeklyReport />}
+          {activeTab == "daily" && <DailyReport/>}
         </div>
       </div>
     </>

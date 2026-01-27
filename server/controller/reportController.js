@@ -141,3 +141,91 @@ ORDER BY
     });
   }
 };
+
+
+/* =======================
+   DAILY REPORT (By Date & Delivery Boy)
+======================= */
+exports.getDailyReport = async (req, res) => {
+  try {
+    const { date, deliveryBoyId } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input("targetDate", sql.Date, date);
+    
+    // Delivery Boy ID handling (Optional)
+    // Agar frontend se "all" ya empty string aaye toh null treat karein
+    const dbid = (deliveryBoyId && deliveryBoyId !== "all" && deliveryBoyId !== "") 
+                 ? parseInt(deliveryBoyId) 
+                 : null;
+
+    if (dbid) {
+      request.input("dbid", sql.Int, dbid);
+    }
+
+    // SQL Filter Fragment
+    const boyFilter = dbid ? "AND ao.DeliveryManId = @dbid" : "";
+
+    // 1. Fetch Product Breakdown & Row-wise totals
+    // Hum LEFT JOIN use kar rahe hain taaki 'All' mein saare orders aayein
+    const itemsResult = await request.query(`
+      SELECT 
+        oi.ProductType,
+        oi.Weight,
+        SUM(oi.Quantity) AS Qty,
+        oi.Rate,
+        SUM(oi.Total) AS Amount
+      FROM OrdersTemp o
+      JOIN OrderItems oi ON o.OrderID = oi.OrderID
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      ${boyFilter}
+      GROUP BY oi.ProductType, oi.Weight, oi.Rate
+    `);
+
+    // 2. Fetch Payment Breakdown (GPay, Cash, Paytm, FOC)
+    const paymentsResult = await request.query(`
+      SELECT 
+        pm.ModeName,
+        SUM(op.Amount) AS ModeTotal
+      FROM OrdersTemp o
+      JOIN OrderPayments op ON o.OrderID = op.OrderID
+      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      ${boyFilter}
+      GROUP BY pm.ModeName
+    `);
+
+    const productData = itemsResult.recordset || [];
+    const paymentData = paymentsResult.recordset || [];
+
+    // 3. Totals Calculation
+    // Yeh values automatically filter ke hisab se calculate hongi
+    const totalSaleAmount = productData.reduce((sum, item) => sum + (item.Amount || 0), 0);
+    const totalReceived = paymentData.reduce((sum, pay) => sum + (pay.ModeTotal || 0), 0);
+    const totalOutstanding = totalSaleAmount - totalReceived;
+
+    // Final Response
+    res.status(200).json({
+      date,
+      reportType: dbid ? `Delivery Boy ID: ${dbid}` : "Full Day Report (All)",
+      summary: {
+        totalSaleAmount: totalSaleAmount, // Yeh main cheez hai
+        totalReceived: totalReceived,
+        totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0
+      },
+      products: productData, // Product breakdown (Tray, Box, etc.)
+      payments: paymentData  // Payment mode breakdown
+    });
+
+  } catch (err) {
+    console.error("Daily Report Error:", err);
+    res.status(500).json({ message: "Internal server error in Daily Report" });
+  }
+};

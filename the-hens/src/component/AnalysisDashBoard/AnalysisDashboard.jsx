@@ -220,10 +220,16 @@ const AnalysisDashboard = () => {
     };
   };
 
-  const openModal = (config) => {
-    setModalConfig(config);
-    setModalIsOpen(true);
-  };
+ // Add this helper inside your component to sort data for the modal
+const openModal = (config) => {
+  // Create a copy and sort by value (vKey) descending
+  const sortedData = config.data ? [...config.data].sort((a, b) => {
+    return (b[config.vKey] || 0) - (a[config.vKey] || 0);
+  }) : [];
+
+  setModalConfig({ ...config, data: sortedData });
+  setModalIsOpen(true);
+};
 
   if (loading)
     return (

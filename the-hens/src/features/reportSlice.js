@@ -32,6 +32,22 @@ export const fetchWeeklyReport = createAsyncThunk(
   }
 );
 
+export const fetchDailyReport = createAsyncThunk(
+  "report/fetchDailyReport",
+  async ({ date, deliveryBoyId }, { rejectWithValue }) => {
+    try {
+      let url = `${API_BASE_URL}/api/reports/daily?date=${date}`;
+      if (deliveryBoyId && deliveryBoyId !== "all") {
+        url += `&deliveryBoyId=${deliveryBoyId}`;
+      }
+      const res = await axios.get(url);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  }
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -46,8 +62,16 @@ const reportSlice = createSlice({
       data: [],
     },
 
+    daily: {
+      summary: null,
+      products: [],
+      payments: [],
+      date: null
+    },
+
     monthlyLoading: false,
     weeklyLoading: false,
+    dailyLoading: false,
     error: null,
   },
 
@@ -55,6 +79,7 @@ const reportSlice = createSlice({
     clearReport: (state) => {
       state.monthly = { summary: null, payment: [] };
       state.weekly = { week: null, from: null, to: null, data: [] };
+      state.daily = { summary: null, products: [], payments: [], date: null };
       state.error = null;
     },
   },
@@ -94,6 +119,23 @@ const reportSlice = createSlice({
       })
       .addCase(fetchWeeklyReport.rejected, (state, action) => {
         state.weeklyLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchDailyReport.pending, (state) => {
+        state.dailyLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchDailyReport.fulfilled, (state, action) => {
+        state.dailyLoading = false;
+        state.daily = {
+          summary: action.payload.summary,
+          products: action.payload.products,
+          payments: action.payload.payments,
+          date: action.payload.date
+        };
+      })
+      .addCase(fetchDailyReport.rejected, (state, action) => {
+        state.dailyLoading = false;
         state.error = action.payload;
       });
   },
