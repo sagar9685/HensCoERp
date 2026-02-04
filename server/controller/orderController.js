@@ -14,6 +14,8 @@ exports.addOrder = async (req, res) => {
       OrderDate,
       OrderTakenBy,
       Items,
+      Po_No,
+      Po_Date
     } = req.body;
 
     if (!Items || !Array.isArray(Items) || Items.length === 0) {
@@ -56,12 +58,14 @@ exports.addOrder = async (req, res) => {
     request.input("OrderDate", sql.Date, OrderDate);
     request.input("OrderTakenBy", sql.NVarChar, OrderTakenBy);
     request.input("InvoiceNo", sql.NVarChar, invoiceNo);
+      request.input("Po_No", sql.NVarChar, Po_No);
+        request.input("Po_Date", sql.Date, Po_Date);
 
     const orderInsertResult = await request.query(`
       INSERT INTO OrdersTemp 
-      (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo)
+      (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo, Po_No , Po_Date)
       OUTPUT INSERTED.OrderID
-      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo);
+      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date);
     `);
 
     const orderId = orderInsertResult.recordset[0].OrderID;
@@ -143,16 +147,21 @@ exports.getAllorder = async (req, res) => {
 
     const result = await pool.request().query(`
       
-SELECT 
+ SELECT 
     O.OrderID,
     O.CustomerName,
     O.ContactNo,
     O.Address,
     O.Area,
+     C.Gst_No,
+    C.PAN_No,
+
     O.DeliveryCharge,
     O.OrderDate,
     O.OrderTakenBy,
        O.InvoiceNo,
+       O.Po_No,
+       O.Po_Date,
 
     -- Assignment
     A.AssignID,
@@ -167,6 +176,8 @@ SELECT
     -- ITEMS
     Items.ProductNames,
     Items.ProductTypes,
+    Items.ProductUPCs,   -- ✅ ADD THIS
+Items.MRPs,  
     Items.Weights,
     Items.Quantities,
     Items.Rates,
@@ -181,6 +192,9 @@ SELECT
     Payments.ShortAmount
 
 FROM OrdersTemp O
+LEFT JOIN Customers C 
+    ON O.CustomerName = C.CustomerName
+   AND O.ContactNo = C.Contact_No
 LEFT JOIN AssignedOrders A ON O.OrderID = A.OrderID
 LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
 
@@ -188,15 +202,27 @@ LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
 OUTER APPLY (
     SELECT 
         STRING_AGG(OI.ProductName, ', ') AS ProductNames,
-        STRING_AGG(OI.ProductType, ', ') AS ProductTypes,
+        STRING_AGG(PT2.ProductType, ', ') AS ProductTypes,
         STRING_AGG(CAST(OI.Weight AS VARCHAR(10)), ', ') AS Weights,
         STRING_AGG(CAST(OI.Quantity AS VARCHAR(10)), ', ') AS Quantities,
         STRING_AGG(CAST(OI.Rate AS VARCHAR(10)), ', ') AS Rates,
         STRING_AGG(CAST(OI.Total AS VARCHAR(10)), ', ') AS ItemTotals,
+
+        -- ✅ DISTINCT handled safely
+        STRING_AGG(PT2.ProductUPC, ', ') AS ProductUPCs,
+        STRING_AGG(CAST(PT2.MRP AS VARCHAR(10)), ', ') AS MRPs,
+
         SUM(OI.Total) AS GrandItemTotal
     FROM OrderItems OI
+    LEFT JOIN (
+        SELECT DISTINCT ProductType, ProductUPC, MRP
+        FROM ProductTypes
+    ) PT2
+        ON OI.ProductType = PT2.ProductType
     WHERE OI.OrderID = O.OrderID
 ) Items
+
+
 
 -- PAYMENT SUBQUERY
 OUTER APPLY (
@@ -237,7 +263,6 @@ OUTER APPLY (
 
 
 ORDER BY O.OrderID DESC
-
 
     `);
 

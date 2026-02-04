@@ -34,7 +34,10 @@ const OrderForm = ({ onClose }) => {
     deliveryCharge: '',
     orderDate: '',
      orderTakenBy: '' ,
-     otherOrderTakenBy: ''
+     otherOrderTakenBy: '',
+     Po_No:"",
+     Po_Date : ""
+
   });
 
   // State to handle multiple order items
@@ -288,6 +291,8 @@ console.log(stockList, "stovk");
         DeliveryCharge: Number(formData.deliveryCharge),
         OrderDate: formData.orderDate,
           OrderTakenBy: finalOrderTakenBy, 
+          Po_No: formData.Po_No,
+          Po_Date: formData.Po_Date,
         Items: formattedItems
       };
 
@@ -314,7 +319,9 @@ console.log(stockList, "stovk");
       area: '',
       contactNo: '',
       deliveryCharge: '',
-      orderDate: getTodayDate()
+      orderDate: getTodayDate(),
+      Po_No: "",
+      Po_Date : ''
     });
     setOrderItems([]);
     setErrors({});
@@ -481,6 +488,33 @@ const getTotalAmount = () => {
 
   {errors.orderTakenBy && <span className={styles.error}>{errors.orderTakenBy}</span>}
 </div>
+
+  <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Po_No <span className={styles.required}></span></label>
+              <input
+                type="text"
+                name="Po_No"
+                value={formData.Po_No}
+                onChange={handleChange}
+                placeholder="Enter Po_No"
+                className={styles.inputField}
+              />
+              {errors.Po_No && <span className={styles.error}>{errors.Po_No}</span>}
+            </div>
+
+    <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>PO Date <span className={styles.required}></span></label>
+              <input
+                type="date"
+                name="Po_Date"
+                value={formData.Po_Date}
+                onChange={handleChange}
+                max={getTodayDate()}
+                className={styles.inputField}
+              />
+              {errors.Po_Date && <span className={styles.error}>{errors.Po_Date}</span>}
+            </div>
+
             
           </div>
         </section>

@@ -29,7 +29,7 @@
 
 // for local
 
-     const sql = require("mssql");
+    const sql = require("mssql");
 
 const config = {
   user: "sa",              // 👈 Updated to use SQL Login

@@ -190,6 +190,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
 
   // Parse product data
   const productItems = [];
+  console.log(productItems,"productItems in admin invoice")
   let subTotalVal = 0;
 
   if (orderData) {
@@ -204,13 +205,38 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
 
     const weight = orderData.Weights ? orderData.Weights.split(",") : [];
 
-    console.log(names, qtys, weight, "aa gaya");
+    const upcs = orderData.ProductUPCs
+  ? orderData.ProductUPCs.split(",")
+  : [];
 
+
+
+const mrps = orderData.MRPs
+  ? orderData.MRPs.split(",")
+  : [];
+
+  const Gst_No = orderData.Gst_No ? orderData.Gst_No.split(",")
+  : [];
+
+   const PAN_No = orderData.PAN_No ? orderData.PAN_No.split(",")
+  : [];
+
+  const Po_No = orderData.Po_No? orderData.Po_No.split(",") : [];
+
+  const Po_Date = orderData.Po_Date ? orderData.Po_Date.split(',') : [];
+  
+console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
+
+    
     names.forEach((name, i) => {
       const q = Number(qtys[i] || 0);
       const r = Number(rates[i] || 0);
       const t = q * r;
       const w = weight[i] || " ";
+      const g = Gst_No[i] || ' ';
+      const p = PAN_No[i] || ' ';
+      const po = Po_No[i] || '';
+      const pd = Po_Date[i] || "";
 
       subTotalVal += t;
       productItems.push({
@@ -218,10 +244,17 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         productType: types[i] || "N/A",
         weight: w,
         qty: q,
+        Gst_No : g,
+        PAN_No : p,
+        Po_No : po,
+        Po_Date : pd,
+        BasicCost : r,
         rate: r.toFixed(2),
         totalAmt: t.toFixed(2),
         hsn: COMPANY_INFO.hsnCode,
         gstRate: 0,
+         ProductUPC: upcs[i]?.trim() || "N/A",
+  MRP: mrps[i]?.trim() || "0",
       });
     });
   }
@@ -231,7 +264,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     : 0;
   const totalAmountVal = subTotalVal + deliveryChargeVal;
   const amountInWords = numberToWords(Math.round(totalAmountVal));
-  console.log(orderData, "orderData");
+  console.log(orderData, "orderData for invoice");
 
   return (
     <div className={styles.modalOverlay}>
@@ -321,7 +354,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <FaPhone /> {orderData.ContactNo || "Contact Number"}
                     </p>
                     <p className={styles.customerGst}>
-                      <strong>GSTIN:</strong> {orderData.GSTIN || "N/A"}
+                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"} <br></br>
+                       <strong>PAN:</strong> {orderData.PAN_No || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -354,8 +388,31 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         orderData.DeliveryDate || new Date()
                       ).toLocaleDateString("en-GB")}
                     </p>
+                    <p><strong> P.O. Number -: </strong>    {orderData.Po_No || "N/A"} <br></br>
+                    <strong> P.O. Date -: </strong> {""}
+                    {new Date(
+                        orderData.Po_Date || new Date()
+                      ).toLocaleDateString("en-GB")}
+                    </p> 
+                    <p><strong> Payment Terms -: 7 Days </strong></p>
+                      
                   </div>
                 </div>
+
+
+               <div className={styles.detailBox}>
+                  <h3>
+                    <FaFileAlt /> FSSAI
+                  </h3>
+                  <div className={styles.orderInfo}>
+                    <p><strong> FSSAI - Phoenix Poultry 11424170000122 </strong> <br></br>
+                    <strong> FSSAI - VND Ventures Pvt. LTD. 11421170000373 </strong> <br></br>
+                       <strong> FSSAI - The Hens`s Co.  21420170000432 </strong> <br></br>
+                    </p> 
+                      
+                  </div>
+                </div>
+
               </div>
 
               {/* --- PRODUCTS TABLE --- */}
@@ -364,12 +421,20 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                   <thead>
                     <tr>
                       <th className={styles.textCenter}>#</th>
-                      <th>Item Description</th>
-                      <th>Item Weight</th>
-                      <th className={styles.textCenter}>HSN/SAC</th>
-                      <th className={styles.textRight}>Rate (₹)</th>
+                       <th>Product Description</th> 
+                         <th>Product Weight</th> 
+                    
+                      <th className={styles.textCenter}>HSN Code</th>
+                       <th className={styles.textCenter}>Product UPC</th>
+                     
+                      <th className={styles.textRight}> Basic Cost Price (₹)</th>
+                        <th className={styles.textRight}> CGST %</th>
+                          <th className={styles.textRight}> SGST %</th>
+                            <th className={styles.textRight}> Landing Rate</th>
                       <th className={styles.textCenter}>Qty</th>
-                      <th className={styles.textRight}>Amount (₹)</th>
+                      
+                      <th className={styles.textRight}>MRP (₹)</th>
+                        <th className={styles.textRight}>Total Amt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -378,7 +443,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         <td className={styles.textCenter}>{i + 1}</td>
                         <td>
                           <span style={{ fontWeight: "bold" }}>
-                            {item.productType}
+                            { item.productType}
                           </span>
                           <br />
                         </td>
@@ -390,9 +455,15 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         </td>
 
                         <td className={styles.textCenter}>{item.hsn}</td>
-                        <td className={styles.textRight}>{item.rate}</td>
-                        <td className={styles.textCenter}>{item.qty}</td>
-                        <td className={styles.textRight}>{item.totalAmt}</td>
+                        <td className={styles.textCenter}>{item.ProductUPC}</td>
+                        <td className={styles.textCenter}>{item.BasicCost}</td>
+                            <td className={styles.textCenter}>{item.gstRate}</td>
+                                <td className={styles.textCenter}>{item.gstRate}</td>
+                                <td className={styles.textCenter}>{item.BasicCost}</td>
+                        <td className={styles.textCenter}>{item.qty}</td> 
+                         
+                           <td className={styles.textCenter}>{item.MRP}</td>
+                            <td className={styles.textCenter}>{item.totalAmt}</td>
                       </tr>
                     ))}
                     {productItems.length === 0 && (

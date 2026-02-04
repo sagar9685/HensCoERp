@@ -117,6 +117,7 @@ console.log("Current Page:", currentPage);
 
   useEffect(() => {
     dispatch(fetchOrder());
+  
   }, [dispatch]);
 
   useEffect(() => {
@@ -205,8 +206,6 @@ console.log("Current Page:", currentPage);
 
   const handleAddOrder = (orderData) => {
     console.log("New order data:", orderData);
-    // Here you would typically send the data to your backend API
-    // For now, we'll just log it
     alert("Order created successfully!");
   };
 

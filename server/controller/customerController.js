@@ -13,6 +13,8 @@ exports.addCustomer = async (req, res) => {
       GST_No,
       Bulk_Mode,
       Credit_Limit,
+      PAN_No,
+      Vendor_Name
     } = req.body;
 
     if (!CustomerName || !Contact_No || !Area || !Address) {
@@ -26,9 +28,9 @@ exports.addCustomer = async (req, res) => {
 
     const query = `
      INSERT INTO Customers 
-(CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address, GST_No, Bulk_Mode, Credit_Limit)
+(CustomerName, Contact_No, Alternate_Phone, Area, Pincode, Address, GST_No, Bulk_Mode, Credit_Limit, PAN_No, Vendor_Name)
 VALUES 
-(@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address, @GST_No, @Bulk_Mode, @Credit_Limit)
+(@CustomerName, @Contact_No, @Alternate_Phone, @Area, @Pincode, @Address, @GST_No, @Bulk_Mode, @Credit_Limit, @PAN_No, @Vendor_Name)
 
     `;
 
@@ -51,6 +53,9 @@ VALUES
       sql.Decimal(18, 2),
       Credit_Limit ? parseFloat(Credit_Limit) : 0
     );
+
+      request.input("PAN_No", sql.NVarChar, PAN_No || null);
+      request.input("Vendor_Name",sql.VarChar, Vendor_Name || null );
 
     await request.query(query);
     res.status(200).json({ message: "Customer added successfully!" });

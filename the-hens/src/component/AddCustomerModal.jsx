@@ -23,6 +23,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     Gst_No: "",
     bulkCustomer: "no",
     creditLimit: "",
+    Vendor_Name : "",
+    PAN_No : ""
   });
 
   const [errors, setErrors] = useState({});
@@ -101,6 +103,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
         GST_No: formData.Gst_No,
         Bulk_Mode: formData.bulkCustomer === "yes" ? 1 : 0,
         Credit_Limit: formData.creditLimit,
+        Vendor_Name : formData.Vendor_Name,
+        PAN_No : formData.PAN_No
       };
 
       try {
@@ -128,6 +132,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
       Gst_No: "",
       bulkCustomer: "no",
       creditLimit: "",
+      PAN_No: "",
+      Vendor_Name: ""
     });
     setErrors({});
     onClose();
@@ -168,6 +174,23 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                 />
                 {errors.customerName && (
                   <span className={styles.error}>{errors.customerName}</span>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>
+                  Vendor Name <span className={styles.required}></span>
+                </label>
+                <input
+                  type="text"
+                  name="Vendor_Name"
+                  value={formData.Vendor_Name}
+                  onChange={handleChange}
+                  placeholder="Enter Vendor name"
+                  className={styles.inputField}
+                />
+                {errors.Vendor_Name && (
+                  <span className={styles.error}>{errors.Vendor_Name}</span>
                 )}
               </div>
 
@@ -233,7 +256,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
               {/* Pincode */}
               <div className={styles.inputGroup}>
                 <label className={styles.inputLabel}>
-                  Pincode <span className={styles.required}>*</span>
+                  Pincode <span className={styles.required}></span>
                 </label>
                 <input
                   type="text"
@@ -275,6 +298,18 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                   value={formData.Gst_No}
                   onChange={handleChange}
                   placeholder="Enter GST No"
+                  className={styles.inputField}
+                />
+              </div>
+
+               <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>PAN_No</label>
+                <input
+                  type="text"
+                  name="PAN_No"
+                  value={formData.PAN_No}
+                  onChange={handleChange}
+                  placeholder="Enter PAN No"
                   className={styles.inputField}
                 />
               </div>

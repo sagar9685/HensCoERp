@@ -228,7 +228,8 @@ Uses flexbox for side-by-side layout.
 .customerInfo p,
 .orderInfo p {
   margin: 1px 0;
-  font-size: 0.9em;
+  font-size: 0.8rem;
+  font-family: unset;
 }
 
 .customerName {
