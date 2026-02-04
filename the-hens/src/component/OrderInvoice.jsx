@@ -98,72 +98,52 @@ const COMPANY_INFO = {
     accountNumber: "940520110000347",
     bankName: "Bank of India",
     ifscCode: "BKID0009405",
-    branch: "Jabalpur Main Branch",
+    branch: "Jabalpur",
   },
   hsnCode: "04072100",
 };
 
-const TERMS_CONDITIONS = [
-  " Any claim for shortage or damage must be raised at the time of delivery only.",
-  " The supplier shall not be liable for any damage, spoilage, or loss occurring after acceptance by the purchase party.",
-  " Payment terms as per the Bill.",
-];
+
 
 // --- Main Component ---
 const InvoiceGenerator = ({ orderData, onClose }) => {
-  const downloadPdf = async () => {
-    const element = document.getElementById("invoice-print-content");
-    const clone = element.cloneNode(true);
+const downloadPdf = async () => {
+  const element = document.getElementById("invoice-print-content");
+  const clone = element.cloneNode(true);
+  
+  const container = document.createElement("div");
+  container.style.position = "absolute";
+  container.style.top = "-9999px";
+  container.style.width = "1200px"; // चौड़ाई बढ़ा दी ताकि कॉलम न दबें
+  
+  clone.style.width = "1150px";
+  clone.style.fontSize = "12px"; // फॉन्ट साइज़ फिक्स करें
+  
+  container.appendChild(clone);
+  document.body.appendChild(container);
 
-    clone.classList.add(styles.printMode);
+  try {
+    const canvas = await html2canvas(clone, {
+      scale: 1.5, // 2 से घटाकर 1.5 किया ताकि फाइल बहुत भारी न हो और फिट आए
+      useCORS: true,
+      windowWidth: 1200,
+    });
 
-    const container = document.createElement("div");
-    container.style.position = "absolute";
-    container.style.top = "-9999px";
-    container.style.left = "-9999px";
-    container.style.width = "210mm";
-    container.style.minHeight = "297mm";
-    container.style.background = "#ffffff";
-    container.appendChild(clone);
-    document.body.appendChild(container);
+    const imgData = canvas.toDataURL("image/jpeg", 0.9);
+    const pdf = new jsPDF("p", "mm", "a4");
+    
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const imgWidth = pageWidth - 10; // 5mm मार्जिन दोनों तरफ
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-    try {
-      const canvas = await html2canvas(clone, {
-        scale: 3,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-        logging: false,
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-
-      let imgProps = pdf.getImageProperties(imgData);
-      let imgWidth = pageWidth;
-      let imgHeight = (imgProps.height * pageWidth) / imgProps.width;
-
-      // ⭐ AUTO SCALE TO FIT INTO ONE PAGE ⭐
-      if (imgHeight > pageHeight) {
-        const scaleFactor = pageHeight / imgHeight;
-        imgHeight = imgHeight * scaleFactor;
-        imgWidth = imgWidth * scaleFactor;
-      }
-
-      pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-      pdf.save(
-        `Invoice_${orderData?.InvoiceNo || orderData?.OrderID || "invoice"}.pdf`
-      );
-    } catch (err) {
-      console.error("PDF Error:", err);
-      alert("Error generating PDF");
-    } finally {
-      document.body.removeChild(container);
-    }
-  };
-
+    pdf.addImage(imgData, "JPEG", 5, 10, imgWidth, imgHeight);
+    pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    document.body.removeChild(container);
+  }
+};
   // const handlePrint = () => {
   //     window.print();
   // };
@@ -192,6 +172,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
   const productItems = [];
   console.log(productItems,"productItems in admin invoice")
   let subTotalVal = 0;
+  let totalQty = 0;
 
   if (orderData) {
     const names = orderData.ProductNames
@@ -224,12 +205,15 @@ const mrps = orderData.MRPs
   const Po_No = orderData.Po_No? orderData.Po_No.split(",") : [];
 
   const Po_Date = orderData.Po_Date ? orderData.Po_Date.split(',') : [];
+
+  const dname = orderData.DeliveryManName ? orderData.DeliveryManName.split(',') : []
   
 console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
 
     
     names.forEach((name, i) => {
       const q = Number(qtys[i] || 0);
+      totalQty += q;
       const r = Number(rates[i] || 0);
       const t = q * r;
       const w = weight[i] || " ";
@@ -237,6 +221,8 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
       const p = PAN_No[i] || ' ';
       const po = Po_No[i] || '';
       const pd = Po_Date[i] || "";
+      const dn = dname[i] || '';
+     
 
       subTotalVal += t;
       productItems.push({
@@ -245,6 +231,7 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
         weight: w,
         qty: q,
         Gst_No : g,
+        DeliveryManName : dn,
         PAN_No : p,
         Po_No : po,
         Po_Date : pd,
@@ -258,7 +245,7 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
       });
     });
   }
-
+ const totalItemsCount = productItems.length;
   const deliveryChargeVal = orderData?.DeliveryCharge
     ? Number(orderData.DeliveryCharge)
     : 0;
@@ -375,8 +362,8 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                       })}
                     </p>
                     <p>
-                      <strong>Dispatched Via:</strong>{" "}
-                      {orderData.DeliveryMode || "Van Delivery"}
+                      <strong>Delivery Boy:</strong>{" "}
+                      {orderData.DeliveryManName || "Shubham"}
                     </p>
                     <p>
                       <strong>Order Taken By:</strong>{" "}
@@ -491,11 +478,6 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                     <h4>
                       <FaFileAlt /> Terms & Conditions
                     </h4>
-                    <ul>
-                      {TERMS_CONDITIONS.map((term, i) => (
-                        <li key={i}>{term}</li>
-                      ))}
-                    </ul>
                     <div className={styles.qrTermContainer}>
                       <img
                         src="./img/qr.png"
@@ -558,18 +540,22 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                         </p>
                       </div>
                     </div>
-                    <div className={styles.paymentNote}>
-                      <p>
-                        <strong>Note:</strong> Please mention invoice number in
-                        payment remarks
-                      </p>
-                    </div>
+                    
                   </div>
                 </div>
 
                 {/* Column 3: Totals & Signature */}
                 <div className={styles.footerColumn}>
                   <div className={styles.totalsBox}>
+                    <div className={styles.totalRow}>
+      <span>Total Items:</span>
+      <span>{totalItemsCount}</span>
+    </div>
+    <div className={styles.totalRow}>
+      <span>Total Quantity:</span>
+      <span>{totalQty}</span>
+    </div>
+    <hr />
                     <div className={styles.totalRow}>
                       <span>Sub Total:</span>
                       <span>₹{subTotalVal.toFixed(2)}</span>

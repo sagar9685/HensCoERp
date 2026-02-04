@@ -157,7 +157,7 @@ We force a smaller font size and tighter padding.
 }
 
 .logoImage {
-  width: 100%;
+  width:220%;
   height: 100%;
   object-fit: contain;
 }
@@ -168,10 +168,11 @@ We force a smaller font size and tighter padding.
 
 .companyDetails p {
   margin: 2px 0;
-  font-size: 0.9em;
+  font-size: 1.1em;
   display: flex;
   align-items: center;
   gap: 5px;
+  margin-left: 65px;
 }
 
 .companyDetails strong {
@@ -304,7 +305,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 .footerColumn {
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* Space for alignment */
+  justify-content: right; /* Space for alignment */
 }
 
 /* Column 1: Amount in Words & Terms */
@@ -351,24 +352,87 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   margin-bottom: 2px;
 }
 
+/* Updated QR & Terms Section Styling */
 .qrTermContainer {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 5px;
+  align-items: flex-start; /* Changed from center to start for better alignment */
+  gap: 12px; /* Increased gap */
+  margin-top: 8px;
+  padding: 6px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #eaeaea;
 }
 
 .qrSmall {
-  width: 30px;
-  height: 30px;
+  width: 100px; /* Increased from 30px */
+  height: 100px; /* Increased from 30px */
   border: 1px solid var(--border-light);
-  padding: 2px;
+  padding: 3px; /* Increased padding */
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.qrText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .qrText p {
   margin: 0;
-  font-size: 0.8em;
-  line-height: 1;
+  font-size: 0.85em; /* Slightly larger */
+  line-height: 1.3;
+  color: var(--text-dark);
+}
+
+.qrText p:first-child {
+  font-weight: 700;
+  color: var(--primary-color);
+  margin-bottom: 2px;
+}
+
+/* Terms Box Enhancement */
+.termsBox {
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: linear-gradient(to bottom, #ffffff, #fafafa);
+  margin-bottom: 45px;
+}
+
+.termsBox h4 {
+  margin: 0 0 10px 0; /* Increased bottom margin */
+  font-size: 1.1em; /* Slightly larger */
+  color: var(--primary-color); /* Changed to primary color */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.termsBox ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 12px 0; /* Increased bottom margin */
+}
+
+.termsBox li {
+  font-size: 0.9em; /* Slightly larger */
+  margin-bottom: 4px; /* Increased spacing */
+  padding-left: 15px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.termsBox li:before {
+  content: "•";
+  color: var(--primary-color);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
 }
 
 /* Column 2: Payment Details & QR */
@@ -393,8 +457,8 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 }
 
 .qrPaymentImg {
-  width: 60px; /* Small QR for space saving */
-  height: 60px;
+  width: 90px; /* Small QR for space saving */
+  height: 90px;
   border: 1px solid var(--border-light);
   padding: 3px;
   flex-shrink: 0;
@@ -402,8 +466,10 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 
 .bankDetailsText p {
   margin: 1px 0;
-  font-size: 0.85em;
+  font-size: 0.90em;
   line-height: 1.2;
+  width: 110%;
+  font-weight: 500;
 }
 
 .bankDetailsText strong {
@@ -437,6 +503,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   margin-bottom: 10px;
   background-color: #e6f7ed; /* Light green background */
   border-radius: 4px;
+  width: 220px;
 }
 
 .totalRow {
@@ -516,7 +583,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 .noteBox p {
   font-size: 0.8em;
   margin: 0;
-  color: var(--secondary-color);
+  color: black;
   font-style: italic;
 }
 
@@ -581,6 +648,9 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 *** PRINT MEDIA QUERY FOR PAGE BREAK CONTROL ***
 This is the final, crucial step to try and enforce a single page.
 */
+/*
+*** PRINT MEDIA QUERY FOR PAGE BREAK CONTROL ***
+*/
 @media print {
   /* Hide the modal overlay and action buttons for printing */
   body > div:first-child:not(#invoice-print-content) {
@@ -593,21 +663,75 @@ This is the final, crucial step to try and enforce a single page.
     display: none !important;
   }
 
-  /* Print styling on the actual invoice content */
+  /* Print styling on the actual invoice content - PORTRAIT MODE */
   .invoiceContainer {
     width: 100%;
     max-width: 210mm; /* A4 width */
+    height: 297mm; /* A4 height */
     margin: 0;
     box-shadow: none;
-    padding: 0 !important;
-    font-size: 9pt !important; /* Force small font for density */
+    padding: 5mm !important; /* Reduced padding */
+    font-size: 8pt !important; /* Smaller font for portrait */
+    line-height: 1.2 !important;
+    overflow: hidden !important;
+  }
+
+  /* Make table more compact for portrait */
+  .productsTable {
+    font-size: 7pt !important;
+  }
+  
+  .productsTable th,
+  .productsTable td {
+    padding: 2px 4px !important;
+  }
+
+  /* Reduce font sizes throughout */
+  .invoiceMeta h1 {
+    font-size: 14pt !important;
+  }
+  
+  .companyDetails p,
+  .invoiceDetails p {
+    font-size: 7pt !important;
+  }
+  
+  .detailBox h3 {
+    font-size: 9pt !important;
+  }
+  
+  .customerInfo p,
+  .orderInfo p {
+    font-size: 7pt !important;
+  }
+
+  /* Reduce footer section spacing */
+  .footerSection {
+    padding: 5px !important;
+    gap: 5px !important;
+  }
+  
+  .amountInWords p {
+    font-size: 7pt !important;
+  }
+  
+  .termsBox li {
+    font-size: 6pt !important;
+  }
+  
+  .bankDetailsText p {
+    font-size: 6pt !important;
+  }
+  
+  .totalRow {
+    font-size: 8pt !important;
   }
 
   /* Override print background color for print */
   .productsTable thead tr {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
-    background-color: var(--primary-color) !important;
+    background-color: rgb(219, 32, 36) !important; /* Your primary color */
     color: #ffffff !important;
   }
 
@@ -615,13 +739,14 @@ This is the final, crucial step to try and enforce a single page.
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
     background-color: #e6f7ed !important;
-    border-color: var(--accent-color) !important;
+    border-color: #28a745 !important;
+    
   }
 
-  /* Enforce single page. html2canvas uses the .printMode, but this helps the native print dialog too */
+  /* Enforce portrait page */
   @page {
-    size: A4;
-    margin: 0; /* Minimal margins for maximum content space */
+    size: A4 portrait; /* Explicitly set portrait */
+    margin: 5mm; /* Add small margins */
   }
 
   html,
@@ -629,12 +754,74 @@ This is the final, crucial step to try and enforce a single page.
     height: 297mm;
     width: 210mm;
     margin: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   .invoiceBody {
     min-height: auto;
     height: 297mm;
     max-height: 297mm;
-    overflow: hidden; /* Prevent native print from adding pages */
+    overflow: hidden !important; /* Prevent native print from adding pages */
   }
+}/* Table को और compact बनाएं */
+@media print {
+  .productsTable {
+    transform: scale(0.95);
+    transform-origin: top left;
+    width: 105%; /* Compensate for scaling */
+  }
+  
+  /* Reduce logo size in print */
+  .logoContainer {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  /* Reduce QR code sizes */
+  .qrPaymentImg {
+    width: 90px !important;
+    height: 90px !important;
+  }
+  
+  .qrSmall {
+    width: 25px !important;
+    height: 25px !important;
+  }
+  
+  /* Reduce signature size */
+  .signImg {
+    height: 70px !important;
+  }
+  @media print {
+  /* ...existing print styles... */
+  
+  /* Enhanced QR in print */
+  .qrTermContainer {
+    margin-top: 10px !important;
+    background: transparent !important;
+    border: 1px solid #ccc !important;
+  }
+  
+  .qrSmall {
+    width: 45px !important; /* Larger in print */
+    height: 45px !important;
+    border: 2px solid #000 !important;
+  }
+  
+  .qrText p {
+    font-size: 9pt !important;
+    font-weight: 600 !important;
+  }
+  
+  .termsBox {
+    border: 2px solid #000 !important;
+    padding: 8px !important;
+  }
+  
+  .termsBox li {
+    font-size: 8pt !important;
+    margin-bottom: 3px !important;
+  }
+}
 }
