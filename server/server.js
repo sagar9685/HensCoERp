@@ -16,6 +16,8 @@ const stockRoutes = require("./routes/stockRoutes");
 const customerAnalysisRoutes = require("./routes/customerAnalysisRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const analyticsRoutes = require("./routes/analyticRoutes");
+const askAiRoutes = require("./routes/askAiRoutes");
+
 dotenv.config();
 const app = express();
 
@@ -34,6 +36,8 @@ app.use("/api/stock", stockRoutes);
 app.use("/api", areaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api", askAiRoutes);
+
 
 app.use("/api/users", authRoutes);
 app.use("/api/users", paymentRoutes);

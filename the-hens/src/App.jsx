@@ -18,6 +18,7 @@ import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
 import Support from "./component/Support";
 import RejectStock from "./component/user/RejectStock";
 import DeliverySummary from "./component/user/DeliverySummary";
+import AIChat from "./component/AIChat";
 
 function App() {
   return (
@@ -68,6 +69,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+
+         <Route
+          path="/ai-question"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AIChat/>
             </ProtectedRoute>
           }
         />

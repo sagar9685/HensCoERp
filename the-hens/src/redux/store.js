@@ -17,6 +17,7 @@ import reportReducer from "../features/reportSlice";
 import analysisReducer from "../features/analysisSlice";
 import uiReducer from "../features/uiSlice";
 import deliveryBoyAnalysisReducer from '../features/deliveryBoyAnalysisSlice'
+import aiReducer from'../features/aiSlice'
 
 const store = configureStore({
   reducer: {
@@ -36,6 +37,7 @@ const store = configureStore({
     analysis: analysisReducer,
     ui: uiReducer,
      deliveryBoyAnalysis: deliveryBoyAnalysisReducer,
+     ai: aiReducer
   },
 });
 
