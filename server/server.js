@@ -36,7 +36,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api", areaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api", askAiRoutes);
+app.use("/api/ai", askAiRoutes);
 
 
 app.use("/api/users", authRoutes);
