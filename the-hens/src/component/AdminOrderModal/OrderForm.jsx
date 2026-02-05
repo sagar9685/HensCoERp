@@ -7,7 +7,7 @@ import {
   fetchProductTypes, 
   fetchRateByProductType 
 } from "../../features/productTypeSlice";
-import { addOrder, fetchOrderTakenBy } from '../../features/orderSlice';
+import { addOrder, fetchOrder, fetchOrderTakenBy } from '../../features/orderSlice';
 import { toast } from 'react-toastify';
 import CustomerSearch from './CustomerSearch';
 import OrderFormModal from './OrderFormModal';
@@ -299,6 +299,7 @@ console.log(stockList, "stovk");
       try {
          setIsSubmitting(true)
         await dispatch(addOrder(orderData)).unwrap();
+        dispatch(fetchOrder());
         toast.success('Order added successfully! 🎉');
        
         handleClose();
