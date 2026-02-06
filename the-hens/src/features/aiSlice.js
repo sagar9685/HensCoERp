@@ -45,7 +45,7 @@ export const getWeeklySummary = createAsyncThunk(
   'ai/getWeeklySummary',
   async (lang = 'english', { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/ai/weekly-summary?lang=${lang}`);
+      const response = await axios.get(`${API_URL}/api/ai/weekly-summary?lang=${lang}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
