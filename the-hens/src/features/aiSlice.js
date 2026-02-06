@@ -1,96 +1,87 @@
-// src/store/slices/aiSlice.js
-import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+// src/features/aiSlice.js
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Async Thunks
 export const askAI = createAsyncThunk(
-  "ai/ask",
+  'ai/askAI',
   async (question, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/ai/ask-ai`, { question });
+      const response = await axios.post(`${API_URL}/api/ai/ask`, { question });
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
 export const fetchQuickStats = createAsyncThunk(
-  "ai/fetchQuickStats",
+  'ai/fetchQuickStats',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/ai/quick-stats`);
+      const response = await axios.get(`${API_URL}/api/ai/quick-stats`);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
 export const fetchAssistantInfo = createAsyncThunk(
-  "ai/fetchAssistantInfo",
-  async (lang = "english", { rejectWithValue }) => {
+  'ai/fetchAssistantInfo',
+  async (lang = 'english', { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/ai/assistant-info?lang=${lang}`);
+      const response = await axios.get(`${API_URL}/api/ai/assistant-info?lang=${lang}`);
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-// Initial State
-const initialState = {
-  question: "",
-  answer: null,
-  conversation: [],
-  quickStats: null,
-  assistantInfo: null,
-  loading: false,
-  error: null,
-  language: "english", // 'english' or 'hindi'
-  showQuickStats: false,
-};
+export const getWeeklySummary = createAsyncThunk(
+  'ai/getWeeklySummary',
+  async (lang = 'english', { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${API_URL}/ai/weekly-summary?lang=${lang}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
-// Slice
 const aiSlice = createSlice({
-  name: "ai",
-  initialState,
+  name: 'ai',
+  initialState: {
+    question: '',
+    answer: null,
+    conversation: [],
+    quickStats: null,
+    assistantInfo: null,
+    loading: false,
+    error: null,
+    language: 'hindi',
+    showQuickStats: false,
+  },
   reducers: {
     setQuestion: (state, action) => {
       state.question = action.payload;
-    },
-    clearQuestion: (state) => {
-      state.question = "";
     },
     clearAnswer: (state) => {
       state.answer = null;
       state.error = null;
     },
-    clearConversation: (state) => {
-      state.conversation = [];
-    },
     toggleLanguage: (state) => {
-      state.language = state.language === "english" ? "hindi" : "english";
-    },
-    setLanguage: (state, action) => {
-      state.language = action.payload;
+      state.language = state.language === 'hindi' ? 'english' : 'hindi';
     },
     toggleQuickStats: (state) => {
       state.showQuickStats = !state.showQuickStats;
     },
-    addToConversation: (state, action) => {
-      state.conversation.unshift({
-        id: Date.now(),
-        timestamp: new Date().toISOString(),
-        ...action.payload,
-      });
-      // Keep only last 50 conversations
-      if (state.conversation.length > 50) {
-        state.conversation.pop();
-      }
+    clearConversation: (state) => {
+      state.conversation = [];
     },
   },
   extraReducers: (builder) => {
@@ -103,67 +94,41 @@ const aiSlice = createSlice({
       .addCase(askAI.fulfilled, (state, action) => {
         state.loading = false;
         state.answer = action.payload;
-        state.error = null;
-        
-        // Add to conversation history
-        if (state.question && action.payload.success) {
-          state.conversation.unshift({
-            id: Date.now(),
-            question: state.question,
-            answer: action.payload.answer,
-            timestamp: new Date().toISOString(),
-            data: action.payload.data,
-          });
-          
-          // Keep only last 50 conversations
-          if (state.conversation.length > 50) {
-            state.conversation.pop();
-          }
-        }
-        
-        state.question = "";
+        state.conversation.push({
+          id: Date.now(),
+          question: state.question,
+          answer: action.payload.answer,
+          timestamp: new Date().toISOString(),
+        });
+        state.question = '';
       })
       .addCase(askAI.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
-        state.answer = null;
+        state.error = action.payload || 'An error occurred';
       })
-      
       // Fetch Quick Stats
-      .addCase(fetchQuickStats.pending, (state) => {
-        state.loading = true;
-      })
       .addCase(fetchQuickStats.fulfilled, (state, action) => {
-        state.loading = false;
         state.quickStats = action.payload.data;
       })
-      .addCase(fetchQuickStats.rejected, (state) => {
-        state.loading = false;
+      .addCase(fetchQuickStats.rejected, (state, action) => {
+        console.error('Failed to fetch quick stats:', action.payload);
       })
-      
       // Fetch Assistant Info
-      .addCase(fetchAssistantInfo.pending, (state) => {
-        state.loading = true;
-      })
       .addCase(fetchAssistantInfo.fulfilled, (state, action) => {
-        state.loading = false;
         state.assistantInfo = action.payload.data;
       })
-      .addCase(fetchAssistantInfo.rejected, (state) => {
-        state.loading = false;
+      .addCase(fetchAssistantInfo.rejected, (state, action) => {
+        console.error('Failed to fetch assistant info:', action.payload);
       });
   },
 });
 
 export const {
   setQuestion,
-  clearQuestion,
   clearAnswer,
-  clearConversation,
   toggleLanguage,
-  setLanguage,
   toggleQuickStats,
-  addToConversation,
+  clearConversation,
 } = aiSlice.actions;
 
 export default aiSlice.reducer;
