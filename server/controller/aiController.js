@@ -63,9 +63,17 @@ const getMonthName = (monthNumber, language) => {
     'जनवरी', 'फरवरी', 'मार्च', 'अप्रैल', 'मई', 'जून',
     'जुलाई', 'अगस्त', 'सितंबर', 'अक्टूबर', 'नवंबर', 'दिसंबर'
   ];
+  const monthsHindiShort = [
+    'जन', 'फर', 'मार्च', 'अप्रै', 'मई', 'जून',
+    'जुलाई', 'अगस्त', 'सितं', 'अक्टू', 'नवं', 'दिसं'
+  ];
   const monthsEnglish = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const monthsEnglishShort = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
   ];
   
   if (language === 'hindi') {
@@ -76,44 +84,104 @@ const getMonthName = (monthNumber, language) => {
 };
 
 // Extract month from question
-const extractMonth = (question) => {
-  const monthPatterns = {
-    'january': 1, 'jan': 1, 'जनवरी': 1, 'जन': 1,
-    'february': 2, 'feb': 2, 'फरवरी': 2, 'फर': 2,
-    'march': 3, 'mar': 3, 'मार्च': 3, 'मार': 3,
-    'april': 4, 'apr': 4, 'अप्रैल': 4, 'अप्रै': 4,
-    'may': 5, 'मई': 5,
-    'june': 6, 'jun': 6, 'जून': 6,
-    'july': 7, 'jul': 7, 'जुलाई': 7,
-    'august': 8, 'aug': 8, 'अगस्त': 8,
-    'september': 9, 'sep': 9, 'सितंबर': 9, 'सितम्बर': 9,
-    'october': 10, 'oct': 10, 'अक्टूबर': 10,
-    'november': 11, 'nov': 11, 'नवंबर': 11, 'नवम्बर': 11,
-    'december': 12, 'dec': 12, 'दिसंबर': 12, 'दिसम्बर': 12
-  };
+// Helper to extract month from question - IMPROVED VERSION
+// const extractMonth = (question) => {
+//     const monthPatterns = {
+//         'january': 1, 'jan': 1, 'जनवरी': 1,
+//         'february': 2, 'feb': 2, 'फरवरी': 2, 'fb': 2,
+//         'march': 3, 'mar': 3, 'मार्च': 3,
+//         'april': 4, 'apr': 4, 'अप्रैल': 4,
+//         'may': 5, 'मई': 5,
+//         'june': 6, 'jun': 6, 'जून': 6,
+//         'july': 7, 'jul': 7, 'जुलाई': 7,
+//         'august': 8, 'aug': 8, 'अगस्त': 8,
+//         'september': 9, 'sep': 9, 'sept': 9, 'सितंबर': 9,
+//         'october': 10, 'oct': 10, 'अक्टूबर': 10,
+//         'november': 11, 'nov': 11, 'नवंबर': 11,
+//         'december': 12, 'dec': 12, 'दिसंबर': 12
+//     };
   
+//   const q = question.toLowerCase();
+  
+//   // Check for month names
+//   for (const [key, value] of Object.entries(monthPatterns)) {
+//     if (q.includes(key)) {
+//       return value;
+//     }
+//   }
+  
+//   // Check for month numbers (1-12)
+//   const monthNumberMatch = q.match(/\b(1[0-2]|[1-9])\b/);
+//   if (monthNumberMatch) {
+//     const monthNum = parseInt(monthNumberMatch[0]);
+//     if (monthNum >= 1 && monthNum <= 12) {
+//       return monthNum;
+//     }
+//   }
+  
+//   return null;
+// };
+
+// Helper to extract year from question - IMPROVED VERSION
+const extractYear = (question) => {
   const q = question.toLowerCase();
-  for (const [key, value] of Object.entries(monthPatterns)) {
-    if (q.includes(key)) {
-      return value;
-    }
+  
+  // Check for full year (2024, 2023, etc.)
+  const fullYearMatch = q.match(/(20\d{2}|19\d{2})/);
+  if (fullYearMatch) {
+    return parseInt(fullYearMatch[0]);
   }
+  
+  // Check for short year (24, 23, etc.)
+  const shortYearMatch = q.match(/\b(\d{2})\b/);
+  if (shortYearMatch && shortYearMatch[0] >= 0 && shortYearMatch[0] <= 99) {
+    const year = parseInt(shortYearMatch[0]);
+    return year + 2000; // Assuming 2000s
+  }
+  
+  return new Date().getFullYear();
+};
+
+// Extract date range from question
+const extractDateRange = (question) => {
+  const q = question.toLowerCase();
+  
+  // For "last week", "this week", "next week"
+  if (q.includes('last week')) {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - 7);
+    return { startDate, endDate, type: 'last_week' };
+  }
+  
+  if (q.includes('this week') || q.includes('current week')) {
+    const today = new Date();
+    const startDate = new Date(today.setDate(today.getDate() - today.getDay()));
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + 6);
+    return { startDate, endDate, type: 'this_week' };
+  }
+  
+  // For "last month", "this month", "next month"
+  if (q.includes('last month')) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+    return { startDate, endDate, type: 'last_month' };
+  }
+  
+  if (q.includes('this month') || q.includes('current month')) {
+    const now = new Date();
+    const startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return { startDate, endDate, type: 'this_month' };
+  }
+  
   return null;
 };
 
 // Extract year from question
-const extractYear = (question) => {
-  const q = question.toLowerCase();
-  const yearMatch = q.match(/(?:20|19)?(\d{2}|\d{4})/);
-  if (yearMatch) {
-    let year = parseInt(yearMatch[0]);
-    if (year < 100) {
-      year += 2000;
-    }
-    return year;
-  }
-  return new Date().getFullYear();
-};
+ 
 
 // Extract product type from question
 const extractProduct = (question) => {
@@ -195,34 +263,129 @@ const extractDeliveryBoy = (question) => {
 };
 
 // Extract date from question (e.g., "4 February")
+// Helper to extract date in various formats (dd/mm/yy, dd-mm-yyyy, dd month yyyy, etc.)
 const extractDate = (question) => {
   const q = question.toLowerCase();
   
-  // Extract date pattern like "4 February"
-  const dateMatch = q.match(/(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december|जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर)/i);
-  
-  if (dateMatch) {
-    const day = parseInt(dateMatch[1]);
-    const monthStr = dateMatch[2].toLowerCase();
+  // Format 1: dd/mm/yy or dd-mm-yy (e.g., 04/02/26, 4-2-2026)
+  const slashDateMatch = q.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+  if (slashDateMatch) {
+    let [_, day, month, year] = slashDateMatch;
+    day = parseInt(day);
+    month = parseInt(month);
+    year = parseInt(year);
     
+    // Convert 2-digit year to 4-digit
+    if (year < 100) {
+      year = year + 2000;
+    }
+    
+    // Validate date
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return { day, month, year };
+    }
+  }
+  
+  // Format 2: dd month yyyy (e.g., 4 February 2026)
+  const textDateMatch = q.match(/(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर|जन|फर|मार्च|अप्रै|मई|जून|जुलाई|अगस्त|सितं|अक्टू|नवं|दिसं)/i);
+  if (textDateMatch) {
+    const day = parseInt(textDateMatch[1]);
+    const monthStr = textDateMatch[2].toLowerCase();
+    const yearMatch = q.match(/(?:19|20)?\d{2}/);
+    const year = yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear();
+    
+    // Convert month string to number
     const monthMap = {
-      'january': 1, 'february': 2, 'march': 3, 'april': 4,
-      'may': 5, 'june': 6, 'july': 7, 'august': 8,
-      'september': 9, 'october': 10, 'november': 11, 'december': 12,
-      'जनवरी': 1, 'फरवरी': 2, 'मार्च': 3, 'अप्रैल': 4,
-      'मई': 5, 'जून': 6, 'जुलाई': 7, 'अगस्त': 8,
-      'सितंबर': 9, 'अक्टूबर': 10, 'नवंबर': 11, 'दिसंबर': 12
+      'january': 1, 'jan': 1, 'जनवरी': 1, 'जन': 1,
+      'february': 2, 'feb': 2, 'फरवरी': 2, 'फर': 2,
+      'march': 3, 'mar': 3, 'मार्च': 3,
+      'april': 4, 'apr': 4, 'अप्रैल': 4, 'अप्रै': 4,
+      'may': 5, 'मई': 5,
+      'june': 6, 'jun': 6, 'जून': 6,
+      'july': 7, 'jul': 7, 'जुलाई': 7,
+      'august': 8, 'aug': 8, 'अगस्त': 8,
+      'september': 9, 'sep': 9, 'सितंबर': 9, 'सितं': 9,
+      'october': 10, 'oct': 10, 'अक्टूबर': 10, 'अक्टू': 10,
+      'november': 11, 'nov': 11, 'नवंबर': 11, 'नवं': 11,
+      'december': 12, 'dec': 12, 'दिसंबर': 12, 'दिसं': 12
     };
     
     const month = monthMap[monthStr];
-    const year = extractYear(question) || new Date().getFullYear();
+    if (month && day >= 1 && day <= 31) {
+      return { day, month, year };
+    }
+  }
+  
+  // Format 3: Month year (e.g., February 2026, Feb 26)
+  const monthYearMatch = q.match(/(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|जनवरी|फरवरी|मार्च|अप्रैल|मई|जून|जुलाई|अगस्त|सितंबर|अक्टूबर|नवंबर|दिसंबर|जन|फर|मार्च|अप्रै|मई|जून|जुलाई|अगस्त|सितं|अक्टू|नवं|दिसं)\s*(?:'?)?(\d{2,4})?/i);
+  if (monthYearMatch) {
+    const monthStr = monthYearMatch[1].toLowerCase();
+    const year = monthYearMatch[2] ? parseInt(monthYearMatch[2]) : new Date().getFullYear();
     
-    return { day, month, year };
+    const monthMap = {
+      'january': 1, 'jan': 1, 'जनवरी': 1, 'जन': 1,
+      'february': 2, 'feb': 2, 'फरवरी': 2, 'फर': 2,
+      'march': 3, 'mar': 3, 'मार्च': 3,
+      'april': 4, 'apr': 4, 'अप्रैल': 4, 'अप्रै': 4,
+      'may': 5, 'मई': 5,
+      'june': 6, 'jun': 6, 'जून': 6,
+      'july': 7, 'jul': 7, 'जुलाई': 7,
+      'august': 8, 'aug': 8, 'अगस्त': 8,
+      'september': 9, 'sep': 9, 'सितंबर': 9, 'सितं': 9,
+      'october': 10, 'oct': 10, 'अक्टूबर': 10, 'अक्टू': 10,
+      'november': 11, 'nov': 11, 'नवंबर': 11, 'नवं': 11,
+      'december': 12, 'dec': 12, 'दिसंबर': 12, 'दिसं': 12
+    };
+    
+    const month = monthMap[monthStr];
+    if (month) {
+      // For month-only queries, return month and year only
+      return { month, year, day: null };
+    }
   }
   
   return null;
 };
 
+// Improved month extraction with shortcuts
+const extractMonth = (question) => {
+  const q = question.toLowerCase();
+  
+  const monthPatterns = {
+    'january': 1, 'jan': 1, 'जनवरी': 1, 'जन': 1,
+    'february': 2, 'feb': 2, 'फरवरी': 2, 'फर': 2,
+    'march': 3, 'mar': 3, 'मार्च': 3,
+    'april': 4, 'apr': 4, 'अप्रैल': 4, 'अप्रै': 4,
+    'may': 5, 'मई': 5,
+    'june': 6, 'jun': 6, 'जून': 6,
+    'july': 7, 'jul': 7, 'जुलाई': 7,
+    'august': 8, 'aug': 8, 'अगस्त': 8,
+    'september': 9, 'sep': 9, 'सितंबर': 9, 'सितं': 9,
+    'october': 10, 'oct': 10, 'अक्टूबर': 10, 'अक्टू': 10,
+    'november': 11, 'nov': 11, 'नवंबर': 11, 'नवं': 11,
+    'december': 12, 'dec': 12, 'दिसंबर': 12, 'दिसं': 12
+  };
+  
+  // Check for month names or shortcuts
+  for (const [key, value] of Object.entries(monthPatterns)) {
+    // Exact word match or partial match
+    const regex = new RegExp(`\\b${key}\\b`, 'i');
+    if (regex.test(q)) {
+      return value;
+    }
+  }
+  
+  // Check for month numbers (1-12)
+  const monthNumberMatch = q.match(/\b(1[0-2]|[1-9])\b/);
+  if (monthNumberMatch) {
+    const monthNum = parseInt(monthNumberMatch[0]);
+    if (monthNum >= 1 && monthNum <= 12) {
+      return monthNum;
+    }
+  }
+  
+  return null;
+};
 // Extract invoice/bill number from question
 const extractInvoiceNumber = (question) => {
   const q = question.toLowerCase();
@@ -641,134 +804,212 @@ exports.askAI = async (req, res) => {
     // ==============================================
     
     // 2.1 "Aaj total kitne orders aaye?"
-    if (q.includes("aaj total") || (q.includes("today") && q.includes("order"))) {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const result = await pool.request()
-        .input("today", sql.Date, today)
-        .query(`
-          SELECT 
-            COUNT(*) AS TodayOrders,
-            SUM(i.Total) AS TodaySales,
-            COUNT(DISTINCT o.CustomerName) AS TodayCustomers
-          FROM OrdersTemp o
-          LEFT JOIN orderItems i ON o.OrderID = i.OrderID
-          WHERE CAST(o.OrderDate AS DATE) = @today
-        `);
-      
-      const data = result.recordset[0];
-      const todayOrders = data.TodayOrders || 0;
-      const todaySales = data.TodaySales || 0;
-      const todayCustomers = data.TodayCustomers || 0;
-      
-      let answer;
-      if (language === 'hindi') {
-        answer = `📅 आज की रिपोर्ट:\n` +
-                `• कुल ऑर्डर: ${todayOrders}\n` +
-                `• कुल बिक्री: ₹${formatNumber(todaySales, 'hindi')}\n` +
-                `• ग्राहक: ${todayCustomers}`;
-      } else {
-        answer = `📅 Today's Report:\n` +
-                `• Total Orders: ${todayOrders}\n` +
-                `• Total Sales: ₹${formatNumber(todaySales, 'english')}\n` +
-                `• Customers: ${todayCustomers}`;
-      }
-      
-      return res.json({ 
-        success: true, 
-        answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
-        data: { todayOrders, todaySales, todayCustomers }
-      });
+  // 2.1 "Aaj total kitne orders aaye?" OR "How many orders today?"
+if (
+  q.includes("aaj total") || 
+  q.includes("today order") || 
+  q.includes("aaj kitne") || 
+  (q.includes("today") && q.includes("order")) ||
+  q.includes("आज के ऑर्डर")
+) {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  
+  const result = await pool.request()
+    .input("today", sql.Date, todayStr)
+    .query(`
+      SELECT 
+        COUNT(*) AS TodayOrders,
+        SUM(oi.Total) AS TodaySales,
+        COUNT(DISTINCT ot.CustomerName) AS TodayCustomers,
+        SUM(ot.DeliveryCharge) AS TodayDeliveryCharges,
+        SUM(oi.Total + ot.DeliveryCharge) AS TodayGrandTotal
+      FROM OrdersTemp ot
+      LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+      WHERE CAST(ot.OrderDate AS DATE) = @today
+    `);
+  
+  const data = result.recordset[0];
+  const todayOrders = data.TodayOrders || 0;
+  const todaySales = data.TodaySales || 0;
+  const todayCustomers = data.TodayCustomers || 0;
+  const todayDeliveryCharges = data.TodayDeliveryCharges || 0;
+  const todayGrandTotal = data.TodayGrandTotal || 0;
+  
+  let answer;
+  if (language === 'hindi') {
+    answer = `📅 आज की रिपोर्ट (${today.toLocaleDateString('hi-IN')}):\n\n` +
+            `• कुल ऑर्डर: ${todayOrders}\n` +
+            `• कुल बिक्री: ₹${formatNumber(todaySales, 'hindi')}\n` +
+            `• ग्राहक: ${todayCustomers}\n` +
+            `• डिलीवरी चार्ज: ₹${formatNumber(todayDeliveryCharges, 'hindi')}\n` +
+            `• ग्रैंड टोटल: ₹${formatNumber(todayGrandTotal, 'hindi')}`;
+  } else {
+    answer = `📅 Today's Report (${today.toLocaleDateString('en-IN')}):\n\n` +
+            `• Total Orders: ${todayOrders}\n` +
+            `• Total Sales: ₹${formatNumber(todaySales, 'english')}\n` +
+            `• Customers: ${todayCustomers}\n` +
+            `• Delivery Charges: ₹${formatNumber(todayDeliveryCharges, 'english')}\n` +
+            `• Grand Total: ₹${formatNumber(todayGrandTotal, 'english')}`;
+  }
+  
+  return res.json({ 
+    success: true, 
+    answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+    data: { 
+      todayOrders, 
+      todaySales, 
+      todayCustomers, 
+      todayDeliveryCharges, 
+      todayGrandTotal,
+      date: todayStr 
     }
-
+  });
+}
     // 2.2 "Kal ki total sales kitni thi?"
-    if (q.includes("kal ki") || (q.includes("yesterday") && q.includes("sales"))) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
-      
-      const result = await pool.request()
-        .input("yesterday", sql.Date, yesterdayStr)
-        .query(`
-          SELECT 
-            SUM(i.Total) AS YesterdaySales,
-            COUNT(*) AS YesterdayOrders
-          FROM OrdersTemp o
-          LEFT JOIN orderItems i ON o.OrderID = i.OrderID
-          WHERE CAST(o.OrderDate AS DATE) = @yesterday
-        `);
-      
-      const data = result.recordset[0];
-      const yesterdaySales = data.YesterdaySales || 0;
-      const yesterdayOrders = data.YesterdayOrders || 0;
-      
-      let answer;
-      if (language === 'hindi') {
-        answer = `📅 कल की बिक्री:\n` +
-                `• कुल बिक्री: ₹${formatNumber(yesterdaySales, 'hindi')}\n` +
-                `• कुल ऑर्डर: ${yesterdayOrders}`;
-      } else {
-        answer = `📅 Yesterday's Sales:\n` +
-                `• Total Sales: ₹${formatNumber(yesterdaySales, 'english')}\n` +
-                `• Total Orders: ${yesterdayOrders}`;
-      }
-      
-      return res.json({ 
-        success: true, 
-        answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
-        data: { yesterdaySales, yesterdayOrders }
-      });
+    // 2.2 "Kal ki total sales kitni thi?" OR "Yesterday's orders"
+if (
+  q.includes("kal ki") || 
+  q.includes("yesterday") || 
+  q.includes("कल") ||
+  q.includes("बीता हुआ दिन")
+) {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+  
+  const result = await pool.request()
+    .input("yesterday", sql.Date, yesterdayStr)
+    .query(`
+      SELECT 
+        COUNT(*) AS YesterdayOrders,
+        SUM(oi.Total) AS YesterdaySales,
+        COUNT(DISTINCT ot.CustomerName) AS YesterdayCustomers,
+        SUM(ot.DeliveryCharge) AS YesterdayDeliveryCharges
+      FROM OrdersTemp ot
+      LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+      WHERE CAST(ot.OrderDate AS DATE) = @yesterday
+    `);
+  
+  const data = result.recordset[0];
+  const yesterdayOrders = data.YesterdayOrders || 0;
+  const yesterdaySales = data.YesterdaySales || 0;
+  const yesterdayCustomers = data.YesterdayCustomers || 0;
+  const yesterdayDeliveryCharges = data.YesterdayDeliveryCharges || 0;
+  
+  let answer;
+  if (language === 'hindi') {
+    answer = `📅 कल की रिपोर्ट (${yesterday.toLocaleDateString('hi-IN')}):\n\n` +
+            `• कुल ऑर्डर: ${yesterdayOrders}\n` +
+            `• कुल बिक्री: ₹${formatNumber(yesterdaySales, 'hindi')}\n` +
+            `• ग्राहक: ${yesterdayCustomers}\n` +
+            `• डिलीवरी चार्ज: ₹${formatNumber(yesterdayDeliveryCharges, 'hindi')}`;
+  } else {
+    answer = `📅 Yesterday's Report (${yesterday.toLocaleDateString('en-IN')}):\n\n` +
+            `• Total Orders: ${yesterdayOrders}\n` +
+            `• Total Sales: ₹${formatNumber(yesterdaySales, 'english')}\n` +
+            `• Customers: ${yesterdayCustomers}\n` +
+            `• Delivery Charges: ₹${formatNumber(yesterdayDeliveryCharges, 'english')}`;
+  }
+  
+  return res.json({ 
+    success: true, 
+    answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+    data: { 
+      yesterdayOrders, 
+      yesterdaySales, 
+      yesterdayCustomers, 
+      yesterdayDeliveryCharges,
+      date: yesterdayStr 
+    }
+  });
+}
+
+   // 2.3 "4 February ko kitne order mile the?" OR "Orders on 4 February"
+// --- Updated Date Extractors ---
+
+const extractDateSlash = (text) => {
+    // Regex to detect formats like 04/02/26, 4-2-2026, 04/02/2026
+    const match = text.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/);
+    if (match) {
+        let [_, d, m, y] = match;
+        // Agar saal 26 likha hai toh usse 2026 bana dega
+        if (y.length === 2) y = "20" + y;
+        return { day: parseInt(d), month: parseInt(m), year: parseInt(y) };
+    }
+    return null;
+};
+
+const extractMonth = (question) => {
+    const monthPatterns = {
+        'january': 1, 'jan': 1, 'जनवरी': 1,
+        'february': 2, 'feb': 2, 'फरवरी': 2, 'fb': 2,
+        'march': 3, 'mar': 3, 'मार्च': 3,
+        'april': 4, 'apr': 4, 'अप्रैल': 4,
+        'may': 5, 'मई': 5,
+        'june': 6, 'jun': 6, 'जून': 6,
+        'july': 7, 'jul': 7, 'जुलाई': 7,
+        'august': 8, 'aug': 8, 'अगस्त': 8,
+        'september': 9, 'sep': 9, 'sept': 9, 'सितंबर': 9,
+        'october': 10, 'oct': 10, 'अक्टूबर': 10,
+        'november': 11, 'nov': 11, 'नवंबर': 11,
+        'december': 12, 'dec': 12, 'दिसंबर': 12
+    };
+    
+    const q = question.toLowerCase();
+    for (const [key, value] of Object.entries(monthPatterns)) {
+        if (q.includes(key)) return value;
+    }
+    return null;
+};
+
+// --- Updated Main Handler for Date Wise Search ---
+
+if (q.includes("ko kitne") || q.includes("date") || q.includes("/") || q.includes("-") || q.includes("तारीख")) {
+    
+    // Pehle check karein 04/02/26 jaisa format
+    let dateInfo = extractDateSlash(q);
+    
+    // Agar nahi mila toh "4 February" jaisa text check karein
+    if (!dateInfo) {
+        dateInfo = extractDate(question); 
     }
 
-    // 2.3 "4 February ko kitne order mile the?"
-    if (q.includes("ko kitne") || q.includes("date specific")) {
-      const dateInfo = extractDate(question);
-      
-      if (dateInfo) {
+    if (dateInfo) {
         const { day, month, year } = dateInfo;
         const monthName = getMonthName(month, language);
-        
+
         const result = await pool.request()
-          .input("year", sql.Int, year)
-          .input("month", sql.Int, month)
-          .input("day", sql.Int, day)
-          .query(`
-            SELECT 
-              COUNT(*) AS OrdersOnDate,
-              SUM(i.Total) AS SalesOnDate,
-              COUNT(DISTINCT o.CustomerName) AS CustomersOnDate
-            FROM OrdersTemp o
-            LEFT JOIN orderItems i ON o.OrderID = i.OrderID
-            WHERE DAY(o.OrderDate) = @day 
-              AND MONTH(o.OrderDate) = @month 
-              AND YEAR(o.OrderDate) = @year
-          `);
-        
+            .input("day", sql.Int, day)
+            .input("month", sql.Int, month)
+            .input("year", sql.Int, year)
+            .query(`
+                SELECT 
+                    COUNT(*) AS OrdersOnDate,
+                    SUM(oi.Total) AS SalesOnDate,
+                    COUNT(DISTINCT ot.CustomerName) AS CustomersOnDate,
+                    SUM(ot.DeliveryCharge) AS DeliveryCharges
+                FROM OrdersTemp ot
+                LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+                WHERE DAY(ot.OrderDate) = @day 
+                  AND MONTH(ot.OrderDate) = @month 
+                  AND YEAR(ot.OrderDate) = @year
+            `);
+
         const data = result.recordset[0];
-        const ordersOnDate = data.OrdersOnDate || 0;
-        const salesOnDate = data.SalesOnDate || 0;
-        const customersOnDate = data.CustomersOnDate || 0;
-        
-        let answer;
-        if (language === 'hindi') {
-          answer = `📅 ${day} ${monthName} ${year} का रिपोर्ट:\n` +
-                  `• कुल ऑर्डर: ${ordersOnDate}\n` +
-                  `• कुल बिक्री: ₹${formatNumber(salesOnDate, 'hindi')}\n` +
-                  `• ग्राहक: ${customersOnDate}`;
-        } else {
-          answer = `📅 Report for ${day} ${monthName} ${year}:\n` +
-                  `• Total Orders: ${ordersOnDate}\n` +
-                  `• Total Sales: ₹${formatNumber(salesOnDate, 'english')}\n` +
-                  `• Customers: ${customersOnDate}`;
-        }
-        
+        const orders = data.OrdersOnDate || 0;
+        const sales = data.SalesOnDate || 0;
+
+        let answer = language === 'hindi' 
+            ? `📅 ${day} ${monthName} ${year} की रिपोर्ट:\n• कुल ऑर्डर: ${orders}\n• कुल बिक्री: ₹${formatNumber(sales, 'hindi')}`
+            : `📅 Report for ${day} ${monthName} ${year}:\n• Total Orders: ${orders}\n• Total Sales: ₹${formatNumber(sales, 'english')}`;
+
         return res.json({ 
-          success: true, 
-          answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
-          data: { ordersOnDate, salesOnDate, customersOnDate }
+            success: true, 
+            answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`
         });
-      }
     }
+}
 
     // 2.4 "January mahine mein total kitni kamai (revenue) hui?"
     // controllers/aiController.js में SECTION 2.4 को update करें:
@@ -776,8 +1017,10 @@ exports.askAI = async (req, res) => {
 // ==============================================
 // 2.4 MONTHLY SALES REVENUE (e.g., "January mein kitni sales hui?")
 // ==============================================
+// In SECTION 2.4 - Replace the existing monthly sales query with this:
+// 2.4 "January mein kitne orders aaye?" OR "How many orders in January?"
 if (
-  (q.includes("sale") || q.includes("sales") || q.includes("बिक्री") || q.includes("कमाई") || q.includes("revenue") || q.includes("में कितनी") || q.includes("कितनी हुई")) && 
+  (q.includes("order") || q.includes("orders") || q.includes("ऑर्डर")) && 
   (
     q.includes("january") || q.includes("february") || q.includes("march") ||
     q.includes("april") || q.includes("may") || q.includes("june") ||
@@ -795,8 +1038,8 @@ if (
   
   if (!month) {
     let errorMsg = language === 'hindi'
-      ? "कृपया स्पष्ट महीना बताएं (जैसे: जनवरी में बिक्री कितनी हुई?)"
-      : "Please specify a clear month (e.g., sales in January?)";
+      ? "कृपया स्पष्ट महीना बताएं (जैसे: जनवरी में कितने ऑर्डर?)"
+      : "Please specify a clear month (e.g., How many orders in January?)";
     
     return res.json({ 
       success: true, 
@@ -810,20 +1053,36 @@ if (
     .input("month", sql.Int, month)
     .input("year", sql.Int, year)
     .query(`
-      SELECT SUM(i.Total) AS MonthlySales
-      FROM OrdersTemp o
-      JOIN orderItems i ON o.OrderID = i.OrderID
-      WHERE MONTH(o.OrderDate) = @month 
-        AND YEAR(o.OrderDate) = @year
+      SELECT 
+        COUNT(*) AS MonthlyOrders,
+        SUM(oi.Total) AS MonthlySales,
+        COUNT(DISTINCT ot.CustomerName) AS MonthlyCustomers,
+        AVG(oi.Total) AS AvgOrderValue
+      FROM OrdersTemp ot
+      LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+      WHERE MONTH(ot.OrderDate) = @month 
+        AND YEAR(ot.OrderDate) = @year
     `);
   
-  const monthlySales = result.recordset[0].MonthlySales || 0;
+  const data = result.recordset[0];
+  const monthlyOrders = data.MonthlyOrders || 0;
+  const monthlySales = data.MonthlySales || 0;
+  const monthlyCustomers = data.MonthlyCustomers || 0;
+  const avgOrderValue = data.AvgOrderValue || 0;
   
   let answer;
   if (language === 'hindi') {
-    answer = `💰 ${monthName} ${year} में कुल बिक्री: ₹${formatNumber(monthlySales, 'hindi')}`;
+    answer = `📊 ${monthName} ${year} का ऑर्डर रिपोर्ट:\n\n` +
+            `• कुल ऑर्डर: ${formatNumber(monthlyOrders, 'hindi')}\n` +
+            `• कुल बिक्री: ₹${formatNumber(monthlySales, 'hindi')}\n` +
+            `• ग्राहक: ${formatNumber(monthlyCustomers, 'hindi')}\n` +
+            `• औसत ऑर्डर: ₹${formatNumber(avgOrderValue, 'hindi')}`;
   } else {
-    answer = `💰 Total sales in ${monthName} ${year}: ₹${formatNumber(monthlySales, 'english')}`;
+    answer = `📊 Order Report for ${monthName} ${year}:\n\n` +
+            `• Total Orders: ${formatNumber(monthlyOrders, 'english')}\n` +
+            `• Total Sales: ₹${formatNumber(monthlySales, 'english')}\n` +
+            `• Customers: ${formatNumber(monthlyCustomers, 'english')}\n` +
+            `• Average Order: ₹${formatNumber(avgOrderValue, 'english')}`;
   }
   
   return res.json({ 
@@ -832,53 +1091,94 @@ if (
     data: { 
       month: monthName,
       year: year,
-      monthlySales: monthlySales,
-      analyzedBy: language === 'hindi' ? `${MY_NAME} का मासिक बिक्री विश्लेषण` : `${MY_NAME}'s Monthly Sales Analysis`
+      monthlyOrders,
+      monthlySales,
+      monthlyCustomers,
+      avgOrderValue,
+      analyzedBy: language === 'hindi' ? `${MY_NAME} का मासिक ऑर्डर विश्लेषण` : `${MY_NAME}'s Monthly Order Analysis`
     }
   });
 }
 
     // 2.5 "Is hafte total kitne orders deliver hue?"
-    if (q.includes("hafta") || q.includes("week") || q.includes("वीक") || q.includes("सप्ताह")) {
-      const result = await pool.request().query(`
-        SELECT 
-          COUNT(*) AS WeeklyDeliveries,
-          SUM(CASE WHEN DeliveryStatus = 'Complete' THEN 1 ELSE 0 END) AS Successful,
-          SUM(CASE WHEN DeliveryStatus = 'Cancel' THEN 1 ELSE 0 END) AS Cancelled,
-          SUM(CASE WHEN DeliveryStatus NOT IN ('Complete', 'Cancel') THEN 1 ELSE 0 END) AS Pending
-        FROM AssignedOrders
-        WHERE DATEPART(WEEK, DeliveryDate) = DATEPART(WEEK, GETDATE())
-          AND DATEPART(YEAR, DeliveryDate) = DATEPART(YEAR, GETDATE())
-      `);
-      
-      const data = result.recordset[0];
-      const weeklyDeliveries = data.WeeklyDeliveries || 0;
-      const successful = data.Successful || 0;
-      const cancelled = data.Cancelled || 0;
-      const pending = data.Pending || 0;
-      
-      let answer;
-      if (language === 'hindi') {
-        answer = `📅 इस सप्ताह की डिलीवरी रिपोर्ट:\n` +
-                `• कुल डिलीवरी: ${weeklyDeliveries}\n` +
-                `• सफल: ${successful}\n` +
-                `• कैंसल: ${cancelled}\n` +
-                `• पेंडिंग: ${pending}`;
-      } else {
-        answer = `📅 This Week's Delivery Report:\n` +
-                `• Total Deliveries: ${weeklyDeliveries}\n` +
-                `• Successful: ${successful}\n` +
-                `• Cancelled: ${cancelled}\n` +
-                `• Pending: ${pending}`;
-      }
-      
-      return res.json({ 
-        success: true, 
-        answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
-        data: { weeklyDeliveries, successful, cancelled, pending }
-      });
+  // 2.5 "Is hafte total kitne orders deliver hue?" OR "This week orders"
+if (
+  q.includes("hafta") || 
+  q.includes("week") || 
+  q.includes("वीक") || 
+  q.includes("सप्ताह") ||
+  q.includes("इस हफ्ते")
+) {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  
+  const endOfWeek = new Date(now);
+  endOfWeek.setDate(now.getDate() + (6 - now.getDay()));
+  endOfWeek.setHours(23, 59, 59, 999);
+  
+  const result = await pool.request()
+    .input("startDate", sql.DateTime, startOfWeek)
+    .input("endDate", sql.DateTime, endOfWeek)
+    .query(`
+      SELECT 
+        COUNT(*) AS WeeklyOrders,
+        SUM(oi.Total) AS WeeklySales,
+        COUNT(DISTINCT ot.CustomerName) AS WeeklyCustomers,
+        SUM(ot.DeliveryCharge) AS WeeklyDeliveryCharges,
+        DAYNAME(ot.OrderDate) AS DayName,
+        CAST(ot.OrderDate AS DATE) AS OrderDate,
+        COUNT(*) AS DayOrders,
+        SUM(oi.Total) AS DaySales
+      FROM OrdersTemp ot
+      LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+      WHERE ot.OrderDate BETWEEN @startDate AND @endDate
+      GROUP BY DAYNAME(ot.OrderDate), CAST(ot.OrderDate AS DATE)
+      ORDER BY OrderDate DESC
+    `);
+  
+  const weeklyData = result.recordset;
+  const totalWeeklyOrders = weeklyData.reduce((sum, day) => sum + (day.DayOrders || 0), 0);
+  const totalWeeklySales = weeklyData.reduce((sum, day) => sum + (day.DaySales || 0), 0);
+  const uniqueCustomers = [...new Set(weeklyData.filter(d => d.CustomerName).map(d => d.CustomerName))].length;
+  
+  let answer;
+  if (language === 'hindi') {
+    answer = `📅 इस सप्ताह की रिपोर्ट:\n\n` +
+            `• कुल ऑर्डर: ${totalWeeklyOrders}\n` +
+            `• कुल बिक्री: ₹${formatNumber(totalWeeklySales, 'hindi')}\n` +
+            `• ग्राहक: ${uniqueCustomers}\n\n` +
+            `📊 दिनवार ब्रेकडाउन:\n`;
+    
+    weeklyData.forEach(day => {
+      answer += `• ${day.DayName}: ${day.DayOrders} ऑर्डर (₹${formatNumber(day.DaySales, 'hindi')})\n`;
+    });
+  } else {
+    answer = `📅 This Week's Report:\n\n` +
+            `• Total Orders: ${totalWeeklyOrders}\n` +
+            `• Total Sales: ₹${formatNumber(totalWeeklySales, 'english')}\n` +
+            `• Customers: ${uniqueCustomers}\n\n` +
+            `📊 Daily Breakdown:\n`;
+    
+    weeklyData.forEach(day => {
+      answer += `• ${day.DayName}: ${day.DayOrders} orders (₹${formatNumber(day.DaySales, 'english')})\n`;
+    });
+  }
+  
+  return res.json({ 
+    success: true, 
+    answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+    data: { 
+      totalWeeklyOrders, 
+      totalWeeklySales, 
+      uniqueCustomers,
+      weeklyData,
+      weekStart: startOfWeek.toISOString().split('T')[0],
+      weekEnd: endOfWeek.toISOString().split('T')[0]
     }
-
+  });
+}
     // 2.6 "Pichle mahine ke muqable is mahine sales kitni up ya down hai?"
     if (q.includes("muqable") || q.includes("comparison") || q.includes("up down") || q.includes("तुलना")) {
       const currentDate = new Date();
@@ -2252,7 +2552,195 @@ if (q.includes("bill") || q.includes("invoice") || q.includes("बिल") || q.
       }
     }
 
+
+        // ==============================================
+    // SECTION 11: DATE-SPECIFIC QUERIES (dd/mm/yy format)
     // ==============================================
+    
+    // Handle date format queries like "How many orders in 04/02/26?"
+    if (
+      q.includes("orders in") || 
+      q.includes("orders on") ||
+      q.includes("orders for") ||
+      q.includes("sales in") ||
+      q.includes("sales on") ||
+      q.includes("sales for") ||
+      (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(q) && (q.includes("orders") || q.includes("sales"))) ||
+      q.includes("ऑर्डर इन") ||
+      q.includes("ऑर्डर ऑन") ||
+      q.includes("बिक्री इन") ||
+      q.includes("बिक्री ऑन")
+    ) {
+      const dateInfo = extractDate(question);
+      
+      if (dateInfo) {
+        const { day, month, year } = dateInfo;
+        
+        // If day is null, it's a month-only query
+        if (day === null) {
+          // Handle month-only query (e.g., "February 2026")
+          const monthName = getMonthName(month, language);
+          
+          const result = await pool.request()
+            .input("month", sql.Int, month)
+            .input("year", sql.Int, year)
+            .query(`
+              SELECT 
+                COUNT(*) AS MonthlyOrders,
+                SUM(oi.Total) AS MonthlySales,
+                COUNT(DISTINCT ot.CustomerName) AS MonthlyCustomers,
+                SUM(ot.DeliveryCharge) AS MonthlyDeliveryCharges,
+                AVG(oi.Total) AS AvgOrderValue,
+                MAX(ot.OrderDate) AS LastOrderDate,
+                MIN(ot.OrderDate) AS FirstOrderDate
+              FROM OrdersTemp ot
+              LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+              WHERE MONTH(ot.OrderDate) = @month 
+                AND YEAR(ot.OrderDate) = @year
+            `);
+          
+          const data = result.recordset[0];
+          const monthlyOrders = data.MonthlyOrders || 0;
+          const monthlySales = data.MonthlySales || 0;
+          const monthlyCustomers = data.MonthlyCustomers || 0;
+          const monthlyDeliveryCharges = data.MonthlyDeliveryCharges || 0;
+          const avgOrderValue = data.AvgOrderValue || 0;
+          
+          let answer;
+          if (language === 'hindi') {
+            answer = `📊 ${monthName} ${year} का मासिक रिपोर्ट:\n\n` +
+                    `• कुल ऑर्डर: ${formatNumber(monthlyOrders, 'hindi')}\n` +
+                    `• कुल बिक्री: ₹${formatNumber(monthlySales, 'hindi')}\n` +
+                    `• ग्राहक: ${formatNumber(monthlyCustomers, 'hindi')}\n` +
+                    `• डिलीवरी चार्ज: ₹${formatNumber(monthlyDeliveryCharges, 'hindi')}\n` +
+                    `• औसत ऑर्डर: ₹${formatNumber(avgOrderValue, 'hindi')}`;
+          } else {
+            answer = `📊 Monthly Report for ${monthName} ${year}:\n\n` +
+                    `• Total Orders: ${formatNumber(monthlyOrders, 'english')}\n` +
+                    `• Total Sales: ₹${formatNumber(monthlySales, 'english')}\n` +
+                    `• Customers: ${formatNumber(monthlyCustomers, 'english')}\n` +
+                    `• Delivery Charges: ₹${formatNumber(monthlyDeliveryCharges, 'english')}\n` +
+                    `• Average Order: ₹${formatNumber(avgOrderValue, 'english')}`;
+          }
+          
+          return res.json({ 
+            success: true, 
+            answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+            data: { 
+              month: monthName,
+              year: year,
+              monthlyOrders,
+              monthlySales,
+              monthlyCustomers,
+              monthlyDeliveryCharges,
+              avgOrderValue
+            }
+          });
+        } else {
+          // Handle specific date query (e.g., "04/02/26")
+          const monthName = getMonthName(month, language);
+          const formattedDate = `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`;
+          
+          const result = await pool.request()
+            .input("day", sql.Int, day)
+            .input("month", sql.Int, month)
+            .input("year", sql.Int, year)
+            .query(`
+              SELECT 
+                COUNT(*) AS OrdersOnDate,
+                SUM(oi.Total) AS SalesOnDate,
+                COUNT(DISTINCT ot.CustomerName) AS CustomersOnDate,
+                SUM(ot.DeliveryCharge) AS DeliveryCharges,
+                STRING_AGG(ot.CustomerName, ', ') AS CustomerList,
+                STRING_AGG(ot.InvoiceNo, ', ') AS InvoiceList
+              FROM OrdersTemp ot
+              LEFT JOIN OrderItems oi ON ot.OrderID = oi.OrderID
+              WHERE DAY(ot.OrderDate) = @day 
+                AND MONTH(ot.OrderDate) = @month 
+                AND YEAR(ot.OrderDate) = @year
+            `);
+          
+          const data = result.recordset[0];
+          const ordersOnDate = data.OrdersOnDate || 0;
+          const salesOnDate = data.SalesOnDate || 0;
+          const customersOnDate = data.CustomersOnDate || 0;
+          const deliveryCharges = data.DeliveryCharges || 0;
+          const customerList = data.CustomerList || '';
+          const invoiceList = data.InvoiceList || '';
+          
+          let answer;
+          if (language === 'hindi') {
+            answer = `📅 ${day} ${monthName} ${year} (${formattedDate}) का रिपोर्ट:\n\n` +
+                    `• कुल ऑर्डर: ${ordersOnDate}\n` +
+                    `• कुल बिक्री: ₹${formatNumber(salesOnDate, 'hindi')}\n` +
+                    `• ग्राहक: ${customersOnDate}\n` +
+                    `• डिलीवरी चार्ज: ₹${formatNumber(deliveryCharges, 'hindi')}\n`;
+            
+            if (customerList && customerList.length > 0) {
+              const customers = customerList.split(',').slice(0, 5);
+              answer += `• ग्राहक: ${customers.join(', ')}`;
+              if (customersOnDate > 5) {
+                answer += ` और ${customersOnDate - 5} अन्य`;
+              }
+              answer += `\n`;
+            }
+            
+            if (invoiceList && invoiceList.length > 0) {
+              const invoices = invoiceList.split(',').slice(0, 5);
+              answer += `• बिल नंबर: ${invoices.join(', ')}`;
+              if (ordersOnDate > 5) {
+                answer += ` और ${ordersOnDate - 5} अन्य`;
+              }
+            }
+          } else {
+            answer = `📅 Report for ${day} ${monthName} ${year} (${formattedDate}):\n\n` +
+                    `• Total Orders: ${ordersOnDate}\n` +
+                    `• Total Sales: ₹${formatNumber(salesOnDate, 'english')}\n` +
+                    `• Customers: ${customersOnDate}\n` +
+                    `• Delivery Charges: ₹${formatNumber(deliveryCharges, 'english')}\n`;
+            
+            if (customerList && customerList.length > 0) {
+              const customers = customerList.split(',').slice(0, 5);
+              answer += `• Customers: ${customers.join(', ')}`;
+              if (customersOnDate > 5) {
+                answer += ` and ${customersOnDate - 5} others`;
+              }
+              answer += `\n`;
+            }
+            
+            if (invoiceList && invoiceList.length > 0) {
+              const invoices = invoiceList.split(',').slice(0, 5);
+              answer += `• Invoice Numbers: ${invoices.join(', ')}`;
+              if (ordersOnDate > 5) {
+                answer += ` and ${ordersOnDate - 5} more`;
+              }
+            }
+          }
+          
+          return res.json({ 
+            success: true, 
+            answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+            data: { 
+              date: formattedDate,
+              day,
+              month,
+              year,
+              ordersOnDate, 
+              salesOnDate, 
+              customersOnDate, 
+              deliveryCharges,
+              customerList: customerList ? customerList.split(',').map(c => c.trim()) : [],
+              invoiceList: invoiceList ? invoiceList.split(',').map(i => i.trim()) : []
+            }
+          });
+        }
+      }
+    }
+
+    // ==============================================
+    // FALLBACK: Generic response for unknown queries
+    // ==============================================
+       // ==============================================
     // FALLBACK: Generic response for unknown queries
     // ==============================================
     let fallbackResponse;
@@ -2275,6 +2763,24 @@ if (q.includes("bill") || q.includes("invoice") || q.includes("बिल") || q.
       fallbackResponse = englishResponses[Math.floor(Math.random() * englishResponses.length)];
     }
     
+    // Check if it's a date query that wasn't understood
+    const datePatterns = [
+      /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/, // dd/mm/yy
+      /\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i, // 4 Feb
+      /\d{1,2}\s+(january|february|march|april|may|june|july|august|september|october|november|december)/i, // 4 February
+    ];
+    
+    const hasDatePattern = datePatterns.some(pattern => pattern.test(q));
+    
+    if (hasDatePattern) {
+      // If it looks like a date query but wasn't processed, give a specific message
+      if (language === 'hindi') {
+        fallbackResponse = `${MY_NAME} जी, कृपया तारीख स्पष्ट रूप से बताएं।\nउदाहरण:\n• "04/02/26 के ऑर्डर"\n• "4 फरवरी 2026 के ऑर्डर"\n• "फरवरी 2026 के ऑर्डर"`;
+      } else {
+        fallbackResponse = `${MY_NAME} ji, please specify the date clearly.\nExamples:\n• "Orders on 04/02/26"\n• "Orders on 4 February 2026"\n• "Orders in February 2026"`;
+      }
+    }
+    
     return res.json({ 
       success: true,
       answer: `${getPersonalizedGreeting(language)}\n\n${fallbackResponse}${getSignature(language)}`,
@@ -2282,21 +2788,20 @@ if (q.includes("bill") || q.includes("invoice") || q.includes("बिल") || q.
         assistant: language === 'hindi' ? `${MY_NAME} का AI असिस्टेंट` : `${MY_NAME}'s AI Assistant`,
         language: language,
         suggestions: language === 'hindi' ? [
-          "कुल ऑर्डर कितने हैं?",
-          "आज की बिक्री कितनी हुई?",
+          "आज के ऑर्डर कितने?",
+          "04/02/26 के ऑर्डर कितने?",
+          "फरवरी 2026 में कुल ऑर्डर",
           "कितना स्टॉक बचा है?",
-          "बकाया राशि कितनी है?",
-          "टॉप ग्राहक कौन है?"
+          "बकाया राशि कितनी है?"
         ] : [
-          "How many total orders?",
-          "What are today's sales?",
+          "How many orders today?",
+          "How many orders on 04/02/26?",
+          "Total orders in February 2026",
           "How much stock is left?",
-          "What's the outstanding amount?",
-          "Who are the top customers?"
+          "What's the outstanding amount?"
         ]
       }
     });
-
   } catch (err) {
     console.error("AI Error:", err.message);
     
