@@ -43,3 +43,13 @@ coverage/
 # Misc
 *.bak
 *.orig
+
+# WhatsApp sessions
+.session/
+.session-*
+sessions/
+auth_info/
+auth_info_baileys/
+baileys_auth_info/
+whatsapp-session/
+wwebjs_auth/
