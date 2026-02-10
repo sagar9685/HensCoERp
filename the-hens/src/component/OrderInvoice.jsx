@@ -103,47 +103,45 @@ const COMPANY_INFO = {
   hsnCode: "04072100",
 };
 
-
-
 // --- Main Component ---
 const InvoiceGenerator = ({ orderData, onClose }) => {
-const downloadPdf = async () => {
-  const element = document.getElementById("invoice-print-content");
-  const clone = element.cloneNode(true);
-  
-  const container = document.createElement("div");
-  container.style.position = "absolute";
-  container.style.top = "-9999px";
-  container.style.width = "1200px"; // चौड़ाई बढ़ा दी ताकि कॉलम न दबें
-  
-  clone.style.width = "1150px";
-  clone.style.fontSize = "12px"; // फॉन्ट साइज़ फिक्स करें
-  
-  container.appendChild(clone);
-  document.body.appendChild(container);
+  const downloadPdf = async () => {
+    const element = document.getElementById("invoice-print-content");
+    const clone = element.cloneNode(true);
 
-  try {
-    const canvas = await html2canvas(clone, {
-      scale: 1.5, // 2 से घटाकर 1.5 किया ताकि फाइल बहुत भारी न हो और फिट आए
-      useCORS: true,
-      windowWidth: 1200,
-    });
+    const container = document.createElement("div");
+    container.style.position = "absolute";
+    container.style.top = "-9999px";
+    container.style.width = "1200px"; // चौड़ाई बढ़ा दी ताकि कॉलम न दबें
 
-    const imgData = canvas.toDataURL("image/jpeg", 0.9);
-    const pdf = new jsPDF("p", "mm", "a4");
-    
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const imgWidth = pageWidth - 10; // 5mm मार्जिन दोनों तरफ
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    clone.style.width = "1150px";
+    clone.style.fontSize = "12px"; // फॉन्ट साइज़ फिक्स करें
 
-    pdf.addImage(imgData, "JPEG", 5, 10, imgWidth, imgHeight);
-    pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
-  } catch (err) {
-    console.error(err);
-  } finally {
-    document.body.removeChild(container);
-  }
-};
+    container.appendChild(clone);
+    document.body.appendChild(container);
+
+    try {
+      const canvas = await html2canvas(clone, {
+        scale: 1.5, // 2 से घटाकर 1.5 किया ताकि फाइल बहुत भारी न हो और फिट आए
+        useCORS: true,
+        windowWidth: 1200,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.9);
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pageWidth - 10; // 5mm मार्जिन दोनों तरफ
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "JPEG", 5, 10, imgWidth, imgHeight);
+      pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      document.body.removeChild(container);
+    }
+  };
   // const handlePrint = () => {
   //     window.print();
   // };
@@ -170,7 +168,7 @@ const downloadPdf = async () => {
 
   // Parse product data
   const productItems = [];
-  console.log(productItems,"productItems in admin invoice")
+  console.log(productItems, "productItems in admin invoice");
   let subTotalVal = 0;
   let totalQty = 0;
 
@@ -186,43 +184,35 @@ const downloadPdf = async () => {
 
     const weight = orderData.Weights ? orderData.Weights.split(",") : [];
 
-    const upcs = orderData.ProductUPCs
-  ? orderData.ProductUPCs.split(",")
-  : [];
+    const upcs = orderData.ProductUPCs ? orderData.ProductUPCs.split(",") : [];
 
+    const mrps = orderData.MRPs ? orderData.MRPs.split(",") : [];
 
+    const Gst_No = orderData.Gst_No ? orderData.Gst_No.split(",") : [];
 
-const mrps = orderData.MRPs
-  ? orderData.MRPs.split(",")
-  : [];
+    const PAN_No = orderData.PAN_No ? orderData.PAN_No.split(",") : [];
 
-  const Gst_No = orderData.Gst_No ? orderData.Gst_No.split(",")
-  : [];
+    const Po_No = orderData.Po_No ? orderData.Po_No.split(",") : [];
 
-   const PAN_No = orderData.PAN_No ? orderData.PAN_No.split(",")
-  : [];
+    const Po_Date = orderData.Po_Date ? orderData.Po_Date.split(",") : [];
 
-  const Po_No = orderData.Po_No? orderData.Po_No.split(",") : [];
+    const dname = orderData.DeliveryManName
+      ? orderData.DeliveryManName.split(",")
+      : [];
 
-  const Po_Date = orderData.Po_Date ? orderData.Po_Date.split(',') : [];
+    console.log(mrps, Gst_No, Po_No, Po_Date, "abhi new");
 
-  const dname = orderData.DeliveryManName ? orderData.DeliveryManName.split(',') : []
-  
-console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
-
-    
     names.forEach((name, i) => {
       const q = Number(qtys[i] || 0);
       totalQty += q;
       const r = Number(rates[i] || 0);
       const t = q * r;
       const w = weight[i] || " ";
-      const g = Gst_No[i] || ' ';
-      const p = PAN_No[i] || ' ';
-      const po = Po_No[i] || '';
+      const g = Gst_No[i] || " ";
+      const p = PAN_No[i] || " ";
+      const po = Po_No[i] || "";
       const pd = Po_Date[i] || "";
-      const dn = dname[i] || '';
-     
+      const dn = dname[i] || "";
 
       subTotalVal += t;
       productItems.push({
@@ -230,22 +220,22 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
         productType: types[i] || "N/A",
         weight: w,
         qty: q,
-        Gst_No : g,
-        DeliveryManName : dn,
-        PAN_No : p,
-        Po_No : po,
-        Po_Date : pd,
-        BasicCost : r,
+        Gst_No: g,
+        DeliveryManName: dn,
+        PAN_No: p,
+        Po_No: po,
+        Po_Date: pd,
+        BasicCost: r,
         rate: r.toFixed(2),
         totalAmt: t.toFixed(2),
         hsn: COMPANY_INFO.hsnCode,
         gstRate: 0,
-         ProductUPC: upcs[i]?.trim() || "N/A",
-  MRP: mrps[i]?.trim() || "0",
+        ProductUPC: upcs[i]?.trim() || "N/A",
+        MRP: mrps[i]?.trim() || "0",
       });
     });
   }
- const totalItemsCount = productItems.length;
+  const totalItemsCount = productItems.length;
   const deliveryChargeVal = orderData?.DeliveryCharge
     ? Number(orderData.DeliveryCharge)
     : 0;
@@ -312,7 +302,7 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                     <p>
                       <strong>Invoice Date:</strong>{" "}
                       {new Date(
-                        orderData.OrderDate || new Date()
+                        orderData.OrderDate || new Date(),
                       ).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "short",
@@ -341,8 +331,9 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                       <FaPhone /> {orderData.ContactNo || "Contact Number"}
                     </p>
                     <p className={styles.customerGst}>
-                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"} <br></br>
-                       <strong>PAN:</strong> {orderData.PAN_No || "N/A"}
+                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"}{" "}
+                      <br></br>
+                      <strong>PAN:</strong> {orderData.PAN_No || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -354,7 +345,7 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                     <p>
                       <strong>Order Date:</strong>{" "}
                       {new Date(
-                        orderData.OrderDate || new Date()
+                        orderData.OrderDate || new Date(),
                       ).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "short",
@@ -372,34 +363,44 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                     <p>
                       <strong>Delivery Date:</strong>{" "}
                       {new Date(
-                        orderData.DeliveryDate || new Date()
+                        orderData.DeliveryDate || new Date(),
                       ).toLocaleDateString("en-GB")}
                     </p>
-                    <p><strong> P.O. Number -: </strong>    {orderData.Po_No || "N/A"} <br></br>
-                    <strong> P.O. Date -: </strong> {""}
-                    {new Date(
-                        orderData.Po_Date || new Date()
+                    <p>
+                      <strong> P.O. Number -: </strong>{" "}
+                      {orderData.Po_No || "N/A"} <br></br>
+                      <strong> P.O. Date -: </strong> {""}
+                      {new Date(
+                        orderData.Po_Date || new Date(),
                       ).toLocaleDateString("en-GB")}
-                    </p> 
-                    <p><strong> Payment Terms -: 7 Days </strong></p>
-                      
+                    </p>
+                    <p>
+                      <strong> Payment Terms -: 7 Days </strong>
+                    </p>
                   </div>
                 </div>
 
-
-               <div className={styles.detailBox}>
+                <div className={styles.detailBox}>
                   <h3>
                     <FaFileAlt /> FSSAI
                   </h3>
                   <div className={styles.orderInfo}>
-                    <p><strong> FSSAI - Phoenix Poultry 11424170000122 </strong> <br></br>
-                    <strong> FSSAI - VND Ventures Pvt. LTD. 11421170000373 </strong> <br></br>
-                       <strong> FSSAI - The Hens`s Co.  21420170000432 </strong> <br></br>
-                    </p> 
-                      
+                    <p>
+                      <strong> FSSAI - Phoenix Poultry 11424170000122 </strong>{" "}
+                      <br></br>
+                      <strong>
+                        {" "}
+                        FSSAI - VND Ventures Pvt. LTD. 11421170000373{" "}
+                      </strong>{" "}
+                      <br></br>
+                      <strong>
+                        {" "}
+                        FSSAI - The Hens`s Co. 21420170000432{" "}
+                      </strong>{" "}
+                      <br></br>
+                    </p>
                   </div>
                 </div>
-
               </div>
 
               {/* --- PRODUCTS TABLE --- */}
@@ -408,20 +409,23 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                   <thead>
                     <tr>
                       <th className={styles.textCenter}>#</th>
-                       <th>Product Description</th> 
-                         <th>Product Weight</th> 
-                    
+                      <th>Product Description</th>
+                      <th>Product Weight</th>
+
                       <th className={styles.textCenter}>HSN Code</th>
-                       <th className={styles.textCenter}>Product UPC</th>
-                     
-                      <th className={styles.textRight}> Basic Cost Price (₹)</th>
-                        <th className={styles.textRight}> CGST %</th>
-                          <th className={styles.textRight}> SGST %</th>
-                            <th className={styles.textRight}> Landing Rate</th>
+                      <th className={styles.textCenter}>Product UPC</th>
+
+                      <th className={styles.textRight}>
+                        {" "}
+                        Basic Cost Price (₹)
+                      </th>
+                      <th className={styles.textRight}> CGST %</th>
+                      <th className={styles.textRight}> SGST %</th>
+                      <th className={styles.textRight}> Landing Rate</th>
                       <th className={styles.textCenter}>Qty</th>
-                      
+
                       <th className={styles.textRight}>MRP (₹)</th>
-                        <th className={styles.textRight}>Total Amt</th>
+                      <th className={styles.textRight}>Total Amt</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -430,7 +434,7 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                         <td className={styles.textCenter}>{i + 1}</td>
                         <td>
                           <span style={{ fontWeight: "bold" }}>
-                            { item.productType}
+                            {item.productType}
                           </span>
                           <br />
                         </td>
@@ -444,13 +448,13 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                         <td className={styles.textCenter}>{item.hsn}</td>
                         <td className={styles.textCenter}>{item.ProductUPC}</td>
                         <td className={styles.textCenter}>{item.BasicCost}</td>
-                            <td className={styles.textCenter}>{item.gstRate}</td>
-                                <td className={styles.textCenter}>{item.gstRate}</td>
-                                <td className={styles.textCenter}>{item.BasicCost}</td>
-                        <td className={styles.textCenter}>{item.qty}</td> 
-                         
-                           <td className={styles.textCenter}>{item.MRP}</td>
-                            <td className={styles.textCenter}>{item.totalAmt}</td>
+                        <td className={styles.textCenter}>{item.gstRate}</td>
+                        <td className={styles.textCenter}>{item.gstRate}</td>
+                        <td className={styles.textCenter}>{item.BasicCost}</td>
+                        <td className={styles.textCenter}>{item.qty}</td>
+
+                        <td className={styles.textCenter}>{item.MRP}</td>
+                        <td className={styles.textCenter}>{item.totalAmt}</td>
                       </tr>
                     ))}
                     {productItems.length === 0 && (
@@ -540,7 +544,6 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                         </p>
                       </div>
                     </div>
-                    
                   </div>
                 </div>
 
@@ -548,14 +551,14 @@ console.log(mrps,Gst_No,Po_No,Po_Date, "abhi new")
                 <div className={styles.footerColumn}>
                   <div className={styles.totalsBox}>
                     <div className={styles.totalRow}>
-      <span>Total Items:</span>
-      <span>{totalItemsCount}</span>
-    </div>
-    <div className={styles.totalRow}>
-      <span>Total Quantity:</span>
-      <span>{totalQty}</span>
-    </div>
-    <hr />
+                      <span>Total Items:</span>
+                      <span>{totalItemsCount}</span>
+                    </div>
+                    <div className={styles.totalRow}>
+                      <span>Total Quantity:</span>
+                      <span>{totalQty}</span>
+                    </div>
+                    <hr />
                     <div className={styles.totalRow}>
                       <span>Sub Total:</span>
                       <span>₹{subTotalVal.toFixed(2)}</span>

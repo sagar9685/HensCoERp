@@ -17,6 +17,7 @@ const customerAnalysisRoutes = require("./routes/customerAnalysisRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const analyticsRoutes = require("./routes/analyticRoutes");
 const askAiRoutes = require("./routes/askAiRoutes");
+const productionRoutes = require("./routes/productionRoutes");
 
 dotenv.config();
 const app = express();
@@ -38,12 +39,13 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/ai", askAiRoutes);
 
-
 app.use("/api/users", authRoutes);
 app.use("/api/users", paymentRoutes);
 app.use("/api/users", deliveryMenRoutes);
 app.use("/api/users", assignedOrderRoutes);
 app.use("/api/customer-analysis", customerAnalysisRoutes);
+
+app.use("/api/production", productionRoutes);
 
 const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

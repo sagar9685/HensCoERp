@@ -5,7 +5,7 @@ and uses a modal for on-screen preview.
 */
 
 :root {
-  --primary-color: rgb(219, 32, 36); /* Blue for highlights and buttons */
+  --primary-color:#db2024; /* Blue for highlights and buttons */
   --secondary-color: #6c757d; /* Grey for borders and secondary text */
   --accent-color: #28a745; /* Green for success/download */
   --text-dark: #343a40;
@@ -157,7 +157,7 @@ We force a smaller font size and tighter padding.
 }
 
 .logoImage {
-  width:220%;
+  width:400%;
   height: 100%;
   object-fit: contain;
 }
@@ -172,12 +172,12 @@ We force a smaller font size and tighter padding.
   display: flex;
   align-items: center;
   gap: 5px;
-  margin-left: 65px;
+  margin-left: 165px;
 }
 
 .companyDetails strong {
   font-size: 1.1em;
-  color: var(--primary-color);
+  color: #db2024;
 }
 
 .invoiceMeta {
@@ -188,7 +188,7 @@ We force a smaller font size and tighter padding.
 
 .invoiceMeta h1 {
   font-size: 1.2rem;
-  color: var(--primary-color);
+  color: #db2024;
   margin: 0 0 5px 0;
   font-weight: 700;
 }
@@ -229,7 +229,7 @@ Uses flexbox for side-by-side layout.
 .customerInfo p,
 .orderInfo p {
   margin: 1px 0;
-  font-size: 0.8rem;
+  font-size: 1rem;
   font-family: unset;
 }
 
@@ -320,7 +320,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   align-items: center;
   gap: 5px;
   font-weight: 700;
-  color: var(--primary-color);
+  color: #db2024;
   font-size: 1em;
 }
 
@@ -335,7 +335,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 .termsBox h4 {
   margin: 0 0 5px 0;
   font-size: 1em;
-  color: var(--secondary-color);
+  color: #db2024;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -389,7 +389,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 
 .qrText p:first-child {
   font-weight: 700;
-  color: var(--primary-color);
+  color: #db2024;
   margin-bottom: 2px;
 }
 
@@ -405,7 +405,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 .termsBox h4 {
   margin: 0 0 10px 0; /* Increased bottom margin */
   font-size: 1.1em; /* Slightly larger */
-  color: var(--primary-color); /* Changed to primary color */
+  color: #db2024; /* Changed to primary color */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -445,7 +445,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 .paymentInfo h4 {
   margin: 0 0 5px 0;
   font-size: 1.1em;
-  color: var(--primary-color);
+  color: #db2024;
   font-weight: 700;
 }
 
@@ -510,7 +510,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   display: flex;
   justify-content: space-between;
   margin: 1px 0;
-  font-size: 0.95em;
+  font-size: 1rem;
   font-weight: 500;
   padding: 1px 0;
 }
@@ -559,7 +559,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   font-weight: 600;
   font-size: 0.9em;
   margin-top: 2px;
-  color: var(--primary-color);
+  color: #db2024;
   justify-content: center;
 }
 

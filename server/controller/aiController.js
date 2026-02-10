@@ -1715,61 +1715,88 @@ if ((q.includes("month") || q.includes("mahine") || q.includes("महीने"
     // ==============================================
     
     // 4.1 "Warehouse mein abhi kitna maal bacha hai?"
-    if (q.includes("warehouse") || q.includes("maal bacha") || q.includes("स्टॉक") || q.includes("इन्वेंटरी")) {
-      const result = await pool.request().query(`
-        SELECT 
-          item_name,
-          SUM(quantity) AS current_stock,
-          SUM(quantity * rate) AS stock_value
-        FROM Stock
-        WHERE quantity > 0
-        GROUP BY item_name
-        ORDER BY item_name
-      `);
-      
-      const stockItems = result.recordset;
-      const totalStockValue = stockItems.reduce((sum, item) => sum + (item.stock_value || 0), 0);
-      const totalUnits = stockItems.reduce((sum, item) => sum + (item.current_stock || 0), 0);
-      
-      let answer;
-      if (language === 'hindi') {
-        answer = `📦 वेयरहाउस में उपलब्ध स्टॉक:\n\n`;
-        
-        if (stockItems.length === 0) {
-          answer += "कोई स्टॉक उपलब्ध नहीं है।";
+    // 4.1 "Warehouse mein abhi kitna maal bacha hai?"
+
+    // Add this condition for "stock status" or "select * from stock" type queries
+
+    // ==============================================
+// SECTION 4: STOCK & INVENTORY
+// ==============================================
+
+// 4.1 "Warehouse mein abhi kitna maal bacha hai?" or just "Stock"
+if (q === "stock" || q.includes("stock status") || q.includes("maal bacha") || q.includes("इन्वेंटरी")) {
+    try {
+        const result = await pool.request().query(`
+            SELECT 
+                s.item_name,
+                SUM(s.quantity) AS current_stock,
+                -- Joining with RateHistory to get the latest rate for each product
+                MAX(r.Rate) AS latest_rate,
+                SUM(s.quantity * ISNULL(r.Rate, 0)) AS stock_value
+            FROM Stock s
+            OUTER APPLY (
+                SELECT TOP 1 Rate 
+                FROM RateHistory 
+                -- Assuming item_name or a similar ID links these tables
+                WHERE ProductTypeId = s.id 
+                ORDER BY RateDate DESC
+            ) r
+            WHERE s.quantity > 0
+            GROUP BY s.item_name
+            ORDER BY s.item_name
+        `);
+
+        const stockItems = result.recordset;
+        const totalStockValue = stockItems.reduce((sum, item) => sum + (item.stock_value || 0), 0);
+        const totalUnits = stockItems.reduce((sum, item) => sum + (item.current_stock || 0), 0);
+
+        let answer;
+        if (language === 'hindi') {
+            answer = `📦 **वेयरहाउस स्टॉक रिपोर्ट:**\n\n`;
+
+            if (stockItems.length === 0) {
+                answer += "वर्तमान में कोई स्टॉक उपलब्ध नहीं है।";
+            } else {
+                stockItems.forEach((item, index) => {
+                    answer += `${index + 1}. **${item.item_name}**\n`;
+                    answer += `   • मात्रा: ${formatNumber(item.current_stock, 'hindi')} यूनिट\n`;
+                    answer += `   • ताज़ा दर: ₹${formatNumber(item.latest_rate || 0, 'hindi')}\n`;
+                    answer += `   • कुल मूल्य: ₹${formatNumber(item.stock_value, 'hindi')}\n\n`;
+                });
+
+                answer += `---------------------------\n`;
+                answer += `💰 **कुल स्टॉक वैल्यू:** ₹${formatNumber(totalStockValue, 'hindi')}\n`;
+                answer += `📊 **कुल यूनिट्स:** ${formatNumber(totalUnits, 'hindi')}`;
+            }
         } else {
-          stockItems.forEach((item, index) => {
-            answer += `${index + 1}. ${item.item_name}\n`;
-            answer += `   • मात्रा: ${formatNumber(item.current_stock, 'hindi')} यूनिट\n`;
-            answer += `   • मूल्य: ₹${formatNumber(item.stock_value, 'hindi')}\n\n`;
-          });
-          
-          answer += `💰 कुल स्टॉक मूल्य: ₹${formatNumber(totalStockValue, 'hindi')}\n`;
-          answer += `📊 कुल यूनिट: ${formatNumber(totalUnits, 'hindi')}`;
+            answer = `📦 **Warehouse Stock Report:**\n\n`;
+
+            if (stockItems.length === 0) {
+                answer += "No stock available at the moment.";
+            } else {
+                stockItems.forEach((item, index) => {
+                    answer += `${index + 1}. **${item.item_name}**\n`;
+                    answer += `   • Quantity: ${formatNumber(item.current_stock, 'english')} units\n`;
+                    answer += `   • Latest Rate: ₹${formatNumber(item.latest_rate || 0, 'english')}\n`;
+                    answer += `   • Value: ₹${formatNumber(item.stock_value, 'english')}\n\n`;
+                });
+
+                answer += `---------------------------\n`;
+                answer += `💰 **Total Stock Value:** ₹${formatNumber(totalStockValue, 'english')}\n`;
+                answer += `📊 **Total Units:** ${formatNumber(totalUnits, 'english')}`;
+            }
         }
-      } else {
-        answer = `📦 Available Stock in Warehouse:\n\n`;
-        
-        if (stockItems.length === 0) {
-          answer += "No stock available.";
-        } else {
-          stockItems.forEach((item, index) => {
-            answer += `${index + 1}. ${item.item_name}\n`;
-            answer += `   • Quantity: ${formatNumber(item.current_stock, 'english')} units\n`;
-            answer += `   • Value: ₹${formatNumber(item.stock_value, 'english')}\n\n`;
-          });
-          
-          answer += `💰 Total Stock Value: ₹${formatNumber(totalStockValue, 'english')}\n`;
-          answer += `📊 Total Units: ${formatNumber(totalUnits, 'english')}`;
-        }
-      }
-      
-      return res.json({ 
-        success: true, 
-        answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
-        data: { stockItems, totalStockValue, totalUnits }
-      });
+
+        return res.json({
+            success: true,
+            answer: `${getPersonalizedGreeting(language)}\n\n${answer}${getSignature(language)}`,
+            data: { stockItems, totalStockValue, totalUnits }
+        });
+    } catch (err) {
+        console.error("Internal Stock Error:", err.message);
+        throw err; // This will be caught by your main catch block
     }
+}
 
     // 4.2 "Tray aur Box ki current quantity kitni hai?"
     if (q.includes("tray") || q.includes("box") || q.includes("ट्रे") || q.includes("बॉक्स")) {
@@ -3722,10 +3749,12 @@ exports.getWeeklySummary = async (req, res) => {
 };
 
 // Quick Stats Function
-exports.getQuickStats = async (req, res) => {
+ // Updated getQuickStats function in aiController.js
+ exports.getQuickStats = async (req, res) => {
   try {
     const pool = await poolPromise;
 
+    // Run queries with protective ISNULL and COALESCE logic
     const [
       ordersResult,
       stockResult,
@@ -3735,47 +3764,49 @@ exports.getQuickStats = async (req, res) => {
       outstandingResult
     ] = await Promise.all([
       pool.request().query(`SELECT COUNT(*) AS TotalOrders FROM OrdersTemp`),
+      
       pool.request().query(`SELECT COUNT(DISTINCT item_name) AS StockItems FROM Stock WHERE quantity > 0`),
-      pool.request().query(`SELECT SUM(Total) AS TotalSales FROM orderItems`),
+      
+      pool.request().query(`SELECT ISNULL(SUM(Total), 0) AS TotalSales FROM orderItems`),
+      
       pool.request().query(`
         SELECT 
           COUNT(CASE WHEN DeliveryStatus NOT IN ('Complete', 'Cancel') THEN 1 END) AS PendingDeliveries,
           COUNT(CASE WHEN DeliveryStatus = 'Complete' THEN 1 END) AS CompletedDeliveries
         FROM AssignedOrders
       `),
+      
       pool.request().query(`SELECT COUNT(DISTINCT CustomerName) AS TotalCustomers FROM OrdersTemp`),
+      
+      // Hardened Outstanding Query: Uses LEFT JOIN to avoid losing data if mappings are missing
       pool.request().query(`
-        SELECT SUM(op.Amount) AS TotalOutstanding
+        SELECT ISNULL(SUM(op.Amount), 0) AS TotalOutstanding
         FROM OrderPayments op
-        JOIN AssignedOrders ao ON op.AssignID = ao.AssignID
+        INNER JOIN AssignedOrders ao ON op.AssignID = ao.AssignID
         WHERE ao.PaymentReceived = 0
       `)
     ]);
 
     const stats = {
-      totalOrders: ordersResult.recordset[0].TotalOrders || 0,
-      stockItems: stockResult.recordset[0].StockItems || 0,
-      totalSales: salesResult.recordset[0].TotalSales || 0,
-      pendingDeliveries: deliveryResult.recordset[0].PendingDeliveries || 0,
-      completedDeliveries: deliveryResult.recordset[0].CompletedDeliveries || 0,
-      totalCustomers: customersResult.recordset[0].TotalCustomers || 0,
-      totalOutstanding: outstandingResult.recordset[0].TotalOutstanding || 0,
-      timestamp: new Date().toISOString(),
-      analyzedBy: `${MY_NAME}'s AI Assistant`
+      totalOrders: ordersResult.recordset[0]?.TotalOrders || 0,
+      stockItems: stockResult.recordset[0]?.StockItems || 0,
+      totalSales: salesResult.recordset[0]?.TotalSales || 0,
+      pendingDeliveries: deliveryResult.recordset[0]?.PendingDeliveries || 0,
+      completedDeliveries: deliveryResult.recordset[0]?.CompletedDeliveries || 0,
+      totalCustomers: customersResult.recordset[0]?.TotalCustomers || 0,
+      totalOutstanding: outstandingResult.recordset[0]?.TotalOutstanding || 0,
+      timestamp: new Date().toISOString()
     };
 
-    res.json({
-      success: true,
-      message: `${MY_NAME} ji, quick stats fetched successfully`,
-      data: stats
-    });
+    res.json({ success: true, data: stats });
 
   } catch (err) {
-    console.error("Quick Stats Error:", err);
-    res.status(500).json({ 
+    console.error("Critical Quick Stats Error:", err.message);
+    // Send a 200 with success: false so the frontend can handle it gracefully instead of crashing
+    res.status(200).json({ 
       success: false, 
-      message: `${MY_NAME} ji, failed to fetch quick stats`,
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: "Database query failed",
+      data: { totalOrders: 0, totalSales: 0, stockItems: 0 } // Fallback empty data
     });
   }
 };

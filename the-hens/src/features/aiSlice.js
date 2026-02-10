@@ -63,7 +63,7 @@ const aiSlice = createSlice({
     assistantInfo: null,
     loading: false,
     error: null,
-    language: 'hindi',
+    language: 'english', // Changed from 'hindi' to 'english'
     showQuickStats: false,
   },
   reducers: {

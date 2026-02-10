@@ -161,7 +161,7 @@ const CATEGORY_QUESTIONS = {
 };
 
 const AIAssistant = () => {
-  const dispatch = useDispatch();
+   const dispatch = useDispatch();
   const {
     question,
     answer,
@@ -174,22 +174,43 @@ const AIAssistant = () => {
     showQuickStats,
   } = useSelector((state) => state.ai);
 
-  const [showHistory, setShowHistory] = useState(false);
+
+ const [showHistory, setShowHistory] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [showCategories, setShowCategories] = useState(false);
   const [selectedDate, setSelectedDate] = useState("");
   const chatEndRef = useRef(null);
+  const [quickStatsError, setQuickStatsError] = useState(null);
 
   // Scroll to bottom of chat
+    useEffect(() => {
+    const loadQuickStats = async () => {
+      try {
+        const result = await dispatch(fetchQuickStats());
+        if (fetchQuickStats.rejected.match(result)) {
+          setQuickStatsError("Failed to load quick stats");
+        }
+      } catch (err) {
+        setQuickStatsError(err.message);
+      }
+    };
+    
+    loadQuickStats();
+    dispatch(fetchAssistantInfo(language));
+  }, [dispatch, language]);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [answer, conversation]);
 
   // Fetch quick stats on component mount
-  useEffect(() => {
-    dispatch(fetchQuickStats());
-    dispatch(fetchAssistantInfo(language));
-  }, [dispatch, language]);
+ useEffect(() => {
+  dispatch(fetchQuickStats()).catch(error => {
+    console.error("Failed to fetch quick stats:", error);
+  });
+  dispatch(fetchAssistantInfo(language));
+}, [dispatch, language]);
+
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -340,87 +361,141 @@ const AIAssistant = () => {
       </div>
 
       {/* Quick Stats Modal */}
-      {showQuickStats && quickStats && (
-        <div className={styles.quickStatsModal}>
-          <div className={styles.quickStatsContent}>
-            <div className={styles.modalHeader}>
-              <h3>📊 {language === "hindi" ? "त्वरित बिजनेस आंकड़े" : "Quick Business Stats"}</h3>
-              <button
-                className={styles.closeBtn}
-                onClick={() => dispatch(toggleQuickStats())}
-              >
-                ✕
-              </button>
+    {showQuickStats && (
+  <div className={styles.quickStatsModal}>
+    <div className={styles.quickStatsContent}>
+      <div className={styles.modalHeader}>
+        <h3>📊 {language === "hindi" ? "त्वरित बिजनेस आंकड़े" : "Quick Business Stats"}</h3>
+        <button
+          className={styles.closeBtn}
+          onClick={() => dispatch(toggleQuickStats())}
+        >
+          ✕
+        </button>
+      </div>
+      
+      {quickStats ? (
+        // Render stats normally
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>📊</div>
+            <div className={styles.statValue}>
+              {quickStats.totalOrders?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
             </div>
-            
-            <div className={styles.statsGrid}>
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>📊</div>
-                <div className={styles.statValue}>{quickStats.totalOrders?.toLocaleString()}</div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "कुल ऑर्डर" : "Total Orders"}
-                </div>
-              </div>
-              
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>💰</div>
-                <div className={styles.statValue}>
-                  ₹{quickStats.totalSales?.toLocaleString()}
-                </div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "कुल बिक्री" : "Total Sales"}
-                </div>
-              </div>
-              
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>👥</div>
-                <div className={styles.statValue}>{quickStats.totalCustomers?.toLocaleString()}</div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "कुल ग्राहक" : "Total Customers"}
-                </div>
-              </div>
-              
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>🚚</div>
-                <div className={styles.statValue}>
-                  {quickStats.completedDeliveries?.toLocaleString()}
-                </div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "पूर्ण डिलीवरी" : "Completed Deliveries"}
-                </div>
-              </div>
-              
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>📦</div>
-                <div className={styles.statValue}>{quickStats.stockItems?.toLocaleString()}</div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "स्टॉक आइटम" : "Stock Items"}
-                </div>
-              </div>
-              
-              <div className={styles.statCard}>
-                <div className={styles.statIcon}>⚠️</div>
-                <div className={styles.statValue}>
-                  ₹{quickStats.totalOutstanding?.toLocaleString()}
-                </div>
-                <div className={styles.statLabel}>
-                  {language === "hindi" ? "बकाया राशि" : "Outstanding Amount"}
-                </div>
-              </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "कुल ऑर्डर" : "Total Orders"}
             </div>
-            
-            <div className={styles.statsFooter}>
-              <small>
-                {language === "hindi" ? "अंतिम अपडेट: " : "Last Updated: "}
-                {new Date(quickStats.timestamp).toLocaleString()}
-              </small>
-              <small>
-                {language === "hindi" ? "Sagar के AI द्वारा विश्लेषित" : "Analyzed by Sagar's AI"}
-              </small>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>💰</div>
+            <div className={styles.statValue}>
+              ₹{quickStats.totalSales?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "कुल बिक्री" : "Total Sales"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>👥</div>
+            <div className={styles.statValue}>
+              {quickStats.totalCustomers?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "कुल ग्राहक" : "Total Customers"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>🚚</div>
+            <div className={styles.statValue}>
+              {quickStats.completedDeliveries?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "पूर्ण डिलीवरी" : "Completed Deliveries"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>📦</div>
+            <div className={styles.statValue}>
+              {quickStats.stockItems?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "स्टॉक आइटम" : "Stock Items"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>⚠️</div>
+            <div className={styles.statValue}>
+              ₹{quickStats.totalOutstanding?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "बकाया राशि" : "Outstanding Amount"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>⏳</div>
+            <div className={styles.statValue}>
+              {quickStats.pendingDeliveries?.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN') || 0}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "पेंडिंग डिलीवरी" : "Pending Deliveries"}
+            </div>
+          </div>
+          
+          <div className={styles.statCard}>
+            <div className={styles.statIcon}>📈</div>
+            <div className={styles.statValue}>
+              {quickStats.avgOrderValue ? `₹${quickStats.avgOrderValue.toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN')}` : 'N/A'}
+            </div>
+            <div className={styles.statLabel}>
+              {language === "hindi" ? "औसत ऑर्डर" : "Avg Order Value"}
             </div>
           </div>
         </div>
+      ) : (
+        // Show loading or error message
+        <div className={styles.statsLoading}>
+          <div className={styles.loadingSpinner}>
+            <div className={styles.spinner}></div>
+          </div>
+          <p className={styles.loadingText}>
+            {language === "hindi" ? "बिजनेस आंकड़े लोड हो रहे हैं..." : "Loading business stats..."}
+          </p>
+          <p className={styles.loadingSubtext}>
+            {language === "hindi" ? "कृपया प्रतीक्षा करें..." : "Please wait..."}
+          </p>
+        </div>
       )}
+      
+      {quickStats && quickStats.timestamp && (
+        <div className={styles.statsFooter}>
+          <div className={styles.footerLeft}>
+            <small>
+              {language === "hindi" ? "अंतिम अपडेट: " : "Last Updated: "}
+              {new Date(quickStats.timestamp).toLocaleString(language === 'hindi' ? 'hi-IN' : 'en-IN', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </small>
+          </div>
+          <div className={styles.footerRight}>
+            <small>
+              {language === "hindi" ? "Sagar के AI द्वारा विश्लेषित" : "Analyzed by Sagar's AI"}
+            </small>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
       {/* Main Content */}
       <div className={styles.mainContent}>

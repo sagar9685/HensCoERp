@@ -18,8 +18,9 @@ import AnalysisDashboard from "./component/AnalysisDashBoard/AnalysisDashboard";
 import Support from "./component/Support";
 import RejectStock from "./component/user/RejectStock";
 import DeliverySummary from "./component/user/DeliverySummary";
- 
+
 import AIAssistant from "./component/AIAssistant";
+import ProductionUnit from "./pages/ProductinUnit";
 
 function App() {
   return (
@@ -74,11 +75,11 @@ function App() {
           }
         />
 
-         <Route
+        <Route
           path="/ai-question"
           element={
             <ProtectedRoute adminOnly={true}>
-            <AIAssistant/>
+              <AIAssistant />
             </ProtectedRoute>
           }
         />
@@ -110,11 +111,22 @@ function App() {
           }
         />
 
+        {/* Normal production page */}
+
+        <Route
+          path="/head"
+          element={
+            <ProtectedRoute production={true}>
+              <ProductionUnit />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Normal user page */}
         <Route
           path="/user"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <UserPage />
             </ProtectedRoute>
           }
@@ -123,7 +135,7 @@ function App() {
         <Route
           path="/datatable"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <UserDataTable />
             </ProtectedRoute>
           }
@@ -132,7 +144,7 @@ function App() {
         <Route
           path="/userForm"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <UserForm />
             </ProtectedRoute>
           }
@@ -141,7 +153,7 @@ function App() {
         <Route
           path="/chart"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <UserChart />
             </ProtectedRoute>
           }
@@ -150,7 +162,7 @@ function App() {
         <Route
           path="/stock"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <Stock />
             </ProtectedRoute>
           }
@@ -159,17 +171,17 @@ function App() {
         <Route
           path="/rejected-stock"
           element={
-            <ProtectedRoute>
+            <ProtectedRoute userOnly={true}>
               <RejectStock />
             </ProtectedRoute>
           }
         />
 
-         <Route
+        <Route
           path="/delivery-summary"
           element={
-            <ProtectedRoute>
-            <DeliverySummary/>
+            <ProtectedRoute userOnly={true}>
+              <DeliverySummary />
             </ProtectedRoute>
           }
         />
