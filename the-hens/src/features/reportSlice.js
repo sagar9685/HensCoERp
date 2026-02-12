@@ -7,14 +7,14 @@ export const fetchMonthlyReport = createAsyncThunk(
   async ({ year, month }, { rejectWithValue }) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/reports/monthly?year=${year}&month=${month}` // ← full URL
+        `${API_BASE_URL}/api/reports/monthly?year=${year}&month=${month}`, // ← full URL
       );
       return res.data;
     } catch (err) {
       console.error("Monthly API Error:", err.response?.data || err.message); // ← extra log
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 export const fetchWeeklyReport = createAsyncThunk(
@@ -22,14 +22,14 @@ export const fetchWeeklyReport = createAsyncThunk(
   async ({ year, month, week }, { rejectWithValue }) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/reports/weekly?year=${year}&month=${month}&week=${week}` // ← full URL
+        `${API_BASE_URL}/api/reports/weekly?year=${year}&month=${month}&week=${week}`, // ← full URL
       );
       return res.data;
     } catch (err) {
       console.error("Weekly API Error:", err.response?.data || err.message); // ← extra log
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 export const fetchDailyReport = createAsyncThunk(
@@ -45,7 +45,48 @@ export const fetchDailyReport = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
+);
+
+// Change this specific thunk in reportSlice.js
+export const fetchCustomerReport = createAsyncThunk(
+  "customerReport/fetchCustomerReport",
+  async ({ from, to, customerName }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/reports/customer-summary`,
+        {
+          params: {
+            from,
+            to,
+            customer: customerName || "", // Send the single string name, not the array
+          },
+        },
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || "Error");
+    }
+  },
+);
+
+export const fetchCustomerLedger = createAsyncThunk(
+  "report/fetchCustomerLedger",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/reports/customer-ledger`,
+      );
+      // Standardize the response to an array
+      return Array.isArray(response.data)
+        ? response.data
+        : response.data.recordset || [];
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Error fetching ledger",
+      );
+    }
+  },
 );
 
 const reportSlice = createSlice({
@@ -66,12 +107,21 @@ const reportSlice = createSlice({
       summary: null,
       products: [],
       payments: [],
-      date: null
+      date: null,
+    },
+
+    customer: {
+      data: [],
+    },
+    ledger: {
+      data: [],
     },
 
     monthlyLoading: false,
     weeklyLoading: false,
     dailyLoading: false,
+    customerLoading: false,
+    ledgerLoading: false,
     error: null,
   },
 
@@ -80,6 +130,8 @@ const reportSlice = createSlice({
       state.monthly = { summary: null, payment: [] };
       state.weekly = { week: null, from: null, to: null, data: [] };
       state.daily = { summary: null, products: [], payments: [], date: null };
+      state.customer = { data: [] };
+      state.ledger = { data: [] };
       state.error = null;
     },
   },
@@ -131,11 +183,36 @@ const reportSlice = createSlice({
           summary: action.payload.summary,
           products: action.payload.products,
           payments: action.payload.payments,
-          date: action.payload.date
+          date: action.payload.date,
         };
       })
       .addCase(fetchDailyReport.rejected, (state, action) => {
         state.dailyLoading = false;
+        state.error = action.payload;
+      })
+      /* ---------- CUSTOMER REPORT ---------- */
+      .addCase(fetchCustomerReport.pending, (state) => {
+        state.customerLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchCustomerReport.fulfilled, (state, action) => {
+        state.customerLoading = false;
+        state.customer.data = action.payload || [];
+      })
+      .addCase(fetchCustomerReport.rejected, (state, action) => {
+        state.customerLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchCustomerLedger.pending, (state) => {
+        state.ledgerLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchCustomerLedger.fulfilled, (state, action) => {
+        state.ledgerLoading = false;
+        state.ledger.data = action.payload;
+      })
+      .addCase(fetchCustomerLedger.rejected, (state, action) => {
+        state.ledgerLoading = false;
         state.error = action.payload;
       });
   },

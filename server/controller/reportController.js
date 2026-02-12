@@ -246,3 +246,156 @@ exports.getDailyReport = async (req, res) => {
     res.status(500).json({ message: "Internal server error in Daily Report" });
   }
 };
+
+exports.getCustomerWiseSummaryByDate = async (req, res) => {
+  try {
+    const { from, to, customer } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ message: "From and To date are required" });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+    request.input("fromDate", from);
+    request.input("toDate", to);
+
+    let customerFilter = "";
+    if (customer && customer !== "") {
+      request.input("customerName", customer);
+      customerFilter = "AND O.CustomerName = @customerName";
+    }
+
+    const query = `
+      SELECT 
+        O.OrderID,
+        O.OrderDate,
+        O.CustomerName,
+        O.ContactNo,
+        O.Area,
+        O.Address,
+        ISNULL(DB.Name, A.OtherDeliveryManName) AS DeliveryBoyName,
+        
+        -- Product Details
+        STRING_AGG(CAST(CONCAT(OI.ProductName, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)), ' | ') AS ItemDetails,
+        
+        -- Payment Mode Details
+        ISNULL((
+            SELECT STRING_AGG(CONCAT(PM.ModeName, ': ', OP_Sub.Amount), ', ')
+            FROM OrderPayments OP_Sub
+            JOIN PaymentModes PM ON OP_Sub.PaymentModeID = PM.PaymentModeID
+            WHERE OP_Sub.OrderID = O.OrderID
+        ), 'No Payment') AS PaymentModeDetails,
+
+        -- Financials (Fixed grouping error by using MAX for DeliveryCharge)
+        (
+          ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
+          + ISNULL(MAX(O.DeliveryCharge), 0)
+        ) AS OrderAmount,
+
+        ISNULL((SELECT SUM(Amount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS PaidAmount,
+
+        ISNULL((SELECT SUM(ShortAmount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS ShortAmount,
+
+        (
+          (ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
+           + ISNULL(MAX(O.DeliveryCharge), 0)) -- Wrapped in MAX to fix SQL error
+          - ISNULL((SELECT SUM(Amount) FROM OrderPayments WHERE OrderID = O.OrderID), 0)
+        ) AS OutstandingAmount
+
+      FROM OrdersTemp O WITH (NOLOCK)
+      LEFT JOIN OrderItems OI WITH (NOLOCK) ON O.OrderID = OI.OrderID
+      LEFT JOIN AssignedOrders A WITH (NOLOCK) ON O.OrderID = A.OrderID
+      LEFT JOIN DeliveryMen DB WITH (NOLOCK) ON A.DeliveryManID = DB.DeliveryManID
+
+      WHERE O.OrderDate BETWEEN @fromDate AND @toDate
+      ${customerFilter}
+
+      GROUP BY 
+        O.OrderID, 
+        O.OrderDate, 
+        O.CustomerName, 
+        O.ContactNo, 
+        O.Area, 
+        O.Address,
+        DB.Name,
+        A.OtherDeliveryManName
+      ORDER BY O.OrderDate DESC
+    `;
+
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    console.error("SQL Error:", err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCustomerLedger = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+    const { from, to } = req.query;
+
+    // Optional date filter to see ledger for a specific period
+    let dateFilter = "";
+    if (from && to) {
+      dateFilter = "WHERE O.OrderDate BETWEEN @from AND @to";
+    }
+
+    const query = `
+      SELECT 
+    O.CustomerName,
+    O.ContactNo,
+    MAX(O.Area) AS Area,
+
+    -- Total Billed (Items + Delivery)
+    SUM(ISNULL(OI_Total.OrderSum, 0) + ISNULL(O.DeliveryCharge, 0)) AS TotalDebit,
+
+    -- Total Received (Payment)
+    SUM(ISNULL(OP_Total.PaidSum, 0)) AS TotalCredit,
+
+    -- Net Outstanding
+    SUM(
+        (ISNULL(OI_Total.OrderSum, 0) + ISNULL(O.DeliveryCharge, 0)) 
+        - ISNULL(OP_Total.PaidSum, 0)
+    ) AS NetBalance
+
+FROM OrdersTemp O WITH (NOLOCK)
+
+OUTER APPLY (
+    SELECT SUM(total) AS OrderSum 
+    FROM OrderItems 
+    WHERE OrderID = O.OrderID
+) OI_Total
+
+OUTER APPLY (
+    SELECT SUM(Amount) AS PaidSum 
+    FROM OrderPayments 
+    WHERE OrderID = O.OrderID
+) OP_Total
+
+${dateFilter}
+
+GROUP BY O.CustomerName, O.ContactNo
+
+HAVING SUM(
+        (ISNULL(OI_Total.OrderSum, 0) + ISNULL(O.DeliveryCharge, 0)) 
+        - ISNULL(OP_Total.PaidSum, 0)
+    ) <> 0
+
+ORDER BY NetBalance DESC;
+
+    `;
+
+    const request = pool.request();
+    if (from && to) {
+      request.input("from", from);
+      request.input("to", to);
+    }
+
+    const result = await request.query(query);
+    res.status(200).json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

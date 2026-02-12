@@ -1,0 +1,209 @@
+.container {
+  padding: 1.5rem;
+  background-color: #f4f7fa;
+  min-height: 100vh;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 1.5rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #edf2f7;
+  padding-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #2d3748;
+  margin-bottom: 1.5rem;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inputGroup label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #718096;
+  text-transform: uppercase;
+}
+
+.inputGroup input,
+.inputGroup select {
+  padding: 0.6rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.searchBtn {
+  background: #3182ce;
+  color: white;
+  border: none;
+  padding: 0.65rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.searchBtn:hover {
+  background: #2b6cb0;
+}
+
+/* Stats Bar */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.statCard {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.statLabel {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 600;
+}
+.statValue {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 0.25rem;
+}
+
+/* Table Styling */
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1000px;
+}
+
+.table th {
+  background: #f1f5f9;
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #475569;
+  font-weight: 700;
+}
+
+.table td {
+  padding: 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.dateCell {
+  font-weight: 600;
+  color: #334155;
+}
+.orderId {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.custName {
+  font-weight: 700;
+  color: #1e293b;
+}
+.custSub {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.areaBadge {
+  display: inline-block;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  margin-top: 4px;
+}
+
+.itemCell {
+  max-width: 250px;
+  line-height: 1.4;
+}
+.itemLine {
+  font-size: 0.8rem;
+  color: #475569;
+}
+
+.deliveryInfo,
+.paymentInfo {
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.textRight {
+  text-align: right;
+}
+.textGreen {
+  color: #10b981;
+}
+.textRed {
+  color: #ef4444;
+}
+.bold {
+  font-weight: 700;
+}
+
+.pillRed {
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.pillGreen {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+
+.loader {
+  padding: 3rem;
+  text-align: center;
+  font-weight: 600;
+  color: #64748b;
+}
+
+@media (max-width: 768px) {
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -21,6 +21,8 @@ import DeliverySummary from "./component/user/DeliverySummary";
 
 import AIAssistant from "./component/AIAssistant";
 import ProductionUnit from "./pages/ProductinUnit";
+import CustomerReport from "./component/Reports/CustomerReport";
+import CustomerLedger from "./component/Reports/CustomerLedger";
 
 function App() {
   return (
@@ -107,6 +109,22 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <Support />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/customerReport"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <CustomerReport />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ledger"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <CustomerLedger />
             </ProtectedRoute>
           }
         />
