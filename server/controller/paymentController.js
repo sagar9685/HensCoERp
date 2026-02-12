@@ -52,7 +52,7 @@ exports.completeOrder = async (req, res) => {
     for (const [mode, amount] of Object.entries(paymentSettlement)) {
       if (amount > 0) {
         const modeData = paymentModes.find(
-          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase()
+          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase(),
         );
 
         if (!modeData) continue;
@@ -77,7 +77,7 @@ exports.completeOrder = async (req, res) => {
     const dmResult = await new sql.Request(transaction).input(
       "AssignID",
       sql.Int,
-      assignedOrderId
+      assignedOrderId,
     ).query(`
         SELECT DeliveryManID 
         FROM AssignedOrders 
@@ -350,7 +350,7 @@ exports.handoverCash = async (req, res) => {
     const balanceResult = await new sql.Request(transaction).input(
       "DeliveryManID",
       sql.Int,
-      deliveryManId
+      deliveryManId,
     ).query(`
         SELECT CurrentBalance 
         FROM DeliveryMenCashBalance 
@@ -396,7 +396,7 @@ exports.handoverCash = async (req, res) => {
       .input(
         "DenominationJSON",
         sql.NVarChar(sql.MAX),
-        JSON.stringify(denominationJSON)
+        JSON.stringify(denominationJSON),
       ).query(`
         INSERT INTO CashDepartment 
         (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
@@ -422,14 +422,14 @@ exports.handoverCash = async (req, res) => {
 
     if (calculatedAmount !== totalHandoverAmount) {
       throw new Error(
-        `Handover amount mismatch. Selected orders total ₹${calculatedAmount}`
+        `Handover amount mismatch. Selected orders total ₹${calculatedAmount}`,
       );
     }
 
     await new sql.Request(transaction).input(
       "IDs",
       sql.VarChar,
-      orderPaymentIds.join(",")
+      orderPaymentIds.join(","),
     ).query(`
         UPDATE OrderPayments
         SET IsHandovered = 1
@@ -452,7 +452,7 @@ exports.handoverCash = async (req, res) => {
     const updatedBalanceResult = await new sql.Request(transaction).input(
       "DeliveryManID",
       sql.Int,
-      deliveryManId
+      deliveryManId,
     ).query(`
         SELECT CurrentBalance 
         FROM DeliveryMenCashBalance 

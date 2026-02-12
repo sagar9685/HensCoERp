@@ -37,12 +37,12 @@ export default function UserDataTable() {
   const [showInvoice, setShowInvoice] = useState(false);
 
   const [manualDenominations, setManualDenominations] = useState(
-    DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+    DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}),
   );
 
   const totalHandoverAmount = useMemo(
     () => calculateTotalFromDenominations(manualDenominations),
-    [manualDenominations]
+    [manualDenominations],
   );
 
   const [successMessage, setSuccessMessage] = useState("");
@@ -63,7 +63,7 @@ export default function UserDataTable() {
 
   // ✅ Pending cash orders from Redux
   const { list: pendingCashOrders } = useSelector(
-    (state) => state.pendingCashOrders
+    (state) => state.pendingCashOrders,
   );
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function UserDataTable() {
 
   // ✅ Fetch pending cash orders whenever selected delivery man changes
   const selected = list.find(
-    (x) => String(x.DeliveryManID) === String(selectedId)
+    (x) => String(x.DeliveryManID) === String(selectedId),
   );
   useEffect(() => {
     if (selected?.DeliveryManID) {
@@ -107,7 +107,7 @@ export default function UserDataTable() {
     let filtered = list.filter(
       (item) =>
         item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.Area.toLowerCase().includes(searchTerm.toLowerCase())
+        item.Area.toLowerCase().includes(searchTerm.toLowerCase()),
     );
 
     if (sortConfig.key) {
@@ -163,7 +163,7 @@ export default function UserDataTable() {
     setManualDenominations(autoNotes);
     setError("");
     setSuccessMessage(
-      `Quick select: ₹${finalAmount.toLocaleString()} calculated and notes populated.`
+      `Quick select: ₹${finalAmount.toLocaleString()} calculated and notes populated.`,
     );
   };
 
@@ -223,12 +223,12 @@ export default function UserDataTable() {
           prev.map((item) =>
             item.DeliveryManID === selected.DeliveryManID
               ? { ...item, TotalCash: updatedBalance }
-              : item
-          )
+              : item,
+          ),
         );
 
         setManualDenominations(
-          DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+          DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}),
         );
         setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
       })
@@ -242,7 +242,7 @@ export default function UserDataTable() {
     setError("");
     setSuccessMessage("");
     setManualDenominations(
-      DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {})
+      DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}),
     );
     dispatch(clearPendingOrders());
   };
@@ -259,17 +259,17 @@ export default function UserDataTable() {
   const stats = useMemo(() => {
     const totalCash = filteredAndSortedList.reduce(
       (sum, item) => sum + item.TotalCash,
-      0
+      0,
     );
     const averageCash =
       filteredAndSortedList.length > 0
         ? totalCash / filteredAndSortedList.length
         : 0;
     const highestCash = Math.max(
-      ...filteredAndSortedList.map((item) => item.TotalCash)
+      ...filteredAndSortedList.map((item) => item.TotalCash),
     );
     const lowestCash = Math.min(
-      ...filteredAndSortedList.map((item) => item.TotalCash)
+      ...filteredAndSortedList.map((item) => item.TotalCash),
     );
     return { totalCash, averageCash, highestCash, lowestCash };
   }, [filteredAndSortedList]);

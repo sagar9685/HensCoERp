@@ -83,8 +83,8 @@
 
 /* Status Colors */
 .completedRow {
- /* background-color: #f3e8ff; pink */
- background-color: #ecfdf5;
+  /* background-color: #f3e8ff; pink */
+  background-color: #ecfdf5;
 }
 
 .completedRow:hover {
@@ -100,7 +100,7 @@
 }
 
 .dataTable tbody tr[data-status="cancelled"] {
-  background-color: #f3e8ff;; /* Light red for cancelled */
+  background-color: #f3e8ff; /* Light red for cancelled */
 }
 
 .dataTable tbody tr[data-status="cancelled"]:hover {
@@ -213,7 +213,9 @@
   font-weight: 500;
 }
 
-.typeCell, .weightCell, .quantityCell {
+.typeCell,
+.weightCell,
+.quantityCell {
   min-width: 120px;
 }
 
@@ -300,14 +302,12 @@
 /* Card Header */
 .cardHeader {
   border-bottom: 1px solid #00000014;
-    flex-direction: column;
-    gap: 20px;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  display: flex;
 }
-
- 
 
 .headerContent {
   display: flex;
@@ -565,7 +565,7 @@
   .tableWrapper {
     max-height: calc(100vh - 300px);
   }
-  
+
   .dataTable {
     min-width: 1200px;
   }
@@ -577,18 +577,18 @@
     gap: 20px;
     align-items: stretch;
   }
-  
+
   .headerActions {
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
   }
-  
+
   .filterControls {
     flex-wrap: wrap;
     justify-content: center;
   }
-  
+
   .searchBox {
     min-width: 100%;
   }
@@ -599,18 +599,18 @@
     flex-direction: column;
     gap: 15px;
   }
-  
+
   .headerContent {
     flex-direction: column;
     align-items: stretch;
     gap: 15px;
   }
-  
+
   .orderStats {
     justify-content: center;
     flex-wrap: wrap;
   }
-  
+
   .dataTable th,
   .dataTable td {
     padding: 10px 8px;
@@ -646,4 +646,35 @@
 
 .tableWrapper::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+}
+.dateInput {
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #495057;
+  background-color: #fff;
+  transition: border-color 0.15s ease-in-out;
+  outline: none;
+  min-width: 150px;
+  cursor: pointer;
+}
+
+.dateInput:focus {
+  border-color: #80bdff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Calendar icon ko thoda styling dene ke liye (Webkit browsers) */
+.dateInput::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: invert(0.5); /* Icon color adjust karne ke liye */
+}
+
+/* Responsive: Choti screens par full width */
+@media (max-width: 768px) {
+  .dateInput {
+    width: 100%;
+    margin-bottom: 10px;
+  }
 }

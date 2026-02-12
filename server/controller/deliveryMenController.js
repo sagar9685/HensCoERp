@@ -69,55 +69,54 @@ exports.getDeliveryManPendingCashOrders = async (req, res) => {
     const result = await pool
       .request()
       .input("DeliveryManID", sql.Int, deliveryManId).query(`
-       SELECT 
-    DM.Name AS DeliveryManName,
-    O.OrderID,
-    O.InvoiceNo,
-    O.OrderDate,
-    O.CustomerName,
-    O.Area,
-    O.Address,
-    O.ContactNo,
-    O.DeliveryCharge,
-    A.AssignID,
-    A.ActualDeliveryDate,
-    OI.ProductType,
-    OI.Weight,
-    OI.Quantity,
-    OI.Rate,
-    OP.PaymentID,
-    SUM(OP.Amount) AS CashAmount,
-    MAX(OP.PaymentReceivedDate) AS PaymentDate
-FROM AssignedOrders A
-JOIN OrdersTemp O ON O.OrderID = A.OrderID
-JOIN DeliveryMen DM ON DM.DeliveryManID = A.DeliveryManID
-JOIN OrderPayments OP ON OP.AssignID = A.AssignID
-JOIN OrderItems OI ON OI.OrderID = O.OrderID
-JOIN PaymentModes PM ON PM.PaymentModeID = OP.PaymentModeID
-WHERE 
-    PM.ModeName = 'Cash'
-    AND OP.IsHandovered = 0
-    AND A.DeliveryManID = @DeliveryManID
-GROUP BY 
-    DM.Name,
-    O.OrderID,
-    O.InvoiceNo,
-    O.OrderDate,
-    O.CustomerName,
-    O.Area,
-     O.Address,
-    O.ContactNo,
-    O.DeliveryCharge,
-    A.AssignID,
-    A.ActualDeliveryDate,
-    OI.ProductType,
-    OI.Weight,
-    OI.Quantity,
-    OI.Rate,
-    OP.PaymentID
-ORDER BY PaymentDate DESC;
+    SELECT 
+        DM.Name AS DeliveryManName,
+        O.OrderID,
+        O.InvoiceNo,
+        O.OrderDate,
+        O.CustomerName,
+        O.Area,
+        O.Address,
+        O.ContactNo,
+        O.DeliveryCharge,
+        A.AssignID,
+        A.ActualDeliveryDate,
 
-      `);
+        (
+            SELECT SUM(OP.Amount)
+            FROM OrderPayments OP
+            WHERE 
+                OP.AssignID = A.AssignID
+                AND OP.PaymentModeID = 1
+                AND OP.IsHandovered = 0
+        ) AS CashAmount,
+
+        (
+            SELECT MAX(OP.PaymentReceivedDate)
+            FROM OrderPayments OP
+            WHERE 
+                OP.AssignID = A.AssignID
+                AND OP.PaymentModeID = 1
+                AND OP.IsHandovered = 0
+        ) AS PaymentDate
+
+    FROM AssignedOrders A
+    JOIN OrdersTemp O ON O.OrderID = A.OrderID
+    JOIN DeliveryMen DM ON DM.DeliveryManID = A.DeliveryManID
+
+    WHERE 
+        A.DeliveryManID = @DeliveryManID
+        AND EXISTS (
+            SELECT 1 
+            FROM OrderPayments OP
+            WHERE 
+                OP.AssignID = A.AssignID
+                AND OP.PaymentModeID = 1
+                AND OP.IsHandovered = 0
+        )
+
+    ORDER BY PaymentDate DESC
+  `);
 
     res.status(200).json({
       success: true,
@@ -129,7 +128,6 @@ ORDER BY PaymentDate DESC;
   }
 };
 
- 
 exports.getDeliverySummaryByDateAndBoy = async (req, res) => {
   const { fromDeliveryDate, toDeliveryDate, deliveryManId } = req.body;
 
@@ -148,8 +146,7 @@ exports.getDeliverySummaryByDateAndBoy = async (req, res) => {
       .request()
       .input("FromDeliveryDate", sql.Date, fromDeliveryDate)
       .input("ToDeliveryDate", sql.Date, toDeliveryDate)
-      .input("DeliveryManID", sql.Int, deliveryManId ?? null)
-      .query(`
+      .input("DeliveryManID", sql.Int, deliveryManId ?? null).query(`
 /* ================= DELIVERY SUMMARY ================= */
 
 SELECT 
@@ -254,7 +251,7 @@ ORDER BY A.DeliveryDate DESC, O.OrderID DESC;
         paytm: 0,
         foc: 0,
         bank: 0,
-      }
+      },
     );
 
     return res.status(200).json({
@@ -266,7 +263,6 @@ ORDER BY A.DeliveryDate DESC, O.OrderID DESC;
       summary,
       orders: result.recordset,
     });
-
   } catch (error) {
     console.error("Delivery Summary API Error:", error);
     res.status(500).json({

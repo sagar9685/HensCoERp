@@ -39,17 +39,22 @@ const AdminDashboard = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
   const orders = useSelector((state) => state.order.record);
- console.log(orders,"admin side")
+  console.log(orders, "admin side");
 
- const getStatusClass = (status) => {
-  switch (status?.toLowerCase()) {
-    case 'pending': return styles.statusPending;
-    case 'complete': return styles.statusCompleted;
-    case 'cancel': return styles.statusCancelled;
-    case 'processing': return styles.statusProcessing;
-    default: return "";
-  }
-};
+  const getStatusClass = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return styles.statusPending;
+      case "complete":
+        return styles.statusCompleted;
+      case "cancel":
+        return styles.statusCancelled;
+      case "processing":
+        return styles.statusProcessing;
+      default:
+        return "";
+    }
+  };
 
   const loading = useSelector((state) => state.order.loading);
 
@@ -59,12 +64,12 @@ const AdminDashboard = () => {
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   // Debugging ke liye ye consoles add karein
-console.log("Full Orders from Redux:", orders);
-console.log("Filtered Data State:", filteredData);
-console.log("Current Page:", currentPage);
+  console.log("Full Orders from Redux:", orders);
+  console.log("Filtered Data State:", filteredData);
+  console.log("Current Page:", currentPage);
   const currentRecords = filteredData.slice(
     indexOfFirstRecord,
-    indexOfLastRecord
+    indexOfLastRecord,
   );
   console.log("Records for Current Table Page:", currentRecords);
 
@@ -83,7 +88,7 @@ console.log("Current Page:", currentPage);
   }, 0);
 
   const totalPending = orders.filter(
-    (order) => order.PaymentVerifyStatus !== "Verified"
+    (order) => order.PaymentVerifyStatus !== "Verified",
   ).length;
 
   const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
@@ -117,7 +122,6 @@ console.log("Current Page:", currentPage);
 
   useEffect(() => {
     dispatch(fetchOrder());
-  
   }, [dispatch]);
 
   useEffect(() => {
@@ -155,7 +159,7 @@ console.log("Current Page:", currentPage);
       verifyPayment({
         paymentId: selectedPayment.PaymentID,
         receivedAmount: Number(receivedAmount),
-      })
+      }),
     )
       .unwrap()
       .then(() => {
@@ -165,7 +169,7 @@ console.log("Current Page:", currentPage);
         setReceivedAmount("");
       })
       .catch((err) =>
-        toast.error(err.message || "Payment verification failed")
+        toast.error(err.message || "Payment verification failed"),
       );
   };
 
@@ -214,8 +218,6 @@ console.log("Current Page:", currentPage);
     // Handle customer creation
     alert("Customer added successfully!");
   };
-
- 
 
   return (
     <div className={styles.container}>
@@ -382,7 +384,6 @@ console.log("Current Page:", currentPage);
                           : styles.tableRowOdd
                       }
                     >
-                       
                       <td>
                         <span className={styles.productId}>{row.OrderID}</span>
                       </td>
@@ -451,11 +452,13 @@ console.log("Current Page:", currentPage);
                       <td className={styles.tableData}>
                         {row.DeliveryManName}
                       </td>
-                       <td className={styles.tableData}>
-  <span className={`${styles.statusBadge} ${getStatusClass(row.OrderStatus)}`}>
-    {row.OrderStatus || "N/A"}
-  </span>
-</td>
+                      <td className={styles.tableData}>
+                        <span
+                          className={`${styles.statusBadge} ${getStatusClass(row.OrderStatus)}`}
+                        >
+                          {row.OrderStatus || "N/A"}
+                        </span>
+                      </td>
                       <td>
                         <span className={styles.paymentModeBadge}>
                           {formatPaymentSummary(row.PaymentSummary)}

@@ -49,7 +49,7 @@ exports.getMonthlyReport = async (req, res) => {
     // 3. Total Received ka grand total nikal lo
     const totalReceived = paymentBreakup.reduce(
       (sum, p) => sum + (p.Amount || 0),
-      0
+      0,
     );
 
     // 4. Outstanding calculate karo
@@ -142,7 +142,6 @@ ORDER BY
   }
 };
 
-
 /* =======================
    DAILY REPORT (By Date & Delivery Boy)
 ======================= */
@@ -157,12 +156,13 @@ exports.getDailyReport = async (req, res) => {
     const pool = await poolPromise;
     const request = pool.request();
     request.input("targetDate", sql.Date, date);
-    
+
     // Delivery Boy ID handling (Optional)
     // Agar frontend se "all" ya empty string aaye toh null treat karein
-    const dbid = (deliveryBoyId && deliveryBoyId !== "all" && deliveryBoyId !== "") 
-                 ? parseInt(deliveryBoyId) 
-                 : null;
+    const dbid =
+      deliveryBoyId && deliveryBoyId !== "all" && deliveryBoyId !== ""
+        ? parseInt(deliveryBoyId)
+        : null;
 
     if (dbid) {
       request.input("dbid", sql.Int, dbid);
@@ -207,23 +207,40 @@ exports.getDailyReport = async (req, res) => {
 
     // 3. Totals Calculation
     // Yeh values automatically filter ke hisab se calculate hongi
-    const totalSaleAmount = productData.reduce((sum, item) => sum + (item.Amount || 0), 0);
-    const totalReceived = paymentData.reduce((sum, pay) => sum + (pay.ModeTotal || 0), 0);
+    const totalSaleAmount = productData.reduce(
+      (sum, item) => sum + (item.Amount || 0),
+      0,
+    );
+    const totalReceived = paymentData.reduce(
+      (sum, pay) => sum + (pay.ModeTotal || 0),
+      0,
+    );
     const totalOutstanding = totalSaleAmount - totalReceived;
+
+    // 3. Fetch Total Orders Count
+    const ordersCountResult = await request.query(`
+  SELECT COUNT(DISTINCT o.OrderID) AS TotalOrders
+  FROM OrdersTemp o
+  LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+  WHERE CAST(o.OrderDate AS DATE) = @targetDate
+  ${boyFilter}
+`);
+
+    const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
 
     // Final Response
     res.status(200).json({
       date,
       reportType: dbid ? `Delivery Boy ID: ${dbid}` : "Full Day Report (All)",
       summary: {
+        totalOrders: totalOrders,
         totalSaleAmount: totalSaleAmount, // Yeh main cheez hai
         totalReceived: totalReceived,
-        totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0
+        totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
       },
       products: productData, // Product breakdown (Tray, Box, etc.)
-      payments: paymentData  // Payment mode breakdown
+      payments: paymentData, // Payment mode breakdown
     });
-
   } catch (err) {
     console.error("Daily Report Error:", err);
     res.status(500).json({ message: "Internal server error in Daily Report" });

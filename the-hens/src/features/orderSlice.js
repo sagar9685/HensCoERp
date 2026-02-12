@@ -19,10 +19,10 @@ export const addOrder = createAsyncThunk(
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "something went wrong"
+        err.response?.data || "something went wrong",
       );
     }
-  }
+  },
 );
 
 export const fetchOrder = createAsyncThunk(
@@ -33,10 +33,10 @@ export const fetchOrder = createAsyncThunk(
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "Failed to fetch orders"
+        err.response?.data || "Failed to fetch orders",
       );
     }
-  }
+  },
 );
 
 // FETCH ORDER TAKEN BY NAME LIST
@@ -48,10 +48,10 @@ export const fetchOrderTakenBy = createAsyncThunk(
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "Failed to load names"
+        err.response?.data || "Failed to load names",
       );
     }
-  }
+  },
 );
 
 export const orderSlice = createSlice({

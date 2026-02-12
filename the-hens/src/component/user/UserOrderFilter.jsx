@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useSelector } from "react-redux";
 
 export const useOrderFilter = () => {
@@ -9,9 +9,10 @@ export const useOrderFilter = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [dateFilter, setDateFilter] = useState("");
 
   const rawAssignedOrders = useSelector(
-    (state) => state.assignedOrders.data || []
+    (state) => state.assignedOrders.data || [],
   );
 
   const assignedOrders = useMemo(() => {
@@ -36,7 +37,7 @@ export const useOrderFilter = () => {
         // 1. Search Logic
         const matchesSearch =
           order.CustomerName?.toLowerCase().includes(
-            searchTerm.toLowerCase()
+            searchTerm.toLowerCase(),
           ) ||
           order.ProductName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           order.OrderID?.toString().includes(searchTerm);
@@ -47,7 +48,7 @@ export const useOrderFilter = () => {
           statusFilter === "all" ||
           (statusFilter === "complete" && status?.includes("complete")) ||
           (statusFilter === "pending" && status?.includes("pending")) ||
-            (statusFilter === "cancel" && status?.includes("cancel"))
+          (statusFilter === "cancel" && status?.includes("cancel"));
 
         // 3. Area Logic
         const matchesArea = areaFilter === "all" || order.Area === areaFilter;
@@ -57,8 +58,35 @@ export const useOrderFilter = () => {
           deliveryManFilter === "all" ||
           order.DeliveryManName === deliveryManFilter;
 
+        // ✅ 5. Date Logic (Order Date)
+        // ✅ 5. Date Logic (Fix: Local Date Comparison)
+        const matchesDate = (() => {
+          if (!dateFilter) return true;
+
+          // Prefer DeliveryDate, fallback to OrderDate
+          const orderDateRaw = order.DeliveryDate || order.OrderDate;
+          if (!orderDateRaw) return false;
+
+          const dateObj = new Date(orderDateRaw);
+
+          // Invalid date check
+          if (isNaN(dateObj.getTime())) return false;
+
+          // Format date as YYYY-MM-DD using local time
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+          const day = String(dateObj.getDate()).padStart(2, "0");
+          const formattedOrderDate = `${year}-${month}-${day}`;
+
+          return formattedOrderDate === dateFilter;
+        })();
+
         return (
-          matchesSearch && matchesStatus && matchesArea && matchesDeliveryMan
+          matchesSearch &&
+          matchesStatus &&
+          matchesArea &&
+          matchesDeliveryMan &&
+          matchesDate
         );
       })
       .sort((a, b) => {
@@ -75,6 +103,7 @@ export const useOrderFilter = () => {
     statusFilter,
     areaFilter,
     deliveryManFilter,
+    dateFilter, // 👈 dependency me add karna mat bhoolna
     sortConfig,
   ]);
 
@@ -83,14 +112,17 @@ export const useOrderFilter = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredAndSortedOrders.slice(
     indexOfFirstItem,
-    indexOfLastItem
+    indexOfLastItem,
   );
   const totalPages = Math.ceil(filteredAndSortedOrders.length / itemsPerPage);
 
   // Reset to page 1 when any filter changes
-  useMemo(() => {
+
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, areaFilter, deliveryManFilter]);
+  }, [searchTerm, statusFilter, areaFilter, deliveryManFilter, dateFilter]);
+
+  console.log("Filter temp:", dateFilter);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
   const nextPage = () =>
@@ -152,6 +184,8 @@ export const useOrderFilter = () => {
     setAreaFilter,
     deliveryManFilter,
     setDeliveryManFilter,
+    dateFilter, // 👈 Add this
+    setDateFilter,
     sortConfig,
     currentPage,
     currentItems,

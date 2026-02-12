@@ -70,7 +70,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
 
       // Put total amount into CashAmount if Cash exists, else first available amount key
       const cashPM = paymentModes.find(
-        (pm) => pm.ModeName.toLowerCase() === "cash"
+        (pm) => pm.ModeName.toLowerCase() === "cash",
       );
       if (cashPM) {
         newForm[makeAmountKey(cashPM.ModeName)] = totalAmount.toString();
@@ -114,12 +114,14 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
 
   const handlePaymentAmountChange = (modeName, value) => {
     const amountKey = makeAmountKey(modeName);
+
+    // 1. State mein exact value set karein (taaki cut karne par empty string dikhe)
     setFormData((prev) => ({ ...prev, [amountKey]: value }));
 
-    // recalc remaining using currently selected payment methods
+    // 2. Calculation ke liye Number() ka use karein
     const totalPaid = selectedPaymentMethods.reduce((sum, m) => {
       const key = makeAmountKey(m);
-      // if the changed mode is this m, use the new value; else use existing formData
+      // Agar current mode change ho raha hai toh uski numeric value lein, warna purani
       const amt =
         m === modeName ? Number(value || 0) : Number(formData[key] || 0);
       return sum + amt;
@@ -167,8 +169,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  
-const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!validateForm()) return;
 
     const paymentSettlement = {};
@@ -187,21 +188,21 @@ const handleSubmit = async () => {
     };
 
     try {
-        // .unwrap() se hum result ka wait karenge
-        await dispatch(completeOrder(payload)).unwrap();
-        
-        // Instant Feedback
-        toast.success("Order Completed Successfully!");
-        
-        // Modal band karein
-        onClose();
-        
-        // Optional: Reset store
-        dispatch(resetOrderState());
+      // .unwrap() se hum result ka wait karenge
+      await dispatch(completeOrder(payload)).unwrap();
+
+      // Instant Feedback
+      toast.success("Order Completed Successfully!");
+
+      // Modal band karein
+      onClose();
+
+      // Optional: Reset store
+      dispatch(resetOrderState());
     } catch (err) {
-        toast.error("Failed to complete order");
+      toast.error("Failed to complete order");
     }
-};
+  };
 
   if (!isOpen || !order) return null;
 
@@ -332,11 +333,15 @@ const handleSubmit = async () => {
                         <div className={styles.amountInputWrapper}>
                           <input
                             type="number"
-                            value={formData[amountKey] || "0"}
+                            value={
+                              formData[amountKey] === undefined
+                                ? "0"
+                                : formData[amountKey]
+                            }
                             onChange={(e) =>
                               handlePaymentAmountChange(
                                 modeName,
-                                e.target.value
+                                e.target.value,
                               )
                             }
                             className={styles.amountInput}
@@ -374,7 +379,7 @@ const handleSubmit = async () => {
 
                   {selectedPaymentMethods.map((modeName) => {
                     const amount = Number(
-                      formData[makeAmountKey(modeName)] || 0
+                      formData[makeAmountKey(modeName)] || 0,
                     );
                     if (amount <= 0) return null;
                     return (

@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const compression = require("compression");
 
 const customerRoutes = require("./routes/customerRoutes");
 const orderRoutes = require("./routes/orderRoutes");
@@ -24,6 +25,7 @@ const app = express();
 
 /* 🔓 Allow ALL origins */
 app.use(cors());
+app.use(compression());
 
 app.use(express.json());
 
