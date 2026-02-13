@@ -10,15 +10,15 @@ import UserSideBar from "./UserSidebar";
 import UserNavbar from "./UserNavBar";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
-import autoTable from 'jspdf-autotable'; // Add this import
+import autoTable from "jspdf-autotable"; // Add this import
 
 const DeliverySummary = () => {
   const dispatch = useDispatch();
   const { orders, summary, totalOrders, loading, error } = useSelector(
-    (state) => state.deliveryBoyAnalysis
+    (state) => state.deliveryBoyAnalysis,
   );
 
-  console.log(orders,"DeliverySummary")
+  console.log(orders, "DeliverySummary");
 
   const [fromDeliveryDate, setFromDeliveryDate] = useState("");
   const [toDeliveryDate, setToDeliveryDate] = useState("");
@@ -44,7 +44,7 @@ const DeliverySummary = () => {
         fromDeliveryDate,
         toDeliveryDate,
         deliveryManId: deliveryManId || null,
-      })
+      }),
     );
   };
 
@@ -88,7 +88,7 @@ const DeliverySummary = () => {
   const getPageNumbers = () => {
     const pageNumbers = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
@@ -96,164 +96,200 @@ const DeliverySummary = () => {
     } else {
       let start = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
       let end = Math.min(totalPages, start + maxVisiblePages - 1);
-      
+
       if (end - start + 1 < maxVisiblePages) {
         start = Math.max(1, end - maxVisiblePages + 1);
       }
-      
+
       for (let i = start; i <= end; i++) {
         pageNumbers.push(i);
       }
     }
-    
+
     return pageNumbers;
   };
 
-const exportToPDF = () => {
-  const doc = new jsPDF("landscape", "mm", "a4");
+  const exportToPDF = () => {
+    const doc = new jsPDF("landscape", "mm", "a4");
 
-  // Header Background
-  doc.setFillColor(63, 102, 241);
-  doc.rect(0, 0, 297, 20, 'F');
+    // Header Background
+    doc.setFillColor(63, 102, 241);
+    doc.rect(0, 0, 297, 20, "F");
 
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.text("DELIVERY SUMMARY REPORT", 148, 13, { align: "center" });
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.text("DELIVERY SUMMARY REPORT", 148, 13, { align: "center" });
 
-  // Summary Row in PDF
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(9);
-  doc.text(`Total Sales: Rs. ${summary.totalSales} | Generated on: ${new Date().toLocaleDateString()}`, 14, 28);
+    // Summary Row in PDF
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(9);
+    doc.text(
+      `Total Sales: Rs. ${summary.totalSales} | Generated on: ${new Date().toLocaleDateString()}`,
+      14,
+      28,
+    );
 
-  const tableColumn = [
-    "#", "Customer", "Address", "Area", "Delivery Boy", 
-    "Date", "Items", "Qty", "Items Total", "Charges", "Total", "Payment Info"
-  ];
-
-  const tableRows = orders.map((o, i) => [
-    i + 1,
-    o.CustomerName,
-    o.Address.substring(0, 20) + "...",
-    o.Area,
-    o.DeliveryBoyName,
-   formatDate( o.DeliveryDate?.slice(0, 10)),
-    o.Items.substring(0, 15),
-    o.TotalQty,
-    o.ItemsTotal,
-    o.DeliveryCharge,
-    o.OrderTotal,
-    `C:${o.Cash} G:${o.GPay} B:${o.BankTransfer}`
-  ]);
-
-  autoTable(doc, {
-    startY: 35,
-    head: [tableColumn],
-    body: tableRows,
-    theme: 'striped',
-    styles: { fontSize: 6.5, cellPadding: 2 },
-    headStyles: { fillColor: [63, 102, 241] },
-    margin: { left: 5, right: 5 }
-  });
-
-  doc.save(`Delivery_Summary_${new Date().getTime()}.pdf`);
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (isNaN(date)) return "";
-
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = date.toLocaleString('en-GB', { month: 'short' }); // Jan, Feb, etc.
-  const year = String(date.getFullYear()).slice(-2); // 26
-
-  return `${day}-${month}-${year}`;
-};
-
-const exportToExcel = () => {
-  if (!orders.length) {
-    alert("No data to export!");
-    return;
-  }
-
-  try {
-    // 1. Prepare Main Data (All Columns)
-    const excelData = orders.map((o, i) => ({
-      'S.No': i + 1,
-      'Customer Name': o.CustomerName,
-      'Address': o.Address,
-      'Area': o.Area,
-      'Contact No': o.ContactNo,
-      'Delivery Boy': o.DeliveryBoyName,
-      'Delivery Date':  formatDate(o.DeliveryDate?.slice(0, 10)) || '',
-      'Items Detail': o.Items,
-      'Weight': o.Weights || '',
-      'Item Qty': o.ItemQuantities || '',
-      'Total Qty': o.TotalQty || 0,
-      'Rate': o.Rates || '',
-      'Delivery Charge': o.DeliveryCharge || 0,
-      'Items Total': o.ItemsTotal || 0,
-      'Payment Date': formatDate(o.PaymentReceivedDate?.slice(0, 10)) || '',
-      'Cash (₹)': o.Cash || 0,
-      'GPay (₹)': o.GPay || 0,
-      'Bank Transfer (₹)': o.BankTransfer || 0,
-      'Paytm (₹)': o.Paytm || 0,
-      'FOC (₹)': o.FOC || 0,
-      'Grand Total (₹)': o.OrderTotal || 0
-    }));
-
-    // 2. Add Summary Row at the bottom
-    const summaryRow = {
-      'S.No': '',
-      'Customer Name': 'GRAND TOTAL',
-      'Address': '',
-      'Area': '',
-      'Contact No': '',
-      'Delivery Boy': '',
-      'Delivery Date': '',
-      'Items Detail': '',
-      'Weight': '',
-      'Item Qty': '',
-      'Total Qty': '',
-      'Rate': '',
-      'Delivery Charge': '',
-      'Items Total': '',
-      'Payment Date': '',
-      'Cash (₹)': summary.cash || 0,
-      'GPay (₹)': summary.gpay || 0,
-      'Bank Transfer (₹)': summary.bank || 0,
-      'Paytm (₹)': summary.paytm || 0,
-      'FOC (₹)': summary.foc || 0,
-      'Grand Total (₹)': summary.totalSales || 0
-    };
-
-    const finalData = [...excelData, {}, summaryRow]; // Added empty row for spacing
-
-    // 3. Create Worksheet
-    const ws = XLSX.utils.json_to_sheet(finalData);
-
-    // 4. Set Column Widths (Professional Spacing)
-    const wscols = [
-      { wch: 6 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 15 },
-      { wch: 20 }, { wch: 15 }, { wch: 30 }, { wch: 10 }, { wch: 10 },
-      { wch: 10 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 15 },
-      { wch: 12 }, { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+    const tableColumn = [
+      "#",
+      "Customer",
+      "Address",
+      "Area",
+      "Delivery Boy",
+      "Date",
+      "Items",
+      "Qty",
+      "Items Total",
+      "Charges",
+      "Total",
+      "Payment Info",
     ];
-    ws['!cols'] = wscols;
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Delivery_Report");
+    const tableRows = orders.map((o, i) => [
+      i + 1,
+      o.CustomerName,
+      o.Address.substring(0, 20) + "...",
+      o.Area,
+      o.DeliveryBoyName,
+      formatDate(o.DeliveryDate?.slice(0, 10)),
+      o.Items.substring(0, 15),
+      o.TotalQty,
+      o.ItemsTotal,
+      o.DeliveryCharge,
+      o.OrderTotal,
+      `C:${o.Cash} G:${o.GPay} B:${o.BankTransfer}`,
+    ]);
 
-    // 5. Download
-    const fileName = `Delivery_Report_${fromDeliveryDate || 'All'}_to_${toDeliveryDate || 'Today'}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    autoTable(doc, {
+      startY: 35,
+      head: [tableColumn],
+      body: tableRows,
+      theme: "striped",
+      styles: { fontSize: 6.5, cellPadding: 2 },
+      headStyles: { fillColor: [63, 102, 241] },
+      margin: { left: 5, right: 5 },
+    });
 
-  } catch (error) {
-    console.error("Excel Export Error:", error);
-    alert("Excel file generate karne mein error aaya.");
-  }
-};
-  
+    doc.save(`Delivery_Summary_${new Date().getTime()}.pdf`);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date)) return "";
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = date.toLocaleString("en-GB", { month: "short" }); // Jan, Feb, etc.
+    const year = String(date.getFullYear()).slice(-2); // 26
+
+    return `${day}-${month}-${year}`;
+  };
+
+  const exportToExcel = () => {
+    if (!orders.length) {
+      alert("No data to export!");
+      return;
+    }
+
+    try {
+      const excelData = [];
+
+      orders.forEach((o, i) => {
+        const itemList = o.Items ? o.Items.split(",") : [];
+        const weightList = o.Weights ? o.Weights.split(",") : [];
+        const qtyList = o.ItemQuantities ? o.ItemQuantities.split(",") : [];
+        const rateList = o.Rates ? o.Rates.split(",") : [];
+
+        const rowCount = Math.max(
+          itemList.length,
+          weightList.length,
+          qtyList.length,
+          rateList.length,
+          1,
+        );
+
+        for (let j = 0; j < rowCount; j++) {
+          // Logic: String se sirf numbers nikalne ke liye (e.g., "Tray(5)" -> "5")
+          const rawQty = qtyList[j]?.trim() || "";
+          const cleanQty = rawQty.replace(/[^0-9.]/g, ""); // Ye sirf digits aur decimal rakhega
+
+          excelData.push({
+            "S.No": j === 0 ? i + 1 : "",
+            "Customer Name": o.CustomerName,
+            Address: o.Address,
+            Area: o.Area,
+            "Contact No": o.ContactNo,
+            "Delivery Boy": o.DeliveryBoyName,
+            "Delivery Date": formatDate(o.DeliveryDate?.slice(0, 10)) || "",
+            "Items Detail": itemList[j]?.trim() || "",
+            Weight: weightList[j]?.trim() || "",
+            "Item Qty": cleanQty, // Ab yahan sirf '5' aayega
+            "Total Qty": j === 0 ? o.TotalQty || 0 : "",
+            Rate: rateList[j]?.trim() || "",
+            "Delivery Charge": j === 0 ? o.DeliveryCharge || 0 : "",
+            "Items Total": j === 0 ? o.ItemsTotal || 0 : "",
+            "Payment Date":
+              j === 0
+                ? formatDate(o.PaymentReceivedDate?.slice(0, 10)) || ""
+                : "",
+            "Cash (₹)": j === 0 ? o.Cash || 0 : "",
+            "GPay (₹)": j === 0 ? o.GPay || 0 : "",
+            "Bank Transfer (₹)": j === 0 ? o.BankTransfer || 0 : "",
+            "Paytm (₹)": j === 0 ? o.Paytm || 0 : "",
+            "FOC (₹)": j === 0 ? o.FOC || 0 : "",
+            "Grand Total (₹)": j === 0 ? o.OrderTotal || 0 : "",
+          });
+        }
+      });
+
+      // --- Baki ka logic (Summary aur Download) pehle jaisa hi rahega ---
+      const summaryRow = {
+        "Customer Name": "GRAND TOTAL",
+        "Cash (₹)": summary.cash || 0,
+        "GPay (₹)": summary.gpay || 0,
+        "Bank Transfer (₹)": summary.bank || 0,
+        "Paytm (₹)": summary.paytm || 0,
+        "FOC (₹)": summary.foc || 0,
+        "Grand Total (₹)": summary.totalSales || 0,
+      };
+
+      const finalData = [...excelData, {}, summaryRow];
+      const ws = XLSX.utils.json_to_sheet(finalData);
+
+      const wscols = [
+        { wch: 6 },
+        { wch: 25 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 15 },
+        { wch: 10 }, // Item Qty width set
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 15 },
+      ];
+      ws["!cols"] = wscols;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Delivery_Report");
+      const fileName = `Delivery_Report_${fromDeliveryDate || "All"}_to_${toDeliveryDate || "Today"}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error("Excel Export Error:", error);
+      alert("Excel file generate karne mein error aaya.");
+    }
+  };
+
   return (
     <>
       <div className="container-scroller">
@@ -288,20 +324,28 @@ const exportToExcel = () => {
                   </option>
                 ))}
               </select>
-              
+
               <button onClick={handleSearch}>
                 <span>🔍</span> Search
               </button>
-              
+
               <button className={styles.resetBtn} onClick={handleReset}>
                 <span>🔄</span> Reset
               </button>
-              
+
               <div className={styles.exportButtons}>
-                <button className={styles.pdfBtn} onClick={exportToPDF} disabled={!orders.length}>
+                <button
+                  className={styles.pdfBtn}
+                  onClick={exportToPDF}
+                  disabled={!orders.length}
+                >
                   <span>📄</span> Download PDF
                 </button>
-                <button className={styles.excelBtn} onClick={exportToExcel} disabled={!orders.length}>
+                <button
+                  className={styles.excelBtn}
+                  onClick={exportToExcel}
+                  disabled={!orders.length}
+                >
                   <span>📊</span> Download Excel
                 </button>
               </div>
@@ -313,8 +357,9 @@ const exportToExcel = () => {
               {error && <div className={styles.error}>{error}</div>}
               {!loading && !error && (
                 <div className={styles.info}>
-                  Total Orders: {totalOrders} | 
-                  Showing {indexOfFirstRow + 1} to {Math.min(indexOfLastRow, orders.length)} of {orders.length} entries
+                  Total Orders: {totalOrders} | Showing {indexOfFirstRow + 1} to{" "}
+                  {Math.min(indexOfLastRow, orders.length)} of {orders.length}{" "}
+                  entries
                 </div>
               )}
             </div>
@@ -360,7 +405,7 @@ const exportToExcel = () => {
                       <th>Items</th>
                       <th>Weight</th>
                       <th>Qty</th>
-                       <th>Toatal Qty</th>
+                      <th>Toatal Qty</th>
                       <th>Rate</th>
                       <th>Delivery Charge</th>
                       <th>Items Total</th>
@@ -382,12 +427,14 @@ const exportToExcel = () => {
                         <td>{o.Items}</td>
                         <td>{o.Weights}</td>
                         <td>{o.ItemQuantities}</td>
-                          <td>{o.TotalQty}</td>
+                        <td>{o.TotalQty}</td>
                         <td>{o.Rates}</td>
                         <td>₹ {o.DeliveryCharge}</td>
                         <td>₹ {o.ItemsTotal}</td>
-                        
-                        <td>{formatDate(o.PaymentReceivedDate?.slice(0, 10))}</td>
+
+                        <td>
+                          {formatDate(o.PaymentReceivedDate?.slice(0, 10))}
+                        </td>
                         <td className={styles.paymentModeCell}>
                           <div>Cash: ₹ {o.Cash}</div>
                           <div>GPay: ₹ {o.GPay}</div>
@@ -420,7 +467,7 @@ const exportToExcel = () => {
                 >
                   &laquo; Previous
                 </button>
-                
+
                 <div className={styles.pageNumbers}>
                   {getPageNumbers().map((pageNum) => (
                     <button
@@ -433,7 +480,7 @@ const exportToExcel = () => {
                       {pageNum}
                     </button>
                   ))}
-                  
+
                   {totalPages > 5 && currentPage < totalPages - 2 && (
                     <>
                       <span className={styles.pageDots}>...</span>
@@ -448,7 +495,7 @@ const exportToExcel = () => {
                     </>
                   )}
                 </div>
-                
+
                 <button
                   onClick={goToNextPage}
                   disabled={currentPage === totalPages}

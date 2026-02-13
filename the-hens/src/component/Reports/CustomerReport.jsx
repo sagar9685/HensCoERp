@@ -10,15 +10,34 @@ const CustomerReport = () => {
   const { customer, customerLoading, error } = useSelector(
     (state) => state.report,
   );
-  const [selectedCustomer, setSelectedCustomer] = useState("");
   const { customerName } = useSelector((state) => state.customer);
 
+  const [selectedCustomer, setSelectedCustomer] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [paginatedData, setPaginatedData] = useState([]);
 
   useEffect(() => {
     dispatch(fetchCustomerName());
   }, [dispatch]);
+
+  // Reset to first page when new data comes in
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [customer?.data]);
+
+  // Update paginated data when customer data or pagination settings change
+  useEffect(() => {
+    if (customer?.data) {
+      const startIndex = (currentPage - 1) * rowsPerPage;
+      const endIndex = startIndex + rowsPerPage;
+      setPaginatedData(customer.data.slice(startIndex, endIndex));
+    }
+  }, [customer?.data, currentPage, rowsPerPage]);
 
   const handleSearch = () => {
     if (!from || !to) {
@@ -34,7 +53,6 @@ const CustomerReport = () => {
     );
   };
 
-  // Calculate Grand Totals for the footer
   const totalOrderAmt =
     customer?.data?.reduce((sum, i) => sum + i.OrderAmount, 0) || 0;
   const totalPaidAmt =
@@ -42,133 +60,305 @@ const CustomerReport = () => {
   const totalOutstandingAmt =
     customer?.data?.reduce((sum, i) => sum + i.OutstandingAmount, 0) || 0;
 
+  // Pagination handlers
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+  const handleRowsPerPageChange = (e) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setCurrentPage(1);
+  };
+
+  // Calculate pagination details
+  const totalItems = customer?.data?.length || 0;
+  const totalPages = Math.ceil(totalItems / rowsPerPage);
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
+
+  // Generate page numbers array
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - delta && i <= currentPage + delta)
+      ) {
+        range.push(i);
+      }
+    }
+
+    range.forEach((i) => {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push("...");
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    });
+
+    return rangeWithDots;
+  };
+
   return (
     <div className={styles.container}>
-      <h2 className={styles.title}>Customer Wise Summary</h2>
+      <div className={styles.reportCard}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Customer Wise Summary</h2>
+          <div className={styles.filters}>
+            <div className={styles.inputBox}>
+              <label>From Date</label>
+              <input
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className={styles.dateInput}
+              />
+            </div>
+            <div className={styles.inputBox}>
+              <label>To Date</label>
+              <input
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className={styles.dateInput}
+              />
+            </div>
+            <div className={styles.inputBox}>
+              <label>Select Customer</label>
+              <select
+                value={selectedCustomer}
+                onChange={(e) => setSelectedCustomer(e.target.value)}
+                className={styles.selectInput}
+              >
+                <option value="">All Customers</option>
+                {customerName?.map((cust) => (
+                  <option key={cust.CustomerID} value={cust.CustomerName}>
+                    {cust.CustomerName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button onClick={handleSearch} className={styles.searchBtn}>
+              <span className={styles.btnIcon}>📊</span>
+              Generate Report
+            </button>
+          </div>
+        </div>
 
-      <div className={styles.filters}>
-        <div>
-          <label>From Date</label>
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>To Date</label>
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </div>
-        <div>
-          <label>Customer Name</label>
-          <select
-            value={selectedCustomer}
-            onChange={(e) => setSelectedCustomer(e.target.value)}
-          >
-            <option value="">All Customers</option>
-            {customerName?.map((cust) => (
-              <option key={cust.CustomerID} value={cust.CustomerName}>
-                {cust.CustomerName}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button onClick={handleSearch} className={styles.searchBtn}>
-          Search
-        </button>
+        {/* Executive Summary Bar */}
+        {customer?.data?.length > 0 && (
+          <div className={styles.summaryBar}>
+            <div className={styles.summaryItem}>
+              <span>Total Billed</span>
+              <h3 className={styles.blueText}>
+                <span className={styles.currencyIcon}>₹</span>
+                {totalOrderAmt.toLocaleString("en-IN")}
+              </h3>
+            </div>
+            <div className={styles.summaryItem}>
+              <span>Total Received</span>
+              <h3 className={styles.greenText}>
+                <span className={styles.currencyIcon}>₹</span>
+                {totalPaidAmt.toLocaleString("en-IN")}
+              </h3>
+            </div>
+            <div className={styles.summaryItem}>
+              <span>Outstanding</span>
+              <h3 className={styles.redText}>
+                <span className={styles.currencyIcon}>₹</span>
+                {totalOutstandingAmt.toLocaleString("en-IN")}
+              </h3>
+            </div>
+          </div>
+        )}
+
+        {customerLoading && (
+          <div className={styles.loader}>
+            <div className={styles.spinner}></div>
+            <span>Syncing Report Data...</span>
+          </div>
+        )}
+        {error && <div className={styles.errorBox}>⚠️ {error}</div>}
+
+        {customer?.data?.length > 0 && (
+          <>
+            <div className={styles.tableWrapper}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Date & Order ID</th>
+                    <th>Customer Details</th>
+                    <th>Items (Wt x Qty @ Rate)</th>
+                    <th>Delivery Boy</th>
+                    <th>Payment Mode</th>
+                    <th>Order Amt</th>
+                    <th>Paid</th>
+                    <th>Outstanding</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedData.map((item, index) => (
+                    <tr key={item.OrderID || index} className={styles.tableRow}>
+                      <td className={styles.dateCell}>
+                        <div className={styles.dateDisplay}>
+                          {new Date(item.OrderDate).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )}
+                        </div>
+                        <div className={styles.orderId}>#{item.OrderID}</div>
+                      </td>
+                      <td>
+                        <div className={styles.custName}>
+                          {item.CustomerName}
+                        </div>
+                        <div className={styles.custSub}>{item.ContactNo}</div>
+                        <span className={styles.areaTag}>{item.Area}</span>
+                      </td>
+                      <td className={styles.itemCell}>
+                        {item.ItemDetails?.split(" | ").map((line, i) => (
+                          <div key={i} className={styles.itemRow}>
+                            <span className={styles.bullet}>•</span> {line}
+                          </div>
+                        ))}
+                      </td>
+                      <td className={styles.deliveryCell}>
+                        <span
+                          className={
+                            item.DeliveryBoyName
+                              ? styles.boyName
+                              : styles.naText
+                          }
+                        >
+                          {item.DeliveryBoyName || "N/A"}
+                        </span>
+                      </td>
+                      <td className={styles.paymentCell}>
+                        <span className={styles.paymentBadge}>
+                          {item.PaymentModeDetails || "Pending"}
+                        </span>
+                      </td>
+                      <td className={styles.boldAmount}>
+                        ₹{item.OrderAmount.toLocaleString("en-IN")}
+                      </td>
+                      <td className={styles.greenAmount}>
+                        ₹{item.PaidAmount.toLocaleString("en-IN")}
+                      </td>
+                      <td>
+                        <span
+                          className={
+                            item.OutstandingAmount > 0
+                              ? styles.pillRed
+                              : styles.pillGreen
+                          }
+                        >
+                          ₹{item.OutstandingAmount.toLocaleString("en-IN")}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className={styles.tfoot}>
+                  <tr>
+                    <td colSpan="5" className={styles.footLabel}>
+                      <strong>Grand Total</strong>
+                    </td>
+                    <td className={styles.boldAmount}>
+                      ₹{totalOrderAmt.toLocaleString("en-IN")}
+                    </td>
+                    <td className={styles.greenAmount}>
+                      ₹{totalPaidAmt.toLocaleString("en-IN")}
+                    </td>
+                    <td className={styles.redText}>
+                      ₹{totalOutstandingAmt.toLocaleString("en-IN")}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Pagination Section */}
+            <div className={styles.paginationContainer}>
+              <div className={styles.rowsPerPage}>
+                <label>Show</label>
+                <select
+                  value={rowsPerPage}
+                  onChange={handleRowsPerPageChange}
+                  className={styles.rowsSelect}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <label>entries</label>
+              </div>
+
+              <div className={styles.paginationInfo}>
+                Showing {startItem} to {endItem} of {totalItems} entries
+              </div>
+
+              <div className={styles.pagination}>
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={styles.pageBtn}
+                  aria-label="Previous page"
+                >
+                  <span className={styles.pageIcon}>←</span>
+                  <span className={styles.pageText}>Prev</span>
+                </button>
+
+                {getPageNumbers().map((page, index) => (
+                  <button
+                    key={index}
+                    onClick={() =>
+                      typeof page === "number" && handlePageChange(page)
+                    }
+                    className={`${styles.pageBtn} ${
+                      currentPage === page ? styles.activePage : ""
+                    } ${page === "..." ? styles.disabledPage : ""}`}
+                    disabled={page === "..."}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={styles.pageBtn}
+                  aria-label="Next page"
+                >
+                  <span className={styles.pageText}>Next</span>
+                  <span className={styles.pageIcon}>→</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {!customerLoading && customer?.data?.length === 0 && (
+          <div className={styles.noData}>
+            <div className={styles.noDataIcon}>📋</div>
+            <h3>No Data Available</h3>
+            <p>Please select filters to view the summary report.</p>
+          </div>
+        )}
       </div>
-
-      {customerLoading && <p className={styles.loading}>Loading Report...</p>}
-      {error && <p className={styles.error}>{error}</p>}
-
-      {customer?.data?.length > 0 && (
-        <div className={styles.tableWrapper}>
-          <table className={styles.table}>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Items (Wt x Qty @ Rate)</th>
-                <th>Delivery Boy</th>
-                <th>Payment Mode</th> {/* New Column */}
-                <th>Order Amt</th>
-                <th>Paid</th>
-                <th>Outstanding</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customer.data.map((item, index) => (
-                <tr key={item.OrderID || index}>
-                  <td>
-                    {new Date(item.OrderDate).toLocaleDateString("en-GB")}
-                  </td>
-                  <td>
-                    <strong>{item.CustomerName}</strong>
-                    <br />
-                    <small>{item.ContactNo}</small>
-                    <br />
-                    <small style={{ color: "#666" }}>{item.Area}</small>
-                  </td>
-                  <td style={{ fontSize: "11px" }}>
-                    {item.ItemDetails?.split(" | ").map((line, i) => (
-                      <div key={i}>• {line}</div>
-                    ))}
-                  </td>
-                  <td>{item.DeliveryBoyName || "N/A"}</td>
-
-                  {/* Display Payment Modes */}
-                  <td
-                    style={{
-                      fontSize: "11px",
-                      color: "#2e7d32",
-                      fontWeight: "500",
-                    }}
-                  >
-                    {item.PaymentModeDetails}
-                  </td>
-
-                  <td>₹{item.OrderAmount}</td>
-                  <td>₹{item.PaidAmount}</td>
-                  <td
-                    style={{
-                      color: item.OutstandingAmount > 0 ? "red" : "green",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    ₹{item.OutstandingAmount}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className={styles.tableFooter}>
-              <tr>
-                <td colSpan="5" style={{ textAlign: "right" }}>
-                  <strong>Grand Total:</strong>
-                </td>
-                <td>
-                  <strong>₹{totalOrderAmt.toLocaleString()}</strong>
-                </td>
-                <td>
-                  <strong>₹{totalPaidAmt.toLocaleString()}</strong>
-                </td>
-                <td>
-                  <strong>₹{totalOutstandingAmt.toLocaleString()}</strong>
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
-
-      {!customerLoading && customer?.data?.length === 0 && (
-        <p className={styles.noData}>
-          No records found for the selected criteria.
-        </p>
-      )}
     </div>
   );
 };
