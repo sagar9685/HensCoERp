@@ -10,6 +10,7 @@ const DailyReport = () => {
 
   // 1. Get daily report data from reportSlice
   const { daily, dailyLoading } = useSelector((state) => state.report);
+  console.log(daily, "daily sale");
 
   // 2. Get delivery men list from assignedOrders slice
   const { deliveryMen } = useSelector((state) => state.assignedOrders);
@@ -81,13 +82,13 @@ const DailyReport = () => {
             <div className={`${styles.statCard} ${styles.blue}`}>
               <span className={styles.cardLabel}>Total Gross Sales</span>
               <h3>
-                ₹{Number(daily.summary?.totalSaleAmount || 0).toLocaleString()}
+                ₹{Number(daily.summary?.totalGrossSales || 0).toLocaleString()}
               </h3>
             </div>
             <div className={`${styles.statCard} ${styles.green}`}>
               <span className={styles.cardLabel}>Payment Collected</span>
               <h3>
-                ₹{Number(daily.summary?.totalReceived || 0).toLocaleString()}
+                ₹{Number(daily.summary?.paymentCollected || 0).toLocaleString()}
               </h3>
             </div>
             <div className={`${styles.statCard} ${styles.red}`}>
@@ -183,7 +184,7 @@ const DailyReport = () => {
                     <tr className={styles.totalRow}>
                       <td className={styles.bold}>GRAND TOTAL COLLECTION</td>
                       <td className={`${styles.textRight} ${styles.bold}`}>
-                        ₹{daily.summary?.totalReceived?.toLocaleString()}
+                        ₹{daily.summary?.paymentCollected?.toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>

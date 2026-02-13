@@ -330,13 +330,17 @@ exports.handoverCash = async (req, res) => {
     orderPaymentIds,
   } = req.body;
 
-  console.log("Handover payload:", req.body); // 🔹 payload check
+  console.log("--- Handover Process Started ---");
+  console.log("Payload:", {
+    deliveryManId,
+    totalHandoverAmount,
+    orderPaymentIds,
+  });
 
-  if (!deliveryManId || !totalHandoverAmount) {
-    console.log("Missing deliveryManId or totalHandoverAmount");
+  if (!deliveryManId || totalHandoverAmount <= 0) {
     return res
       .status(400)
-      .json({ message: "DeliveryManID and Amount required!" });
+      .json({ message: "Invalid DeliveryManID or Amount!" });
   }
 
   const pool = await poolPromise;
@@ -344,132 +348,73 @@ exports.handoverCash = async (req, res) => {
 
   try {
     await transaction.begin();
-    console.log("Transaction started");
 
-    // 1️⃣ Get current balance
-    const balanceResult = await new sql.Request(transaction).input(
-      "DeliveryManID",
-      sql.Int,
-      deliveryManId,
-    ).query(`
-        SELECT CurrentBalance 
-        FROM DeliveryMenCashBalance 
-        WHERE DeliveryManID = @DeliveryManID
-      `);
+    // 1️⃣ Current Balance Check
+    const balanceResult = await new sql.Request(transaction)
+      .input("DMID", sql.Int, deliveryManId)
+      .query(
+        `SELECT CurrentBalance FROM DeliveryMenCashBalance WHERE DeliveryManID = @DMID`,
+      );
 
-    if (balanceResult.recordset.length === 0) {
-      throw new Error("Delivery man balance record not found");
-    }
+    const currentBalance = balanceResult.recordset[0]?.CurrentBalance || 0;
+    console.log(
+      `DB Balance: ${currentBalance}, Handover Request: ${totalHandoverAmount}`,
+    );
 
-    const currentBalance = balanceResult.recordset[0].CurrentBalance;
-    console.log("Current balance:", currentBalance);
-
-    // Check sufficient balance
     if (currentBalance < totalHandoverAmount) {
-      return res.status(400).json({ message: "Insufficient balance" });
+      throw new Error(`Insufficient balance! DB has ₹${currentBalance}`);
     }
 
-    // 🔹 Handle empty orderPaymentIds safely
-    if (!orderPaymentIds || orderPaymentIds.length === 0) {
-      console.log("No orders to handover");
-      await transaction.commit();
-      return res.status(200).json({
-        message: "Nothing to handover",
-        updatedBalance: currentBalance,
-      });
-    }
-
-    // 2️⃣ Subtract balance
+    // 2️⃣ Update Balance (Pehle balance kam karein)
     await new sql.Request(transaction)
-      .input("DeliveryManID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount).query(`
-        UPDATE DeliveryMenCashBalance
-        SET CurrentBalance = CurrentBalance - @Amount
-        WHERE DeliveryManID = @DeliveryManID
-      `);
-    console.log("Balance updated");
-
-    // 3️⃣ Insert into CashDepartment
-    await new sql.Request(transaction)
-      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("DMID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .input(
-        "DenominationJSON",
-        sql.NVarChar(sql.MAX),
-        JSON.stringify(denominationJSON),
-      ).query(`
-        INSERT INTO CashDepartment 
-        (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
-        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
-      `);
-    console.log("Inserted into CashDepartment");
+      .query(
+        `UPDATE DeliveryMenCashBalance SET CurrentBalance = CurrentBalance - @Amount WHERE DeliveryManID = @DMID`,
+      );
 
-    // 4️⃣ Validate & mark payments
-    const paymentCheck = await new sql.Request(transaction)
-      .input("DeliveryManID", sql.Int, deliveryManId)
-      .input("IDs", sql.VarChar, orderPaymentIds.join(",")).query(`
-        SELECT SUM(OP.Amount) AS TotalCash
-        FROM OrderPayments OP
-        JOIN AssignedOrders A ON OP.AssignID = A.AssignID
-        WHERE 
-          OP.IsHandovered = 0
-          AND A.DeliveryManID = @DeliveryManID
-          AND OP.PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
-      `);
+    // 3️⃣ Record in CashDepartment
+    await new sql.Request(transaction)
+      .input("DMID", sql.Int, deliveryManId)
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
+      .input("Deno", sql.NVarChar(sql.MAX), JSON.stringify(denominationJSON))
+      .query(`INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt) 
+              VALUES (@DMID, @Amount, @Deno, GETDATE())`);
 
-    const calculatedAmount = paymentCheck.recordset[0].TotalCash || 0;
-    console.log("Calculated order amount:", calculatedAmount);
+    // 4️⃣ Mark Orders as Handovered (Agar IDs aayi hain toh)
+    if (orderPaymentIds && orderPaymentIds.length > 0) {
+      const idsString = orderPaymentIds.join(",");
+      console.log("Updating Order IDs:", idsString);
 
-    if (calculatedAmount !== totalHandoverAmount) {
-      throw new Error(
-        `Handover amount mismatch. Selected orders total ₹${calculatedAmount}`,
+      await new sql.Request(transaction)
+        .input("IDs", sql.VarChar, idsString)
+        .query(
+          `UPDATE OrderPayments SET IsHandovered = 1 WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))`,
+        );
+    } else {
+      console.log(
+        "Note: No specific OrderPaymentIDs provided, balance adjusted globally.",
       );
     }
 
-    await new sql.Request(transaction).input(
-      "IDs",
-      sql.VarChar,
-      orderPaymentIds.join(","),
-    ).query(`
-        UPDATE OrderPayments
-        SET IsHandovered = 1
-        WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
-      `);
-    console.log("OrderPayments marked as handed over");
-
-    // 5️⃣ Insert history
+    // 5️⃣ History Entry
     await new sql.Request(transaction)
-      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("DMID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .input("Type", sql.VarChar, "DEBIT").query(`
-        INSERT INTO CashHandoverHistory
-        (DeliveryManID, Amount, TransactionType, EntryDate)
-        VALUES (@DeliveryManID, @Amount, @Type, GETDATE())
-      `);
-    console.log("History inserted");
+      .query(`INSERT INTO CashHandoverHistory (DeliveryManID, Amount, TransactionType, EntryDate) 
+              VALUES (@DMID, @Amount, 'DEBIT', GETDATE())`);
 
-    // 6️⃣ Fetch updated balance
-    const updatedBalanceResult = await new sql.Request(transaction).input(
-      "DeliveryManID",
-      sql.Int,
-      deliveryManId,
-    ).query(`
-        SELECT CurrentBalance 
-        FROM DeliveryMenCashBalance 
-        WHERE DeliveryManID = @DeliveryManID
-      `);
-
-    const updatedBalance = updatedBalanceResult.recordset[0].CurrentBalance;
     await transaction.commit();
-    console.log("Transaction committed, updated balance:", updatedBalance);
-
-    res.status(200).json({
-      message: "Cash Handover Successful!",
-      updatedBalance,
-    });
+    console.log("✅ Handover Successful");
+    res
+      .status(200)
+      .json({
+        message: "Cash Handover Successful!",
+        updatedBalance: currentBalance - totalHandoverAmount,
+      });
   } catch (err) {
-    await transaction.rollback();
-    console.error("Handover failed:", err.message);
+    if (transaction) await transaction.rollback();
+    console.error("❌ Handover Error:", err.message);
     res.status(500).json({ message: "Handover failed", error: err.message });
   }
 };

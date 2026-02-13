@@ -157,8 +157,6 @@ exports.getDailyReport = async (req, res) => {
     const request = pool.request();
     request.input("targetDate", sql.Date, date);
 
-    // Delivery Boy ID handling (Optional)
-    // Agar frontend se "all" ya empty string aaye toh null treat karein
     const dbid =
       deliveryBoyId && deliveryBoyId !== "all" && deliveryBoyId !== ""
         ? parseInt(deliveryBoyId)
@@ -168,82 +166,130 @@ exports.getDailyReport = async (req, res) => {
       request.input("dbid", sql.Int, dbid);
     }
 
-    // SQL Filter Fragment
     const boyFilter = dbid ? "AND ao.DeliveryManId = @dbid" : "";
 
-    // 1. Fetch Product Breakdown & Row-wise totals
-    // Hum LEFT JOIN use kar rahe hain taaki 'All' mein saare orders aayein
+    // =====================================================
+    // 1️⃣ PRODUCT BREAKDOWN (All Orders Included)
+    // =====================================================
     const itemsResult = await request.query(`
       SELECT 
+    t.ProductType,
+    t.Weight,
+    SUM(t.Qty) AS Qty,
+    t.Rate,
+    SUM(t.ItemTotal) + SUM(t.DeliveryCharge) AS Amount
+FROM (
+    SELECT 
+        o.OrderID,
         oi.ProductType,
         oi.Weight,
-        SUM(oi.Quantity) AS Qty,
+        oi.Quantity AS Qty,
         oi.Rate,
-        SUM(oi.Total) AS Amount
-      FROM OrdersTemp o
-      JOIN OrderItems oi ON o.OrderID = oi.OrderID
-      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
-      ${boyFilter}
-      GROUP BY oi.ProductType, oi.Weight, oi.Rate
+        oi.Total AS ItemTotal,
+        CASE 
+            WHEN ROW_NUMBER() OVER (PARTITION BY o.OrderID ORDER BY o.OrderID) = 1 
+            THEN ISNULL(o.DeliveryCharge,0)
+            ELSE 0
+        END AS DeliveryCharge
+    FROM OrdersTemp o
+    JOIN OrderItems oi ON o.OrderID = oi.OrderID
+    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+    WHERE CAST(o.OrderDate AS DATE) = @targetDate
+    ${boyFilter}
+) t
+GROUP BY t.ProductType, t.Weight, t.Rate
+
     `);
 
-    // 2. Fetch Payment Breakdown (GPay, Cash, Paytm, FOC)
+    // =====================================================
+    // 2️⃣ PAYMENT BREAKDOWN (All Modes Visible)
+    // =====================================================
     const paymentsResult = await request.query(`
       SELECT 
-        pm.ModeName,
-        SUM(op.Amount) AS ModeTotal
+          pm.ModeName,
+          SUM(op.Amount) AS ModeTotal,
+          pm.IsRevenue
       FROM OrdersTemp o
       JOIN OrderPayments op ON o.OrderID = op.OrderID
       JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
       WHERE CAST(o.OrderDate AS DATE) = @targetDate
       ${boyFilter}
-      GROUP BY pm.ModeName
+      GROUP BY pm.ModeName, pm.IsRevenue
     `);
 
+    // =====================================================
+    // 3️⃣ REVENUE SALES (FOC Excluded)
+    // =====================================================
+    const revenueSalesResult = await request.query(`
+    SELECT SUM(op.Amount) AS RevenueSales
+    FROM OrderPayments op
+    JOIN OrdersTemp o ON o.OrderID = op.OrderID
+    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+    WHERE CAST(op.PaymentReceivedDate AS DATE) = @targetDate
+      AND op.PaymentModeID != 4
+      ${boyFilter}
+`);
+
+    // =====================================================
+    // 4️⃣ REVENUE COLLECTED (FOC Excluded)
+    // =====================================================
+    const revenueCollectedResult = await request.query(`
+     SELECT SUM(op.Amount) AS RevenueCollected
+    FROM OrderPayments op
+    JOIN OrdersTemp o ON o.OrderID = op.OrderID
+    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+    WHERE CAST(op.PaymentReceivedDate AS DATE) = @targetDate
+      AND op.PaymentModeID != 4
+      ${boyFilter}
+`);
+
+    // =====================================================
+    // 5️⃣ TOTAL ORDERS COUNT
+    // =====================================================
+    const ordersCountResult = await request.query(`
+      SELECT COUNT(DISTINCT o.OrderID) AS TotalOrders
+      FROM OrdersTemp o
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      ${boyFilter}
+    `);
+
+    // =====================================================
+    // FINAL CALCULATIONS
+    // =====================================================
     const productData = itemsResult.recordset || [];
     const paymentData = paymentsResult.recordset || [];
 
-    // 3. Totals Calculation
-    // Yeh values automatically filter ke hisab se calculate hongi
-    const totalSaleAmount = productData.reduce(
-      (sum, item) => sum + (item.Amount || 0),
-      0,
-    );
-    const totalReceived = paymentData.reduce(
-      (sum, pay) => sum + (pay.ModeTotal || 0),
-      0,
-    );
-    const totalOutstanding = totalSaleAmount - totalReceived;
+    const totalSaleAmount = revenueSalesResult.recordset[0]?.RevenueSales || 0;
 
-    // 3. Fetch Total Orders Count
-    const ordersCountResult = await request.query(`
-  SELECT COUNT(DISTINCT o.OrderID) AS TotalOrders
-  FROM OrdersTemp o
-  LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-  WHERE CAST(o.OrderDate AS DATE) = @targetDate
-  ${boyFilter}
-`);
+    const totalReceived =
+      revenueCollectedResult.recordset[0]?.RevenueCollected || 0;
+
+    const totalOutstanding = totalSaleAmount - totalReceived;
 
     const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
 
-    // Final Response
+    // =====================================================
+    // RESPONSE
+    // =====================================================
     res.status(200).json({
       date,
       reportType: dbid ? `Delivery Boy ID: ${dbid}` : "Full Day Report (All)",
       summary: {
         totalOrders: totalOrders,
-        totalSaleAmount: totalSaleAmount, // Yeh main cheez hai
-        totalReceived: totalReceived,
+        totalGrossSales: totalSaleAmount, // FOC excluded
+        paymentCollected: totalReceived, // FOC excluded
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
       },
-      products: productData, // Product breakdown (Tray, Box, etc.)
-      payments: paymentData, // Payment mode breakdown
+      products: productData, // includes FOC items
+      payments: paymentData, // shows all modes including FOC
     });
   } catch (err) {
     console.error("Daily Report Error:", err);
-    res.status(500).json({ message: "Internal server error in Daily Report" });
+    res.status(500).json({
+      message: "Internal server error in Daily Report",
+    });
   }
 };
 

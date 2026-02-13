@@ -98,8 +98,9 @@ export default function UserDataTable() {
     if (selected?.DeliveryManID) {
       dispatch(fetchPendingCashOrders(selected.DeliveryManID))
         .unwrap()
-        .then((res) => console.log("Fetched pending orders:", res))
-        .catch((err) => console.error(err));
+        .then((res) =>
+          console.log("Fetched pending orders API Response:", res),
+        );
     }
   }, [selected, dispatch]);
 
@@ -175,14 +176,16 @@ export default function UserDataTable() {
     }
 
     if (totalHandoverAmount <= 0) {
-      setError("Please enter note counts to calculate total.");
+      setError("Please enter note counts.");
       return;
     }
 
-    if (totalHandoverAmount > selected.TotalCash) {
-      setError("Amount exceeds current balance.");
-      return;
-    }
+    // IDs nikaalte waqt optional chaining aur default array ka use karein
+    const orderPaymentIds = (pendingCashOrders || [])
+      .map((p) => p.PaymentID)
+      .filter((id) => id != null);
+
+    console.log("Final IDs to send:", orderPaymentIds);
 
     const denominationsToSend = {};
     DENOMINATIONS.forEach((note) => {
@@ -190,53 +193,23 @@ export default function UserDataTable() {
       if (count && count > 0) denominationsToSend[note] = Number(count);
     });
 
-    const orderPaymentIds = pendingCashOrders
-      .map((p) => p.PaymentID)
-      .filter((id) => id != null);
-
-    console.log("orderPaymentIds from redux", orderPaymentIds);
-
-    // 🔹 ADD THIS CHECK
-    if (orderPaymentIds.length === 0) {
-      setError("No pending cash orders to handover.");
-      return;
-    }
-    console.log("Selected:", selected);
-
-    console.log("Pending Cash Orders from Redux:", pendingCashOrders);
-
     const payload = {
       deliveryManId: Number(selected.DeliveryManID),
       totalHandoverAmount: Number(totalHandoverAmount),
       denominationJSON: denominationsToSend,
-      orderPaymentIds,
+      orderPaymentIds: orderPaymentIds, // Khali array [] bhi jayega toh backend ab handle kar lega
     };
-
-    console.log(payload, "payload");
 
     dispatch(handoverCash(payload))
       .unwrap()
       .then((res) => {
-        const updatedBalance = res.updatedBalance;
-
-        setList((prev) =>
-          prev.map((item) =>
-            item.DeliveryManID === selected.DeliveryManID
-              ? { ...item, TotalCash: updatedBalance }
-              : item,
-          ),
-        );
-
-        setManualDenominations(
-          DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}),
-        );
+        // Success logic...
         setSuccessMessage(`Handover ₹${totalHandoverAmount} successful.`);
+        // Refresh the list to show updated balance
+        dispatch(fetchCashByDeliveryMen());
       })
-      .catch((err) => {
-        setError(err.message || "Handover failed");
-      });
+      .catch((err) => setError(err.message || "Handover failed"));
   };
-
   const clearSelection = () => {
     setSelectedId("");
     setError("");
