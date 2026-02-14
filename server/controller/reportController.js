@@ -169,40 +169,40 @@ exports.getDailyReport = async (req, res) => {
     const boyFilter = dbid ? "AND ao.DeliveryManId = @dbid" : "";
 
     // =====================================================
-    // 1️⃣ PRODUCT BREAKDOWN (All Orders Included)
+    // 1️⃣ PRODUCT BREAKDOWN (All Orders - INCLUDING FOC)
     // =====================================================
     const itemsResult = await request.query(`
       SELECT 
-    t.ProductType,
-    t.Weight,
-    SUM(t.Qty) AS Qty,
-    t.Rate,
-    SUM(t.ItemTotal) + SUM(t.DeliveryCharge) AS Amount
-FROM (
-    SELECT 
-        o.OrderID,
-        oi.ProductType,
-        oi.Weight,
-        oi.Quantity AS Qty,
-        oi.Rate,
-        oi.Total AS ItemTotal,
-        CASE 
-            WHEN ROW_NUMBER() OVER (PARTITION BY o.OrderID ORDER BY o.OrderID) = 1 
-            THEN ISNULL(o.DeliveryCharge,0)
-            ELSE 0
-        END AS DeliveryCharge
-    FROM OrdersTemp o
-    JOIN OrderItems oi ON o.OrderID = oi.OrderID
-    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-    WHERE CAST(o.OrderDate AS DATE) = @targetDate
-    ${boyFilter}
-) t
-GROUP BY t.ProductType, t.Weight, t.Rate
-
+        t.ProductType,
+        t.Weight,
+        SUM(t.Qty) AS Qty,
+        t.Rate,
+        SUM(t.ItemTotal) + SUM(t.DeliveryCharge) AS Amount
+      FROM (
+        SELECT 
+            o.OrderID,
+            oi.ProductType,
+            oi.Weight,
+            oi.Quantity AS Qty,
+            oi.Rate,
+            oi.Total AS ItemTotal,
+            CASE 
+                WHEN ROW_NUMBER() OVER (PARTITION BY o.OrderID ORDER BY o.OrderID) = 1 
+                THEN ISNULL(o.DeliveryCharge,0)
+                ELSE 0
+            END AS DeliveryCharge
+        FROM OrdersTemp o
+        JOIN OrderItems oi ON o.OrderID = oi.OrderID
+        LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+        WHERE CAST(o.OrderDate AS DATE) = @targetDate
+        ${boyFilter}
+      ) t
+      GROUP BY t.ProductType, t.Weight, t.Rate
+      ORDER BY t.ProductType, t.Weight
     `);
 
     // =====================================================
-    // 2️⃣ PAYMENT BREAKDOWN (All Modes Visible)
+    // 2️⃣ PAYMENT BREAKDOWN (Based on Order Date, not Payment Date)
     // =====================================================
     const paymentsResult = await request.query(`
       SELECT 
@@ -216,36 +216,74 @@ GROUP BY t.ProductType, t.Weight, t.Rate
       WHERE CAST(o.OrderDate AS DATE) = @targetDate
       ${boyFilter}
       GROUP BY pm.ModeName, pm.IsRevenue
+      ORDER BY 
+        CASE WHEN pm.ModeName = 'FOC' THEN 1 ELSE 0 END,
+        pm.ModeName
     `);
 
     // =====================================================
-    // 3️⃣ REVENUE SALES (FOC Excluded)
+    // 3️⃣ REVENUE SALES (Excluding FOC) - Based on Order Date
     // =====================================================
-    const revenueSalesResult = await request.query(`
-    SELECT SUM(op.Amount) AS RevenueSales
-    FROM OrderPayments op
-    JOIN OrdersTemp o ON o.OrderID = op.OrderID
-    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-    WHERE CAST(op.PaymentReceivedDate AS DATE) = @targetDate
-      AND op.PaymentModeID != 4
-      ${boyFilter}
-`);
+    const grossSalesResult = await request.query(`
+      SELECT 
+        ISNULL(SUM(t.ItemTotal), 0) + ISNULL(SUM(t.DeliveryCharge), 0) AS GrossSales
+      FROM (
+        SELECT 
+            o.OrderID,
+            oi.Total AS ItemTotal,
+            CASE 
+                WHEN ROW_NUMBER() OVER (PARTITION BY o.OrderID ORDER BY o.OrderID) = 1 
+                THEN ISNULL(o.DeliveryCharge,0)
+                ELSE 0
+            END AS DeliveryCharge
+        FROM OrdersTemp o
+        JOIN OrderItems oi ON o.OrderID = oi.OrderID
+        LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+        WHERE CAST(o.OrderDate AS DATE) = @targetDate
+        ${boyFilter}
+        AND NOT EXISTS (
+            SELECT 1
+            FROM OrderPayments op
+            JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+            WHERE op.OrderID = o.OrderID
+            AND (op.PaymentModeID = 4 OR pm.IsRevenue = 0)
+        )
+      ) t
+    `);
 
     // =====================================================
-    // 4️⃣ REVENUE COLLECTED (FOC Excluded)
+    // 4️⃣ PAYMENT COLLECTED (Based on Order Date, matching Customer Report logic)
     // =====================================================
-    const revenueCollectedResult = await request.query(`
-     SELECT SUM(op.Amount) AS RevenueCollected
-    FROM OrderPayments op
-    JOIN OrdersTemp o ON o.OrderID = op.OrderID
-    LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-    WHERE CAST(op.PaymentReceivedDate AS DATE) = @targetDate
-      AND op.PaymentModeID != 4
+    const paymentCollectedResult = await request.query(`
+      SELECT 
+        ISNULL(SUM(op.Amount), 0) AS PaymentCollected
+      FROM OrdersTemp o
+      JOIN OrderPayments op ON o.OrderID = op.OrderID
+      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
       ${boyFilter}
-`);
+      AND op.PaymentModeID != 4
+      AND pm.IsRevenue = 1
+    `);
 
     // =====================================================
-    // 5️⃣ TOTAL ORDERS COUNT
+    // 5️⃣ FOC AMOUNT (Separately track FOC for transparency)
+    // =====================================================
+    const focAmountResult = await request.query(`
+      SELECT 
+        ISNULL(SUM(op.Amount), 0) AS FOCAmount
+      FROM OrdersTemp o
+      JOIN OrderPayments op ON o.OrderID = op.OrderID
+      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      ${boyFilter}
+      AND (op.PaymentModeID = 4 OR pm.IsRevenue = 0)
+    `);
+
+    // =====================================================
+    // 6️⃣ TOTAL ORDERS COUNT
     // =====================================================
     const ordersCountResult = await request.query(`
       SELECT COUNT(DISTINCT o.OrderID) AS TotalOrders
@@ -256,19 +294,38 @@ GROUP BY t.ProductType, t.Weight, t.Rate
     `);
 
     // =====================================================
+    // 7️⃣ REVENUE ORDERS COUNT (Excluding FOC)
+    // =====================================================
+    const revenueOrdersCountResult = await request.query(`
+      SELECT COUNT(DISTINCT o.OrderID) AS RevenueOrders
+      FROM OrdersTemp o
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      ${boyFilter}
+      AND NOT EXISTS (
+          SELECT 1
+          FROM OrderPayments op
+          JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+          WHERE op.OrderID = o.OrderID
+          AND (op.PaymentModeID = 4 OR pm.IsRevenue = 0)
+      )
+    `);
+
+    // =====================================================
     // FINAL CALCULATIONS
     // =====================================================
     const productData = itemsResult.recordset || [];
     const paymentData = paymentsResult.recordset || [];
 
-    const totalSaleAmount = revenueSalesResult.recordset[0]?.RevenueSales || 0;
-
+    const totalSaleAmount = grossSalesResult.recordset[0]?.GrossSales || 0;
     const totalReceived =
-      revenueCollectedResult.recordset[0]?.RevenueCollected || 0;
-
+      paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
+    const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
     const totalOutstanding = totalSaleAmount - totalReceived;
 
     const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
+    const revenueOrders =
+      revenueOrdersCountResult.recordset[0]?.RevenueOrders || 0;
 
     // =====================================================
     // RESPONSE
@@ -278,12 +335,14 @@ GROUP BY t.ProductType, t.Weight, t.Rate
       reportType: dbid ? `Delivery Boy ID: ${dbid}` : "Full Day Report (All)",
       summary: {
         totalOrders: totalOrders,
-        totalGrossSales: totalSaleAmount, // FOC excluded
-        paymentCollected: totalReceived, // FOC excluded
+        revenueOrders: revenueOrders,
+        totalGrossSales: totalSaleAmount,
+        paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
+        focAmount: totalFOC,
       },
-      products: productData, // includes FOC items
-      payments: paymentData, // shows all modes including FOC
+      products: productData,
+      payments: paymentData,
     });
   } catch (err) {
     console.error("Daily Report Error:", err);
@@ -313,61 +372,106 @@ exports.getCustomerWiseSummaryByDate = async (req, res) => {
     }
 
     const query = `
-      SELECT 
-        O.OrderID,
-        O.OrderDate,
-        O.CustomerName,
-        O.ContactNo,
-        O.Area,
-        O.Address,
-        ISNULL(DB.Name, A.OtherDeliveryManName) AS DeliveryBoyName,
-        
-        -- Product Details
-        STRING_AGG(CAST(CONCAT(OI.ProductName, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)), ' | ') AS ItemDetails,
-        
-        -- Payment Mode Details
-        ISNULL((
-            SELECT STRING_AGG(CONCAT(PM.ModeName, ': ', OP_Sub.Amount), ', ')
-            FROM OrderPayments OP_Sub
-            JOIN PaymentModes PM ON OP_Sub.PaymentModeID = PM.PaymentModeID
-            WHERE OP_Sub.OrderID = O.OrderID
-        ), 'No Payment') AS PaymentModeDetails,
+SELECT 
+    O.OrderID,
+    O.OrderDate,
+    O.CustomerName,
+    O.ContactNo,
+    O.Area,
+    O.Address,
+    ISNULL(DB.Name, A.OtherDeliveryManName) AS DeliveryBoyName,
+    
+    -- Product Details
+    STRING_AGG(
+        CAST(CONCAT(OI.ProductName, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)),
+        ' | '
+    ) AS ItemDetails,
+    
+    -- Payment Mode Details
+    ISNULL((
+        SELECT STRING_AGG(CONCAT(PM.ModeName, ': ', OP_Sub.Amount), ', ')
+        FROM OrderPayments OP_Sub
+        JOIN PaymentModes PM ON OP_Sub.PaymentModeID = PM.PaymentModeID
+        WHERE OP_Sub.OrderID = O.OrderID
+    ), 'No Payment') AS PaymentModeDetails,
 
-        -- Financials (Fixed grouping error by using MAX for DeliveryCharge)
+    -- ✅ OrderAmount (FOC Excluded)
+    CASE 
+    WHEN EXISTS (
+        SELECT 1
+        FROM OrderPayments OP
+        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+        WHERE OP.OrderID = O.OrderID
+        AND (OP.PaymentModeID = 4 OR PM.IsRevenue = 0)
+    )
+    THEN 0
+    ELSE
+    (
+        ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
+        + ISNULL(MAX(O.DeliveryCharge), 0)
+    )
+    END AS OrderAmount,
+
+    -- ✅ PaidAmount (FOC Excluded)
+    ISNULL((
+        SELECT SUM(OP.Amount)
+        FROM OrderPayments OP
+        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+        WHERE OP.OrderID = O.OrderID
+        AND OP.PaymentModeID != 4
+        AND PM.IsRevenue = 1
+    ), 0) AS PaidAmount,
+
+    ISNULL((SELECT SUM(ShortAmount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS ShortAmount,
+
+    -- ✅ OutstandingAmount (Updated Logic)
+    (
+        CASE 
+        WHEN EXISTS (
+            SELECT 1
+            FROM OrderPayments OP
+            JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+            WHERE OP.OrderID = O.OrderID
+            AND (OP.PaymentModeID = 4 OR PM.IsRevenue = 0)
+        )
+        THEN 0
+        ELSE
         (
-          ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
-          + ISNULL(MAX(O.DeliveryCharge), 0)
-        ) AS OrderAmount,
+            ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
+            + ISNULL(MAX(O.DeliveryCharge), 0)
+        )
+        END
+    )
+    -
+    ISNULL((
+        SELECT SUM(OP.Amount)
+        FROM OrderPayments OP
+        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
+        WHERE OP.OrderID = O.OrderID
+        AND OP.PaymentModeID != 4
+        AND PM.IsRevenue = 1
+    ), 0)
+    AS OutstandingAmount
 
-        ISNULL((SELECT SUM(Amount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS PaidAmount,
+FROM OrdersTemp O WITH (NOLOCK)
+LEFT JOIN OrderItems OI WITH (NOLOCK) ON O.OrderID = OI.OrderID
+LEFT JOIN AssignedOrders A WITH (NOLOCK) ON O.OrderID = A.OrderID
+LEFT JOIN DeliveryMen DB WITH (NOLOCK) ON A.DeliveryManID = DB.DeliveryManID
 
-        ISNULL((SELECT SUM(ShortAmount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS ShortAmount,
+WHERE O.OrderDate BETWEEN @fromDate AND @toDate
+${customerFilter}
 
-        (
-          (ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
-           + ISNULL(MAX(O.DeliveryCharge), 0)) -- Wrapped in MAX to fix SQL error
-          - ISNULL((SELECT SUM(Amount) FROM OrderPayments WHERE OrderID = O.OrderID), 0)
-        ) AS OutstandingAmount
-
-      FROM OrdersTemp O WITH (NOLOCK)
-      LEFT JOIN OrderItems OI WITH (NOLOCK) ON O.OrderID = OI.OrderID
-      LEFT JOIN AssignedOrders A WITH (NOLOCK) ON O.OrderID = A.OrderID
-      LEFT JOIN DeliveryMen DB WITH (NOLOCK) ON A.DeliveryManID = DB.DeliveryManID
-
-      WHERE O.OrderDate BETWEEN @fromDate AND @toDate
-      ${customerFilter}
-
-      GROUP BY 
-        O.OrderID, 
-        O.OrderDate, 
-        O.CustomerName, 
-        O.ContactNo, 
-        O.Area, 
-        O.Address,
-        DB.Name,
-        A.OtherDeliveryManName
-      ORDER BY O.OrderDate DESC
-    `;
+GROUP BY 
+    O.OrderID, 
+    O.OrderDate, 
+    O.CustomerName, 
+    O.ContactNo, 
+    O.Area, 
+    O.Address,
+    DB.Name,
+    A.OtherDeliveryManName
+ORDER BY O.OrderDate DESC
+`;
 
     const result = await request.query(query);
     res.status(200).json(result.recordset);

@@ -162,11 +162,30 @@ const AdminDashboard = () => {
       }),
     )
       .unwrap()
-      .then(() => {
-        setTimeout(() => dispatch(fetchOrder()), 200);
-        toast.success("Payment updated successfully!");
-        setIsPaymentModalOpen(false);
-        setReceivedAmount("");
+      .then((response) => {
+        if (response.requiresManualVerification) {
+          // Handle all manual verification cases
+          if (response.isSplitPayment) {
+            toast.info(
+              "Split payment detected. Please verify manually in the system.",
+            );
+          } else {
+            toast.info(
+              `${response.modeName} payment requires manual verification.`,
+            );
+          }
+          setIsPaymentModalOpen(false);
+          setReceivedAmount("");
+          dispatch(fetchOrder()); // Refresh to show current state
+        } else {
+          // Auto-verified (Cash payment)
+          setTimeout(() => dispatch(fetchOrder()), 200);
+          toast.success(
+            `Cash payment verified successfully!${response.shortAmount > 0 ? ` Short amount: ₹${response.shortAmount}` : ""}`,
+          );
+          setIsPaymentModalOpen(false);
+          setReceivedAmount("");
+        }
       })
       .catch((err) =>
         toast.error(err.message || "Payment verification failed"),

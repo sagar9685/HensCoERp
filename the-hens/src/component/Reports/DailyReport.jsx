@@ -21,6 +21,14 @@ const DailyReport = () => {
     deliveryBoyId: "all",
   });
 
+  // Only sum actual revenue modes for the Grand Total at the bottom of the table
+  const grandTotalCollection =
+    daily.payments?.reduce((sum, p) => {
+      // Replace '4' with your actual FOC ID if different
+      return p.IsRevenue === 1 && p.PaymentModeID !== 4
+        ? sum + Number(p.ModeTotal)
+        : sum;
+    }, 0) || 0;
   // Fetch delivery boys list on component mount
   useEffect(() => {
     dispatch(fetchDeliveryMen());
@@ -78,18 +86,26 @@ const DailyReport = () => {
       ) : (
         <>
           {/* Summary Cards */}
+
+          {/* Summary Cards */}
           <div className={styles.statsGrid}>
             <div className={`${styles.statCard} ${styles.blue}`}>
-              <span className={styles.cardLabel}>Total Gross Sales</span>
+              <span className={styles.cardLabel}>
+                Total Gross Sales (Revenue Only)
+              </span>
               <h3>
                 ₹{Number(daily.summary?.totalGrossSales || 0).toLocaleString()}
               </h3>
+              <small className={styles.cardSubtext}>
+                (Excludes FOC orders)
+              </small>
             </div>
             <div className={`${styles.statCard} ${styles.green}`}>
               <span className={styles.cardLabel}>Payment Collected</span>
               <h3>
                 ₹{Number(daily.summary?.paymentCollected || 0).toLocaleString()}
               </h3>
+              <small className={styles.cardSubtext}>From revenue orders</small>
             </div>
             <div className={`${styles.statCard} ${styles.red}`}>
               <span className={styles.cardLabel}>Outstanding Balance</span>
@@ -97,14 +113,23 @@ const DailyReport = () => {
                 ₹{Number(daily.summary?.totalOutstanding || 0).toLocaleString()}
               </h3>
             </div>
-            <div className={`${styles.statCard} ${styles.green}`}>
+            <div className={`${styles.statCard} ${styles.purple}`}>
+              <span className={styles.cardLabel}>FOC Amount</span>
+              <h3>₹{Number(daily.summary?.focAmount || 0).toLocaleString()}</h3>
+              <small className={styles.cardSubtext}>Free/Discount orders</small>
+            </div>
+            <div className={`${styles.statCard} ${styles.orange}`}>
               <span className={styles.cardLabel}>Total Orders</span>
               <h3>
                 {Number(daily.summary?.totalOrders || 0).toLocaleString()}
               </h3>
+              <small className={styles.cardSubtext}>
+                Revenue: {daily.summary?.revenueOrders || 0} | FOC:{" "}
+                {(daily.summary?.totalOrders || 0) -
+                  (daily.summary?.revenueOrders || 0)}
+              </small>
             </div>
           </div>
-
           <div className={styles.reportContent}>
             {/* Left: Product Table */}
             <div className={styles.tableSection}>
@@ -184,7 +209,7 @@ const DailyReport = () => {
                     <tr className={styles.totalRow}>
                       <td className={styles.bold}>GRAND TOTAL COLLECTION</td>
                       <td className={`${styles.textRight} ${styles.bold}`}>
-                        ₹{daily.summary?.paymentCollected?.toLocaleString()}
+                        ₹{grandTotalCollection.toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>

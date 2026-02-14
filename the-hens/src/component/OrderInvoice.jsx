@@ -302,7 +302,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     <p>
                       <strong>Invoice Date:</strong>{" "}
                       {new Date(
-                        orderData.OrderDate || new Date(),
+                        orderData.DeliveryDate || new Date(),
                       ).toLocaleDateString("en-GB", {
                         day: "2-digit",
                         month: "short",
@@ -360,19 +360,23 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <strong>Order Taken By:</strong>{" "}
                       {orderData.OrderTakenBy || "N/A"}
                     </p>
-                    <p>
+                    {/* <p>
                       <strong>Delivery Date:</strong>{" "}
                       {new Date(
                         orderData.DeliveryDate || new Date(),
                       ).toLocaleDateString("en-GB")}
-                    </p>
+                    </p> */}
                     <p>
                       <strong> P.O. Number -: </strong>{" "}
                       {orderData.Po_No || "N/A"} <br></br>
                       <strong> P.O. Date -: </strong> {""}
                       {new Date(
                         orderData.Po_Date || new Date(),
-                      ).toLocaleDateString("en-GB")}
+                      ).toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </p>
                     <p>
                       <strong> Payment Terms -: 7 Days </strong>

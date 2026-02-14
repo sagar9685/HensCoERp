@@ -85,15 +85,15 @@ export default function DeliveryManDetails({
                   selected.TotalCash > 3000
                     ? styles.highStatus
                     : selected.TotalCash > 1000
-                    ? styles.mediumStatus
-                    : styles.lowStatus
+                      ? styles.mediumStatus
+                      : styles.lowStatus
                 }`}
               >
                 {selected.TotalCash > 3000
                   ? "High Cash"
                   : selected.TotalCash > 1000
-                  ? "Medium Cash"
-                  : "Low Cash"}
+                    ? "Medium Cash"
+                    : "Low Cash"}
               </span>
             </div>
           </div>

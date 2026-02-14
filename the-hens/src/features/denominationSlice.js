@@ -17,14 +17,14 @@ export const addDenomination = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 export const handoverCash = createAsyncThunk(
   "denomination/handover",
   async (
     { deliveryManId, totalHandoverAmount, denominationJSON, orderPaymentIds },
-    { rejectWithValue }
+    { rejectWithValue },
   ) => {
     try {
       const res = await axios.post(`${API_BASE_URL}/api/users/handover`, {
@@ -37,23 +37,23 @@ export const handoverCash = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 // denominationSlice.js mein update karein
+// Updated Thunk
 export const fetchPendingCashOrders = createAsyncThunk(
   "denomination/fetchPendingOrders",
   async (deliveryManId, { rejectWithValue }) => {
     try {
       const res = await axios.get(
-        // 'prnding' ko 'pending' karein (agar backend mein yahi spelling hai)
-        `${API_BASE_URL}/api/users/cash/pending/${deliveryManId}`
+        `${API_BASE_URL}/api/users/pending-cash/${deliveryManId}`, // Route match karein
       );
       return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || err.message);
     }
-  }
+  },
 );
 
 const denominationSlice = createSlice({
@@ -96,6 +96,7 @@ const denominationSlice = createSlice({
       .addCase(handoverCash.fulfilled, (state, action) => {
         state.loading = false;
         state.success = action.payload.message;
+        state.orders = [];
         state.error = "";
       })
       .addCase(handoverCash.rejected, (state, action) => {

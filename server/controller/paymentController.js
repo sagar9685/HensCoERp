@@ -52,22 +52,34 @@ exports.completeOrder = async (req, res) => {
     for (const [mode, amount] of Object.entries(paymentSettlement)) {
       if (amount > 0) {
         const modeData = paymentModes.find(
-          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase(),
+          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase().trim(),
         );
 
         if (!modeData) continue;
+
+        let paymentVerifyStatus = "Pending";
+        let shortAmount = 0;
+
+        // ✅ Only PaymentModeID = 1 (Cash)
+        if (modeData.PaymentModeID === 1) {
+          paymentVerifyStatus = "Verified";
+        }
 
         await new sql.Request(transaction)
           .input("OrderID", sql.Int, orderId)
           .input("AssignID", sql.Int, assignedOrderId)
           .input("PaymentModeID", sql.Int, modeData.PaymentModeID)
           .input("Amount", sql.Decimal(10, 2), amount)
-          .input("PaymentReceivedDate", sql.Date, paymentReceivedDate).query(`
-            INSERT INTO OrderPayments
-              (OrderID, AssignID, PaymentModeID, Amount, PaymentReceivedDate, CreatedAt)
-            VALUES
-              (@OrderID, @AssignID, @PaymentModeID, @Amount, @PaymentReceivedDate, GETDATE());
-          `);
+          .input("PaymentReceivedDate", sql.Date, paymentReceivedDate)
+          .input("VerifyStatus", sql.VarChar, paymentVerifyStatus)
+          .input("ShortAmount", sql.Decimal(10, 2), shortAmount).query(`
+        INSERT INTO OrderPayments
+          (OrderID, AssignID, PaymentModeID, Amount, 
+           PaymentReceivedDate, PaymentVerifyStatus, ShortAmount, CreatedAt)
+        VALUES
+          (@OrderID, @AssignID, @PaymentModeID, @Amount,
+           @PaymentReceivedDate, @VerifyStatus, @ShortAmount, GETDATE());
+      `);
       }
     }
 
@@ -251,12 +263,17 @@ exports.verifyPayment = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // 1. Fetch original order payment amount
+    // 1. Fetch payment details with PaymentModeID and ModeName
     const payment = await pool.request().input("paymentId", sql.Int, paymentId)
       .query(`
-        SELECT Amount 
-        FROM OrderPayments 
-        WHERE PaymentID = @paymentId
+        SELECT 
+          op.Amount, 
+          op.PaymentModeID,
+          op.PaymentSummary,
+          pm.ModeName
+        FROM OrderPayments op
+        JOIN PaymentModes pm ON op.PaymentModeID = pm.PaymentModeID
+        WHERE op.PaymentID = @paymentId
       `);
 
     if (payment.recordset.length === 0) {
@@ -264,35 +281,69 @@ exports.verifyPayment = async (req, res) => {
     }
 
     const originalAmount = payment.recordset[0].Amount;
+    const paymentModeID = payment.recordset[0].PaymentModeID;
+    const modeName = payment.recordset[0].ModeName;
+    const paymentSummary = payment.recordset[0].PaymentSummary;
 
     let status = "Verified";
     let shortAmount = 0;
 
-    if (receivedAmount < originalAmount) {
-      status = "Short";
-      shortAmount = originalAmount - receivedAmount;
+    // Check if it's a split payment (multiple payment modes)
+    const isSplitPayment = paymentSummary && paymentSummary.includes("|");
+
+    // CASE 1: Split payment (multiple modes) - Always require manual verification
+    if (isSplitPayment) {
+      return res.json({
+        message: "Split payment detected. Manual verification required.",
+        paymentId,
+        requiresManualVerification: true,
+        modeName,
+        isSplitPayment: true,
+      });
     }
 
-    // 2. Update record with status
-    await pool
-      .request()
-      .input("paymentId", sql.Int, paymentId)
-      .input("status", sql.VarChar, status)
-      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
-        UPDATE OrderPayments
-        SET PaymentVerifyStatus = @status,
-            ShortAmount = @shortAmount
-        WHERE PaymentID = @paymentId
-      `);
+    // CASE 2: Pure Cash payment (PaymentModeID = 1) - Auto verify
+    if (paymentModeID === 1) {
+      // Cash
+      if (receivedAmount < originalAmount) {
+        status = "Short";
+        shortAmount = originalAmount - receivedAmount;
+      }
 
-    return res.json({
-      message: "Verification updated",
-      paymentId,
-      originalAmount,
-      receivedAmount,
-      status,
-      shortAmount,
-    });
+      // Update record with status
+      await pool
+        .request()
+        .input("paymentId", sql.Int, paymentId)
+        .input("status", sql.VarChar, status)
+        .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
+          UPDATE OrderPayments
+          SET PaymentVerifyStatus = @status,
+              ShortAmount = @shortAmount
+          WHERE PaymentID = @paymentId
+        `);
+
+      return res.json({
+        message: "Cash payment verified successfully",
+        paymentId,
+        originalAmount,
+        receivedAmount,
+        status,
+        shortAmount,
+        autoVerified: true,
+        modeName: "Cash",
+      });
+    }
+
+    // CASE 3: Any other payment mode (GPay, Paytm, Bank Transfer, FOC) - Manual verification
+    else {
+      return res.json({
+        message: `${modeName} payment detected. Manual verification required.`,
+        paymentId,
+        requiresManualVerification: true,
+        modeName,
+        paymentModeID,
+      });
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -309,15 +360,142 @@ exports.markPaymentVerified = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    await pool.request().input("paymentId", sql.Int, paymentId).query(`
+    // Get the payment details with mode information
+    const payment = await pool.request().input("paymentId", sql.Int, paymentId)
+      .query(`
+        SELECT 
+          op.Amount, 
+          op.PaymentSummary,
+          op.PaymentModeID,
+          pm.ModeName
+        FROM OrderPayments op
+        JOIN PaymentModes pm ON op.PaymentModeID = pm.PaymentModeID
+        WHERE op.PaymentID = @paymentId
+      `);
+
+    if (payment.recordset.length === 0) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    const originalAmount = payment.recordset[0].Amount;
+    const paymentSummary = payment.recordset[0].PaymentSummary;
+    const modeName = payment.recordset[0].ModeName;
+
+    // Parse payment summary to get total received amount
+    let totalReceived = 0;
+
+    if (paymentSummary && paymentSummary !== "No Payment") {
+      // Handle split payments
+      const payments = paymentSummary.split("|");
+      payments.forEach((p) => {
+        // Extract amount from format like "Cash: 100" or "GPay: 200"
+        const match = p.match(/:?\s*([\d,]+)/);
+        if (match) {
+          const amount = parseFloat(match[1].replace(/,/g, ""));
+          if (!isNaN(amount)) {
+            totalReceived += amount;
+          }
+        }
+      });
+    } else {
+      // For single payment without summary, use the Amount
+      totalReceived = originalAmount;
+    }
+
+    // Calculate short amount
+    let shortAmount = 0;
+    if (totalReceived < originalAmount) {
+      shortAmount = originalAmount - totalReceived;
+    }
+
+    // Update the payment with verification
+    await pool
+      .request()
+      .input("paymentId", sql.Int, paymentId)
+      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
         UPDATE OrderPayments
         SET PaymentVerifyStatus = 'Verified',
-            ShortAmount = 0
+            ShortAmount = @shortAmount
         WHERE PaymentID = @paymentId
       `);
 
-    res.json({ message: "Payment marked as Verified" });
+    res.json({
+      message: `Payment marked as Verified for ${modeName}`,
+      shortAmount: shortAmount,
+      totalReceived,
+      originalAmount,
+      modeName,
+    });
   } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+exports.markPaymentVerified = async (req, res) => {
+  const { paymentId } = req.body;
+
+  if (!paymentId) {
+    return res.status(400).json({ message: "PaymentID required" });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    // Get the payment details first
+    const payment = await pool.request().input("paymentId", sql.Int, paymentId)
+      .query(`
+        SELECT Amount, PaymentSummary, PaymentMode
+        FROM OrderPayments 
+        WHERE PaymentID = @paymentId
+      `);
+
+    if (payment.recordset.length === 0) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    const originalAmount = payment.recordset[0].Amount;
+    const paymentSummary = payment.recordset[0].PaymentSummary;
+    const paymentMode = payment.recordset[0].PaymentMode;
+
+    // Parse payment summary to get total received amount
+    let totalReceived = 0;
+    if (paymentSummary) {
+      const payments = paymentSummary.split("|");
+      payments.forEach((p) => {
+        const amount = parseFloat(p.split(":")[1]);
+        if (!isNaN(amount)) {
+          totalReceived += amount;
+        }
+      });
+    }
+
+    // For single payment mode without split, use the Amount
+    if (totalReceived === 0) {
+      totalReceived = originalAmount;
+    }
+
+    let shortAmount = 0;
+    if (totalReceived < originalAmount) {
+      shortAmount = originalAmount - totalReceived;
+    }
+
+    // Update the payment with verification
+    await pool
+      .request()
+      .input("paymentId", sql.Int, paymentId)
+      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
+        UPDATE OrderPayments
+        SET PaymentVerifyStatus = 'Verified',
+            ShortAmount = @shortAmount
+        WHERE PaymentID = @paymentId
+      `);
+
+    res.json({
+      message: `Payment marked as Verified for ${paymentMode}`,
+      shortAmount: shortAmount,
+    });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -330,17 +508,13 @@ exports.handoverCash = async (req, res) => {
     orderPaymentIds,
   } = req.body;
 
-  console.log("--- Handover Process Started ---");
-  console.log("Payload:", {
-    deliveryManId,
-    totalHandoverAmount,
-    orderPaymentIds,
-  });
+  console.log("Handover payload:", req.body); // 🔹 payload check
 
-  if (!deliveryManId || totalHandoverAmount <= 0) {
+  if (!deliveryManId || !totalHandoverAmount) {
+    console.log("Missing deliveryManId or totalHandoverAmount");
     return res
       .status(400)
-      .json({ message: "Invalid DeliveryManID or Amount!" });
+      .json({ message: "DeliveryManID and Amount required!" });
   }
 
   const pool = await poolPromise;
@@ -348,73 +522,132 @@ exports.handoverCash = async (req, res) => {
 
   try {
     await transaction.begin();
+    console.log("Transaction started");
 
-    // 1️⃣ Current Balance Check
-    const balanceResult = await new sql.Request(transaction)
-      .input("DMID", sql.Int, deliveryManId)
-      .query(
-        `SELECT CurrentBalance FROM DeliveryMenCashBalance WHERE DeliveryManID = @DMID`,
-      );
+    // 1️⃣ Get current balance
+    const balanceResult = await new sql.Request(transaction).input(
+      "DeliveryManID",
+      sql.Int,
+      deliveryManId,
+    ).query(`
+        SELECT CurrentBalance 
+        FROM DeliveryMenCashBalance 
+        WHERE DeliveryManID = @DeliveryManID
+      `);
 
-    const currentBalance = balanceResult.recordset[0]?.CurrentBalance || 0;
-    console.log(
-      `DB Balance: ${currentBalance}, Handover Request: ${totalHandoverAmount}`,
-    );
+    if (balanceResult.recordset.length === 0) {
+      throw new Error("Delivery man balance record not found");
+    }
 
+    const currentBalance = balanceResult.recordset[0].CurrentBalance;
+    console.log("Current balance:", currentBalance);
+
+    // Check sufficient balance
     if (currentBalance < totalHandoverAmount) {
-      throw new Error(`Insufficient balance! DB has ₹${currentBalance}`);
+      return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // 2️⃣ Update Balance (Pehle balance kam karein)
-    await new sql.Request(transaction)
-      .input("DMID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .query(
-        `UPDATE DeliveryMenCashBalance SET CurrentBalance = CurrentBalance - @Amount WHERE DeliveryManID = @DMID`,
-      );
-
-    // 3️⃣ Record in CashDepartment
-    await new sql.Request(transaction)
-      .input("DMID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .input("Deno", sql.NVarChar(sql.MAX), JSON.stringify(denominationJSON))
-      .query(`INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt) 
-              VALUES (@DMID, @Amount, @Deno, GETDATE())`);
-
-    // 4️⃣ Mark Orders as Handovered (Agar IDs aayi hain toh)
-    if (orderPaymentIds && orderPaymentIds.length > 0) {
-      const idsString = orderPaymentIds.join(",");
-      console.log("Updating Order IDs:", idsString);
-
-      await new sql.Request(transaction)
-        .input("IDs", sql.VarChar, idsString)
-        .query(
-          `UPDATE OrderPayments SET IsHandovered = 1 WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))`,
-        );
-    } else {
-      console.log(
-        "Note: No specific OrderPaymentIDs provided, balance adjusted globally.",
-      );
-    }
-
-    // 5️⃣ History Entry
-    await new sql.Request(transaction)
-      .input("DMID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .query(`INSERT INTO CashHandoverHistory (DeliveryManID, Amount, TransactionType, EntryDate) 
-              VALUES (@DMID, @Amount, 'DEBIT', GETDATE())`);
-
-    await transaction.commit();
-    console.log("✅ Handover Successful");
-    res
-      .status(200)
-      .json({
-        message: "Cash Handover Successful!",
-        updatedBalance: currentBalance - totalHandoverAmount,
+    // 🔹 Handle empty orderPaymentIds safely
+    if (!orderPaymentIds || orderPaymentIds.length === 0) {
+      console.log("No orders to handover");
+      await transaction.commit();
+      return res.status(200).json({
+        message: "Nothing to handover",
+        updatedBalance: currentBalance,
       });
+    }
+
+    // 2️⃣ Subtract balance
+    await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount).query(`
+        UPDATE DeliveryMenCashBalance
+        SET CurrentBalance = CurrentBalance - @Amount
+        WHERE DeliveryManID = @DeliveryManID
+      `);
+    console.log("Balance updated");
+
+    // 3️⃣ Insert into CashDepartment
+    await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
+      .input(
+        "DenominationJSON",
+        sql.NVarChar(sql.MAX),
+        JSON.stringify(denominationJSON),
+      ).query(`
+        INSERT INTO CashDepartment 
+        (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
+        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
+      `);
+    console.log("Inserted into CashDepartment");
+
+    // 4️⃣ Validate & mark payments
+    const paymentCheck = await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("IDs", sql.VarChar, orderPaymentIds.join(",")).query(`
+        SELECT SUM(OP.Amount) AS TotalCash
+        FROM OrderPayments OP
+        JOIN AssignedOrders A ON OP.AssignID = A.AssignID
+        WHERE 
+          OP.IsHandovered = 0
+          AND A.DeliveryManID = @DeliveryManID
+          AND OP.PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
+      `);
+
+    const calculatedAmount = paymentCheck.recordset[0].TotalCash || 0;
+    console.log("Calculated order amount:", calculatedAmount);
+
+    if (calculatedAmount !== totalHandoverAmount) {
+      throw new Error(
+        `Handover amount mismatch. Selected orders total ₹${calculatedAmount}`,
+      );
+    }
+
+    await new sql.Request(transaction).input(
+      "IDs",
+      sql.VarChar,
+      orderPaymentIds.join(","),
+    ).query(`
+        UPDATE OrderPayments
+        SET IsHandovered = 1
+        WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
+      `);
+    console.log("OrderPayments marked as handed over");
+
+    // 5️⃣ Insert history
+    await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
+      .input("Type", sql.VarChar, "DEBIT").query(`
+        INSERT INTO CashHandoverHistory
+        (DeliveryManID, Amount, TransactionType, EntryDate)
+        VALUES (@DeliveryManID, @Amount, @Type, GETDATE())
+      `);
+    console.log("History inserted");
+
+    // 6️⃣ Fetch updated balance
+    const updatedBalanceResult = await new sql.Request(transaction).input(
+      "DeliveryManID",
+      sql.Int,
+      deliveryManId,
+    ).query(`
+        SELECT CurrentBalance 
+        FROM DeliveryMenCashBalance 
+        WHERE DeliveryManID = @DeliveryManID
+      `);
+
+    const updatedBalance = updatedBalanceResult.recordset[0].CurrentBalance;
+    await transaction.commit();
+    console.log("Transaction committed, updated balance:", updatedBalance);
+
+    res.status(200).json({
+      message: "Cash Handover Successful!",
+      updatedBalance,
+    });
   } catch (err) {
-    if (transaction) await transaction.rollback();
-    console.error("❌ Handover Error:", err.message);
+    await transaction.rollback();
+    console.error("Handover failed:", err.message);
     res.status(500).json({ message: "Handover failed", error: err.message });
   }
 };
