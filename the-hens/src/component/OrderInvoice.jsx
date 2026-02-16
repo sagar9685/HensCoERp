@@ -107,37 +107,52 @@ const COMPANY_INFO = {
 const InvoiceGenerator = ({ orderData, onClose }) => {
   const downloadPdf = async () => {
     const element = document.getElementById("invoice-print-content");
-    const clone = element.cloneNode(true);
 
+    // Create a container to host the clone
     const container = document.createElement("div");
     container.style.position = "absolute";
     container.style.top = "-9999px";
-    container.style.width = "1200px"; // चौड़ाई बढ़ा दी ताकि कॉलम न दबें
-
-    clone.style.width = "1150px";
-    clone.style.fontSize = "12px"; // फॉन्ट साइज़ फिक्स करें
-
-    container.appendChild(clone);
+    container.style.left = "0";
+    container.style.width = "1000px"; // Standard width for capture
     document.body.appendChild(container);
 
+    // Clone the element
+    const clone = element.cloneNode(true);
+    clone.style.width = "1000px";
+    clone.style.margin = "0";
+    clone.style.padding = "20px";
+    clone.style.backgroundColor = "white";
+    container.appendChild(clone);
+
     try {
+      // Wait for a small timeout to ensure images/styles are applied to the clone
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       const canvas = await html2canvas(clone, {
-        scale: 1.5, // 2 से घटाकर 1.5 किया ताकि फाइल बहुत भारी न हो और फिट आए
+        scale: 2, // Higher scale for better quality
         useCORS: true,
-        windowWidth: 1200,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+        windowWidth: 1000, // Forces the canvas to think the window is 1000px wide
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 0.9);
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = pageWidth - 10; // 5mm मार्जिन दोनों तरफ
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // Calculate aspect ratio to fit A4
+      const imgWidth = pdfWidth - 20; // 10mm margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      pdf.addImage(imgData, "JPEG", 5, 10, imgWidth, imgHeight);
+      // If content is longer than one page, it will scale to fit one page.
+      // If you want multiple pages, that requires a loop.
+      pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
       pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
     } catch (err) {
-      console.error(err);
+      console.error("PDF Generation Error:", err);
     } finally {
       document.body.removeChild(container);
     }
@@ -406,7 +421,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <br></br>
                       <strong>
                         {" "}
-                        FSSAI - The Hens`s Co. 21420170000432{" "}
+                        FSSAI - The Hen`s Co. 21420170000432{" "}
                       </strong>{" "}
                       <br></br>
                     </p>

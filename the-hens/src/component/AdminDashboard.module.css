@@ -1721,3 +1721,14 @@
   background: #ff4444;
   color: white;
 }
+.addressCell {
+  max-width: 200px; /* Aap apne hisaab se width set karein */
+  min-width: 150px;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Yeh 2 lines ke baad "..." dikhayega */
+  -webkit-box-orient: vertical;
+  line-height: 1.4; /* Line height control karne ke liye */
+}

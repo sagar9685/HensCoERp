@@ -700,7 +700,12 @@ const AdminDashboard = () => {
                       </td>
                       <td className={styles.productName}>{row.ProductNames}</td>
                       <td className={styles.tableData}>{row.CustomerName}</td>
-                      <td className={styles.tableData}>{row.Address}</td>
+                      {/* Address wale td ko ek extra class dein */}
+                      <td
+                        className={`${styles.tableData} ${styles.addressCell}`}
+                      >
+                        {row.Address}
+                      </td>
                       <td className={styles.tableData}>{row.Area}</td>
                       <td className={styles.tableData}>{row.ContactNo}</td>
                       <td className={styles.tableData}>
