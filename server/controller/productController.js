@@ -24,7 +24,7 @@ exports.getWeightByProductType = async (req, res) => {
       .request()
       .input("type", sql.NVarChar, type)
       .query(
-        "SELECT DefaultWeight FROM ProductTypes WHERE REPLACE(ProductType, '-', '') = @type OR ProductType LIKE '%' + @type + '%'"
+        "SELECT DefaultWeight FROM ProductTypes WHERE REPLACE(ProductType, '-', '') = @type OR ProductType LIKE '%' + @type + '%'",
       );
     if (result.recordset.length > 0) {
       res.json({ weight: result.recordset[0].DefaultWeight });
@@ -34,5 +34,29 @@ exports.getWeightByProductType = async (req, res) => {
   } catch (error) {
     console.error("❌ Error fetching weight:", error);
     res.status(500).json({ message: "Error fetching weight" });
+  }
+};
+
+// ✅ Get ProductUPC for a selected product type
+exports.getUPCByProductType = async (req, res) => {
+  const { type } = req.params;
+
+  try {
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input("type", sql.NVarChar, type)
+      .query(
+        "SELECT ProductUPC FROM ProductTypes WHERE REPLACE(ProductType, '-', '') = @type OR ProductType LIKE '%' + @type + '%'",
+      );
+
+    if (result.recordset.length > 0) {
+      res.json({ UPC: result.recordset[0].ProductUPC }); // 👈 JSON response
+    } else {
+      res.status(404).json({ message: "UPC not found for this product" });
+    }
+  } catch (error) {
+    console.error("❌ Error fetching UPC:", error);
+    res.status(500).json({ message: "Error fetching UPC" });
   }
 };

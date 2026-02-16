@@ -1,5 +1,5 @@
 const { sql, poolPromise } = require("../utils/db");
-const whatsapp = require('../whatsapp/client'); // Jo client humne banaya tha
+const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 
 // CREATE Assigned Order
 exports.assignOrder = async (req, res) => {
@@ -68,6 +68,7 @@ SELECT
     A.PaymentReceivedDate,
 
     -- ITEMS (NO DUPLICATE)
+    Items.ItemIDs,
     Items.ProductNames,
     Items.ProductTypes,
     Items.Weights,
@@ -87,6 +88,7 @@ LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
 -- ITEM SUBQUERY
 OUTER APPLY (
     SELECT 
+     STRING_AGG(CAST(OI.ItemID AS VARCHAR(20)), ', ') AS ItemIDs,
         STRING_AGG(OI.ProductName, ', ') AS ProductNames,
         STRING_AGG(OI.ProductType, ', ') AS ProductTypes,
         STRING_AGG(CAST(OI.Weight AS VARCHAR(10)), ', ') AS Weights,

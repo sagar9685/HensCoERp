@@ -7,4 +7,6 @@ router.get("/", orderController.getAllorder);
 router.get("/ordername", orderController.getOrderTakenByList);
 router.post("/cancel/:id", orderController.cancelOrder);
 
+router.put("/update-quantity", orderController.updateOrderQuantity);
+
 module.exports = router;

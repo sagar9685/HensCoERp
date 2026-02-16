@@ -20,32 +20,105 @@ import { fetchOrder } from "../features/orderSlice";
 import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
 import InvoiceGenerator from "./OrderInvoice";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 
 const AdminDashboard = () => {
+  const today = new Date().toISOString().split("T")[0];
+
   const [filters, setFilters] = useState({
     ProductId: "",
     ProductName: "",
     ProductType: "",
-    Weight: "",
-    Rate: "",
     customer: "",
+    fromDate: today,
+    toDate: today,
+    orderStatus: "",
   });
 
-  const [activeTab, setActiveTab] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const dispatch = useDispatch();
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
+
+  const [isFilterLoading, setIsFilterLoading] = useState(false);
+
   const orders = useSelector((state) => state.order.record);
-  console.log(orders, "admin side");
+  const loading = useSelector((state) => state.order.loading);
+
+  const [filteredData, setFilteredData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  // Fix: Proper date comparison function
+  const isDateInRange = (orderDate, fromDate, toDate) => {
+    if (!orderDate) return false;
+
+    const date = new Date(orderDate);
+    date.setHours(0, 0, 0, 0);
+
+    if (fromDate && toDate) {
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999); // Include entire end date
+      return date >= from && date <= to;
+    }
+    if (fromDate) {
+      const from = new Date(fromDate);
+      from.setHours(0, 0, 0, 0);
+      return date >= from;
+    }
+    if (toDate) {
+      const to = new Date(toDate);
+      to.setHours(23, 59, 59, 999);
+      return date <= to;
+    }
+    return true;
+  };
+
+  // Filter statistics based on filteredData
+  const filterStats = {
+    totalOrders: filteredData.length,
+    totalItems: filteredData.reduce((acc, order) => {
+      const quantities = order.Quantities
+        ? order.Quantities.split(",").map(Number)
+        : [];
+      const totalQty = quantities.reduce((sum, q) => sum + (q || 0), 0);
+      return acc + totalQty;
+    }, 0),
+    totalDueAmount: filteredData.reduce((acc, order) => {
+      return acc + (order.ShortAmount || 0);
+    }, 0),
+    // Isse filterStats object ke andar replace karein
+    totalPending: filteredData.filter((order) => {
+      const status = (order.OrderStatus || "").toLowerCase().trim();
+      return (
+        status === "pending" ||
+        status === "n/a" ||
+        status === "" ||
+        status === null
+      );
+    }).length,
+  };
+
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredData.slice(
+    indexOfFirstRecord,
+    indexOfLastRecord,
+  );
+
+  const totalPages = Math.ceil(filteredData.length / recordsPerPage);
 
   const getStatusClass = (status) => {
     switch (status?.toLowerCase()) {
       case "pending":
         return styles.statusPending;
       case "complete":
+      case "completed":
         return styles.statusCompleted;
       case "cancel":
         return styles.statusCancelled;
@@ -56,60 +129,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const loading = useSelector((state) => state.order.loading);
-
-  const [filteredData, setFilteredData] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  // Debugging ke liye ye consoles add karein
-  console.log("Full Orders from Redux:", orders);
-  console.log("Filtered Data State:", filteredData);
-  console.log("Current Page:", currentPage);
-  const currentRecords = filteredData.slice(
-    indexOfFirstRecord,
-    indexOfLastRecord,
-  );
-  console.log("Records for Current Table Page:", currentRecords);
-
-  const totalOrders = orders.length;
-
-  const totalItems = orders.reduce((acc, order) => {
-    const quantities = order.Quantities
-      ? order.Quantities.split(",").map(Number)
-      : [];
-    const totalQty = quantities.reduce((sum, q) => sum + q, 0);
-    return acc + totalQty;
-  }, 0);
-
-  const totalDueAmount = orders.reduce((acc, order) => {
-    return acc + (order.ShortAmount || 0);
-  }, 0);
-
-  const totalPending = orders.filter(
-    (order) => order.PaymentVerifyStatus !== "Verified",
-  ).length;
-
-  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
-  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
-
-  const handleGenerateInvoice = (orderRow) => {
-    setSelectedOrderForInvoice(orderRow);
-    setIsInvoiceModalOpen(true);
-  };
-
-  const closeInvoiceModal = () => {
-    setIsInvoiceModalOpen(false);
-    setSelectedOrderForInvoice(null);
-  };
-  console.log(selectedOrderForInvoice, "selectedOrderForInvoice");
-
-  const totalPages = Math.ceil(filteredData.length / recordsPerPage);
-
   const formatPaymentSummary = (summary) => {
     if (!summary) return "-";
-
     return summary
       .split("|")
       .map((item) => item.trim())
@@ -124,18 +145,22 @@ const AdminDashboard = () => {
     dispatch(fetchOrder());
   }, [dispatch]);
 
+  // Initialize filtered data with today's orders
   useEffect(() => {
-    setFilteredData(orders || []);
+    if (orders && orders.length > 0) {
+      const todayOrders = orders.filter((item) => {
+        const orderDate = new Date(item.OrderDate).toISOString().split("T")[0];
+        return orderDate === today;
+      });
+      setFilteredData(todayOrders);
+    }
   }, [orders]);
-
-  const data = orders || [];
 
   const handleChange = (e) => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
   const handleStatusChange = (row, value) => {
-    // Verified Status
     if (value === "Verified") {
       dispatch(markVerified({ paymentId: row.PaymentID }))
         .unwrap()
@@ -147,7 +172,6 @@ const AdminDashboard = () => {
         .catch((err) => toast.error(err.message || "Failed to verify"));
     }
 
-    // Incomplete → Open Modal
     if (value === "Incomplete") {
       setSelectedPayment(row);
       setIsPaymentModalOpen(true);
@@ -174,38 +198,98 @@ const AdminDashboard = () => {
   };
 
   const handleClear = () => {
-    setFilters({
+    const resetFilters = {
       ProductId: "",
       ProductName: "",
       ProductType: "",
-      Weight: "",
-      Rate: "",
       customer: "",
-    });
-    setFilteredData(orders || []);
+      fromDate: today,
+      toDate: today,
+      orderStatus: "",
+    };
+    setFilters(resetFilters);
+
+    // Reset to today's orders
+    if (orders && orders.length > 0) {
+      const todayOrders = orders.filter((item) => {
+        const orderDate = new Date(item.OrderDate).toISOString().split("T")[0];
+        return orderDate === today;
+      });
+      setFilteredData(todayOrders);
+    }
+    setCurrentPage(1);
   };
 
   const handleSearch = () => {
-    let filtered = orders;
+    if (!orders || orders.length === 0) return;
 
-    Object.keys(filters).forEach((key) => {
-      const value = filters[key].trim().toLowerCase();
-      if (value) {
+    setIsFilterLoading(true);
+
+    setTimeout(() => {
+      let filtered = [...orders];
+
+      // 1. Date Range Filter
+      if (filters.fromDate || filters.toDate) {
+        filtered = filtered.filter((item) =>
+          isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
+        );
+      }
+
+      // 2. Order Status Filter (FIXED LOGIC)
+      if (filters.orderStatus) {
+        const selectedStatus = filters.orderStatus.toLowerCase().trim();
+
         filtered = filtered.filter((item) => {
-          switch (key) {
-            case "ProductId":
-              return item.OrderID?.toString().toLowerCase().includes(value);
-            case "customer":
-              return item.CustomerName?.toLowerCase().includes(value);
-            default:
-              return item[key]?.toString().toLowerCase().includes(value);
+          // Item ka status safely extract karein
+          const itemStatus = (item.OrderStatus || "").toLowerCase().trim();
+
+          if (selectedStatus === "complete") {
+            // "complete" aur "completed" dono ko match karega
+            return itemStatus === "complete" || itemStatus === "completed";
           }
+
+          if (selectedStatus === "pending") {
+            // N/A ya Empty status ko bhi Pending treat kar sakte hain
+            return (
+              itemStatus === "pending" ||
+              itemStatus === "n/a" ||
+              itemStatus === ""
+            );
+          }
+
+          return itemStatus === selectedStatus;
         });
       }
-    });
 
-    setFilteredData(filtered);
-    setCurrentPage(1);
+      // 3. Text Filters (Customer Name, Product ID etc.)
+      Object.keys(filters).forEach((key) => {
+        // In keys ko skip karein kyunki inka logic upar likha ja chuka hai
+        if (["fromDate", "toDate", "orderStatus"].includes(key)) return;
+
+        const searchTerm = filters[key].trim().toLowerCase();
+        if (searchTerm) {
+          filtered = filtered.filter((item) => {
+            switch (key) {
+              case "ProductId":
+                // Dashboard mein OrderID display ho raha hai filter ProductId ke naam se hai
+                return item.OrderID?.toString()
+                  .toLowerCase()
+                  .includes(searchTerm);
+              case "customer":
+                return item.CustomerName?.toLowerCase().includes(searchTerm);
+              case "ProductName":
+                return item.ProductNames?.toLowerCase().includes(searchTerm);
+              default:
+                return item[key]?.toString().toLowerCase().includes(searchTerm);
+            }
+          });
+        }
+      });
+
+      setFilteredData(filtered);
+      setCurrentPage(1);
+      setIsFilterLoading(false);
+    }, 500);
   };
 
   const handleAddOrder = (orderData) => {
@@ -215,9 +299,80 @@ const AdminDashboard = () => {
 
   const handleAddCustomer = (customerData) => {
     console.log("New customer data:", customerData);
-    // Handle customer creation
     alert("Customer added successfully!");
   };
+
+  const [selectedOrderForInvoice, setSelectedOrderForInvoice] = useState(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  const handleGenerateInvoice = (orderRow) => {
+    setSelectedOrderForInvoice(orderRow);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const closeInvoiceModal = () => {
+    setIsInvoiceModalOpen(false);
+    setSelectedOrderForInvoice(null);
+  };
+
+  // Fix: Status count function to handle all cases
+  const getStatusCount = (status) => {
+    // filteredData use karne se wahi count dikhega jo screen par filter ho chuka hai
+    if (!filteredData) return 0;
+
+    return filteredData.filter((order) => {
+      const orderStatus = (order.OrderStatus || "").toLowerCase().trim();
+      const targetStatus = status.toLowerCase();
+
+      if (targetStatus === "pending") {
+        return (
+          orderStatus === "pending" ||
+          orderStatus === "n/a" ||
+          orderStatus === "" ||
+          orderStatus === null
+        );
+      }
+      if (targetStatus === "complete") {
+        return orderStatus === "complete" || orderStatus === "completed";
+      }
+      return orderStatus === targetStatus;
+    }).length;
+  };
+
+  const StatsSkeleton = () => (
+    <>
+      <div className={styles.statItem}>
+        <Skeleton width={60} height={32} />
+        <Skeleton width={80} height={16} />
+      </div>
+      <div className={styles.statItem}>
+        <Skeleton width={60} height={32} />
+        <Skeleton width={80} height={16} />
+      </div>
+      <div className={styles.statItem}>
+        <Skeleton width={80} height={32} />
+        <Skeleton width={100} height={16} />
+      </div>
+      <div className={styles.statItem}>
+        <Skeleton width={60} height={32} />
+        <Skeleton width={90} height={16} />
+      </div>
+    </>
+  );
+
+  const TableRowSkeleton = () => (
+    <>
+      {[...Array(5)].map((_, idx) => (
+        <tr key={idx}>
+          {[...Array(19)].map((_, cellIdx) => (
+            <td key={cellIdx}>
+              <Skeleton />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
 
   return (
     <div className={styles.container}>
@@ -233,41 +388,42 @@ const AdminDashboard = () => {
               </p>
             </div>
           </div>
-          <div className={styles.statsCard}>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>{totalOrders}</span>
-              <span className={styles.statLabel}>Total Orders</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>{totalItems}</span>
-              <span className={styles.statLabel}>Total Items</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>₹{totalDueAmount}</span>
-              <span className={styles.statLabel}>Total Due Amount</span>
-            </div>
-            <div className={styles.statItem}>
-              <span className={styles.statNumber}>{totalPending}</span>
-              <span className={styles.statLabel}>Total Pending</span>
-            </div>
+          <div
+            className={`${styles.statsCard} ${
+              isFilterLoading ? styles.statsLoading : ""
+            }`}
+          >
+            {isFilterLoading ? (
+              <StatsSkeleton />
+            ) : (
+              <>
+                <div className={styles.statItem}>
+                  <span className={styles.statNumber}>
+                    {filterStats.totalOrders}
+                  </span>
+                  <span className={styles.statLabel}>Total Orders</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statNumber}>
+                    {filterStats.totalItems}
+                  </span>
+                  <span className={styles.statLabel}>Total Items</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statNumber}>
+                    ₹{filterStats.totalDueAmount}
+                  </span>
+                  <span className={styles.statLabel}>Total Due Amount</span>
+                </div>
+                <div className={styles.statItem}>
+                  <span className={styles.statNumber}>
+                    {filterStats.totalPending}
+                  </span>
+                  <span className={styles.statLabel}>Total Pending</span>
+                </div>
+              </>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/* TABS NAVIGATION */}
-      <div className={styles.tabContainer}>
-        <div className={styles.tabs}>
-          {["all", "active", "inactive", "pending"].map((tab) => (
-            <button
-              key={tab}
-              className={`${styles.tab} ${
-                activeTab === tab ? styles.tabActive : ""
-              }`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -278,42 +434,127 @@ const AdminDashboard = () => {
           <div className={styles.filterHeader}>
             <FaFilter className={styles.filterIcon} />
             <h3>Filter Product</h3>
+            {isFilterLoading && (
+              <span className={styles.filterLoadingBadge}>
+                <FaSyncAlt className={styles.spinningIcon} /> Applying
+                filters...
+              </span>
+            )}
           </div>
 
           <div className={styles.filterGrid}>
-            {Object.keys(filters).map((key) => (
-              <div key={key} className={styles.inputGroup}>
-                <label className={styles.inputLabel}>
-                  {key.replace(/([A-Z])/g, " $1").toUpperCase()}
-                </label>
-                <input
-                  type="text"
-                  placeholder={`Search ${key
-                    .replace(/([A-Z])/g, " $1")
-                    .toLowerCase()}`}
-                  name={key}
-                  value={filters[key]}
-                  onChange={handleChange}
-                  className={styles.input}
-                />
-              </div>
-            ))}
+            {/* Date Filters */}
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>FROM DATE</label>
+              <input
+                type="date"
+                name="fromDate"
+                value={filters.fromDate}
+                onChange={handleChange}
+                className={styles.input}
+                disabled={isFilterLoading}
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>TO DATE</label>
+              <input
+                type="date"
+                name="toDate"
+                value={filters.toDate}
+                onChange={handleChange}
+                className={styles.input}
+                disabled={isFilterLoading}
+              />
+            </div>
+
+            {/* Order Status Filter */}
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>ORDER STATUS</label>
+              <select
+                name="orderStatus"
+                value={filters.orderStatus}
+                onChange={handleChange}
+                className={styles.select}
+                disabled={isFilterLoading}
+              >
+                <option value="">All Status</option>
+                <option value="pending">
+                  Pending ({getStatusCount("pending")})
+                </option>
+                <option value="processing">
+                  Processing ({getStatusCount("processing")})
+                </option>
+                <option value="complete">
+                  Complete ({getStatusCount("complete")})
+                </option>
+                <option value="cancel">
+                  Cancel ({getStatusCount("cancel")})
+                </option>
+              </select>
+            </div>
+
+            {/* Other filters */}
+            {Object.keys(filters)
+              .filter(
+                (key) =>
+                  key !== "fromDate" &&
+                  key !== "toDate" &&
+                  key !== "orderStatus",
+              )
+              .map((key) => (
+                <div key={key} className={styles.inputGroup}>
+                  <label className={styles.inputLabel}>
+                    {key.replace(/([A-Z])/g, " $1").toUpperCase()}
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={`Search ${key
+                      .replace(/([A-Z])/g, " $1")
+                      .toLowerCase()}`}
+                    name={key}
+                    value={filters[key]}
+                    onChange={handleChange}
+                    className={styles.input}
+                    disabled={isFilterLoading}
+                  />
+                </div>
+              ))}
           </div>
 
           {/* ACTION BUTTONS */}
           <div className={styles.actionButtons}>
-            <button className={styles.clearBtn} onClick={handleClear}>
+            <button
+              className={styles.clearBtn}
+              onClick={handleClear}
+              disabled={isFilterLoading}
+            >
               <FaSyncAlt className={styles.btnIcon} />
               Clear Filters
             </button>
-            <button className={styles.searchBtn} onClick={handleSearch}>
-              <FaSearch className={styles.btnIcon} />
-              Search Product
+            <button
+              className={styles.searchBtn}
+              onClick={handleSearch}
+              disabled={isFilterLoading}
+            >
+              {isFilterLoading ? (
+                <>
+                  <FaSyncAlt
+                    className={`${styles.btnIcon} ${styles.spinningIcon}`}
+                  />
+                  Filtering...
+                </>
+              ) : (
+                <>
+                  <FaSearch className={styles.btnIcon} />
+                  Search Product
+                </>
+              )}
             </button>
 
             <button
               className={styles.addOrder}
               onClick={() => setIsModalOpen(true)}
+              disabled={isFilterLoading}
             >
               <FaPlus className={styles.btnIcon} />
               Add New Order
@@ -322,12 +563,75 @@ const AdminDashboard = () => {
             <button
               className={styles.addBtn}
               onClick={() => setIsCustomerModalOpen(true)}
+              disabled={isFilterLoading}
             >
               <FaPlus className={styles.btnIcon} />
               Add New Customer
             </button>
           </div>
         </div>
+
+        {/* Active Filters Display */}
+        {(filters.orderStatus ||
+          filters.fromDate !== today ||
+          filters.toDate !== today ||
+          Object.keys(filters).some(
+            (key) =>
+              key !== "fromDate" &&
+              key !== "toDate" &&
+              key !== "orderStatus" &&
+              filters[key],
+          )) && (
+          <div className={styles.activeFilters}>
+            <span className={styles.activeFiltersLabel}>Active Filters:</span>
+            {filters.orderStatus && (
+              <span className={styles.filterTag}>
+                Status: {filters.orderStatus}
+                <button
+                  onClick={() => setFilters({ ...filters, orderStatus: "" })}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {filters.fromDate !== today && (
+              <span className={styles.filterTag}>
+                From: {filters.fromDate}
+                <button
+                  onClick={() => setFilters({ ...filters, fromDate: today })}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {filters.toDate !== today && (
+              <span className={styles.filterTag}>
+                To: {filters.toDate}
+                <button
+                  onClick={() => setFilters({ ...filters, toDate: today })}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {Object.keys(filters)
+              .filter(
+                (key) =>
+                  key !== "fromDate" &&
+                  key !== "toDate" &&
+                  key !== "orderStatus" &&
+                  filters[key],
+              )
+              .map((key) => (
+                <span key={key} className={styles.filterTag}>
+                  {key}: {filters[key]}
+                  <button onClick={() => setFilters({ ...filters, [key]: "" })}>
+                    ×
+                  </button>
+                </span>
+              ))}
+          </div>
+        )}
 
         {/* TABLE SECTION */}
         <div className={styles.tableSection}>
@@ -337,18 +641,24 @@ const AdminDashboard = () => {
               Product Records
             </h3>
             <span className={styles.tableCounter}>
-              {data.length} records found
+              {isFilterLoading ? (
+                <Skeleton width={100} />
+              ) : (
+                `${filteredData.length} records found`
+              )}
             </span>
           </div>
 
           <div className={styles.tableContainer}>
-            {loading && (
+            {(loading || isFilterLoading) && (
               <div className={styles.loaderWrapper}>
                 <Loader />
               </div>
             )}
 
-            {data.length === 0 && !loading && <p> No order found...</p>}
+            {!loading && !isFilterLoading && filteredData.length === 0 && (
+              <p>No orders found...</p>
+            )}
 
             <table className={styles.table}>
               <thead>
@@ -360,12 +670,11 @@ const AdminDashboard = () => {
                   <th>Area</th>
                   <th>Contact No</th>
                   <th>Product Type</th>
-
                   <th>Delivery Charge</th>
                   <th>Order Date</th>
                   <th>Delivery Date</th>
                   <th>Delivery Man</th>
-                  <th> Order Status</th>
+                  <th>Order Status</th>
                   <th>Payment Mode</th>
                   <th>Order Taken By</th>
                   <th>Remark</th>
@@ -374,10 +683,12 @@ const AdminDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentRecords.length > 0 ? (
+                {isFilterLoading ? (
+                  <TableRowSkeleton />
+                ) : currentRecords.length > 0 ? (
                   currentRecords.map((row, index) => (
                     <tr
-                      key={row.id}
+                      key={row.id || index}
                       className={
                         index % 2 === 0
                           ? styles.tableRowEven
@@ -425,7 +736,6 @@ const AdminDashboard = () => {
                           })()}
                         </div>
                       </td>
-
                       <td className={styles.tableData}>{row.DeliveryCharge}</td>
                       <td className={styles.tableData}>
                         {new Date(row.OrderDate)
@@ -437,7 +747,6 @@ const AdminDashboard = () => {
                           .replace(",", "")
                           .replace(" ", "-")}
                       </td>
-
                       <td className={styles.tableData}>
                         {new Date(row.DeliveryDate)
                           .toLocaleDateString("en-GB", {
@@ -448,13 +757,14 @@ const AdminDashboard = () => {
                           .replace(",", "")
                           .replace(" ", "-")}
                       </td>
-
                       <td className={styles.tableData}>
                         {row.DeliveryManName}
                       </td>
                       <td className={styles.tableData}>
                         <span
-                          className={`${styles.statusBadge} ${getStatusClass(row.OrderStatus)}`}
+                          className={`${styles.statusBadge} ${getStatusClass(
+                            row.OrderStatus,
+                          )}`}
                         >
                           {row.OrderStatus || "N/A"}
                         </span>
@@ -466,15 +776,14 @@ const AdminDashboard = () => {
                       </td>
                       <td className={styles.tableData}>{row.OrderTakenBy}</td>
                       <td className={styles.tableData}>{row.Remark}</td>
-
-                      {/* payment verify */}
                       <td>
                         <select
                           value={row.PaymentVerifyStatus || "Pending"}
                           disabled={
                             row.PaymentVerifyStatus === "Verified" ||
-                            !row.PaymentID
-                          } // <-- disable when done
+                            !row.PaymentID ||
+                            isFilterLoading
+                          }
                           onChange={(e) =>
                             handleStatusChange(row, e.target.value)
                           }
@@ -485,33 +794,32 @@ const AdminDashboard = () => {
                           <option value="Incomplete">Incomplete</option>
                         </select>
 
-                        {/* SHOW DUE AMOUNT IF SHORT */}
                         {row.ShortAmount > 0 && (
                           <p className={styles.shortDue}>
                             Due: ₹{row.ShortAmount}
                           </p>
                         )}
                       </td>
-
-                      {/* edit start */}
-
                       <td className={styles.actions}>
                         <button
                           className={styles.actionBtn}
                           title="View Details"
+                          disabled={isFilterLoading}
                         >
                           <FaEye />
                         </button>
                         <button
                           className={styles.actionBtn}
                           title="Edit Product"
+                          disabled={isFilterLoading}
                         >
                           <FaEdit />
                         </button>
                         <button
                           className={styles.actionBtn}
                           title="Generate Invoice"
-                          onClick={() => handleGenerateInvoice(row)} // <-- Trigger the invoice modal
+                          onClick={() => handleGenerateInvoice(row)}
+                          disabled={isFilterLoading}
                         >
                           <FaFileInvoiceDollar />
                         </button>
@@ -519,29 +827,35 @@ const AdminDashboard = () => {
                     </tr>
                   ))
                 ) : (
-                  <tr>
-                    <td colSpan="19" className={styles.noData}>
-                      <div className={styles.noDataContent}>
-                        <PiEggBold className={styles.noDataIcon} />
-                        <h4>No products found</h4>
-                        <p>
-                          Try adjusting your search filters or add a new
-                          product.
-                        </p>
-                        <button className={styles.addBtn}>
-                          <FaPlus className={styles.btnIcon} />
-                          Add First Product
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  !loading &&
+                  !isFilterLoading && (
+                    <tr>
+                      <td colSpan="19" className={styles.noData}>
+                        <div className={styles.noDataContent}>
+                          <PiEggBold className={styles.noDataIcon} />
+                          <h4>No products found</h4>
+                          <p>
+                            Try adjusting your search filters or add a new
+                            product.
+                          </p>
+                          <button
+                            className={styles.addBtn}
+                            onClick={() => setIsModalOpen(true)}
+                          >
+                            <FaPlus className={styles.btnIcon} />
+                            Add First Product
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
                 )}
               </tbody>
             </table>
           </div>
 
           {/* PAGINATION */}
-          {filteredData.length > 0 && (
+          {filteredData.length > 0 && !isFilterLoading && (
             <div className={styles.pagination}>
               <button
                 className={styles.paginationBtn}

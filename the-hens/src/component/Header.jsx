@@ -108,6 +108,12 @@ const Header = () => {
       label: "Reports",
       path: "/reports",
     },
+    // {
+    //   key: "Demo",
+    //   icon: <FaBullhorn />,
+    //   label: "Demo",
+    //   path: "/demo",
+    // },
     // { key: "settings", icon: <FaCog />, label: "Settings" },
   ];
 

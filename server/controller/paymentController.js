@@ -263,17 +263,12 @@ exports.verifyPayment = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // 1. Fetch payment details with PaymentModeID and ModeName
+    // 1. Fetch original order payment amount
     const payment = await pool.request().input("paymentId", sql.Int, paymentId)
       .query(`
-        SELECT 
-          op.Amount, 
-          op.PaymentModeID,
-          op.PaymentSummary,
-          pm.ModeName
-        FROM OrderPayments op
-        JOIN PaymentModes pm ON op.PaymentModeID = pm.PaymentModeID
-        WHERE op.PaymentID = @paymentId
+        SELECT Amount 
+        FROM OrderPayments 
+        WHERE PaymentID = @paymentId
       `);
 
     if (payment.recordset.length === 0) {
@@ -281,69 +276,35 @@ exports.verifyPayment = async (req, res) => {
     }
 
     const originalAmount = payment.recordset[0].Amount;
-    const paymentModeID = payment.recordset[0].PaymentModeID;
-    const modeName = payment.recordset[0].ModeName;
-    const paymentSummary = payment.recordset[0].PaymentSummary;
 
     let status = "Verified";
     let shortAmount = 0;
 
-    // Check if it's a split payment (multiple payment modes)
-    const isSplitPayment = paymentSummary && paymentSummary.includes("|");
-
-    // CASE 1: Split payment (multiple modes) - Always require manual verification
-    if (isSplitPayment) {
-      return res.json({
-        message: "Split payment detected. Manual verification required.",
-        paymentId,
-        requiresManualVerification: true,
-        modeName,
-        isSplitPayment: true,
-      });
+    if (receivedAmount < originalAmount) {
+      status = "Short";
+      shortAmount = originalAmount - receivedAmount;
     }
 
-    // CASE 2: Pure Cash payment (PaymentModeID = 1) - Auto verify
-    if (paymentModeID === 1) {
-      // Cash
-      if (receivedAmount < originalAmount) {
-        status = "Short";
-        shortAmount = originalAmount - receivedAmount;
-      }
+    // 2. Update record with status
+    await pool
+      .request()
+      .input("paymentId", sql.Int, paymentId)
+      .input("status", sql.VarChar, status)
+      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
+        UPDATE OrderPayments
+        SET PaymentVerifyStatus = @status,
+            ShortAmount = @shortAmount
+        WHERE PaymentID = @paymentId
+      `);
 
-      // Update record with status
-      await pool
-        .request()
-        .input("paymentId", sql.Int, paymentId)
-        .input("status", sql.VarChar, status)
-        .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
-          UPDATE OrderPayments
-          SET PaymentVerifyStatus = @status,
-              ShortAmount = @shortAmount
-          WHERE PaymentID = @paymentId
-        `);
-
-      return res.json({
-        message: "Cash payment verified successfully",
-        paymentId,
-        originalAmount,
-        receivedAmount,
-        status,
-        shortAmount,
-        autoVerified: true,
-        modeName: "Cash",
-      });
-    }
-
-    // CASE 3: Any other payment mode (GPay, Paytm, Bank Transfer, FOC) - Manual verification
-    else {
-      return res.json({
-        message: `${modeName} payment detected. Manual verification required.`,
-        paymentId,
-        requiresManualVerification: true,
-        modeName,
-        paymentModeID,
-      });
-    }
+    return res.json({
+      message: "Verification updated",
+      paymentId,
+      originalAmount,
+      receivedAmount,
+      status,
+      shortAmount,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server Error" });
@@ -360,142 +321,15 @@ exports.markPaymentVerified = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // Get the payment details with mode information
-    const payment = await pool.request().input("paymentId", sql.Int, paymentId)
-      .query(`
-        SELECT 
-          op.Amount, 
-          op.PaymentSummary,
-          op.PaymentModeID,
-          pm.ModeName
-        FROM OrderPayments op
-        JOIN PaymentModes pm ON op.PaymentModeID = pm.PaymentModeID
-        WHERE op.PaymentID = @paymentId
-      `);
-
-    if (payment.recordset.length === 0) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-
-    const originalAmount = payment.recordset[0].Amount;
-    const paymentSummary = payment.recordset[0].PaymentSummary;
-    const modeName = payment.recordset[0].ModeName;
-
-    // Parse payment summary to get total received amount
-    let totalReceived = 0;
-
-    if (paymentSummary && paymentSummary !== "No Payment") {
-      // Handle split payments
-      const payments = paymentSummary.split("|");
-      payments.forEach((p) => {
-        // Extract amount from format like "Cash: 100" or "GPay: 200"
-        const match = p.match(/:?\s*([\d,]+)/);
-        if (match) {
-          const amount = parseFloat(match[1].replace(/,/g, ""));
-          if (!isNaN(amount)) {
-            totalReceived += amount;
-          }
-        }
-      });
-    } else {
-      // For single payment without summary, use the Amount
-      totalReceived = originalAmount;
-    }
-
-    // Calculate short amount
-    let shortAmount = 0;
-    if (totalReceived < originalAmount) {
-      shortAmount = originalAmount - totalReceived;
-    }
-
-    // Update the payment with verification
-    await pool
-      .request()
-      .input("paymentId", sql.Int, paymentId)
-      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
+    await pool.request().input("paymentId", sql.Int, paymentId).query(`
         UPDATE OrderPayments
         SET PaymentVerifyStatus = 'Verified',
-            ShortAmount = @shortAmount
+            ShortAmount = 0
         WHERE PaymentID = @paymentId
       `);
 
-    res.json({
-      message: `Payment marked as Verified for ${modeName}`,
-      shortAmount: shortAmount,
-      totalReceived,
-      originalAmount,
-      modeName,
-    });
+    res.json({ message: "Payment marked as Verified" });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
-exports.markPaymentVerified = async (req, res) => {
-  const { paymentId } = req.body;
-
-  if (!paymentId) {
-    return res.status(400).json({ message: "PaymentID required" });
-  }
-
-  try {
-    const pool = await poolPromise;
-
-    // Get the payment details first
-    const payment = await pool.request().input("paymentId", sql.Int, paymentId)
-      .query(`
-        SELECT Amount, PaymentSummary, PaymentMode
-        FROM OrderPayments 
-        WHERE PaymentID = @paymentId
-      `);
-
-    if (payment.recordset.length === 0) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-
-    const originalAmount = payment.recordset[0].Amount;
-    const paymentSummary = payment.recordset[0].PaymentSummary;
-    const paymentMode = payment.recordset[0].PaymentMode;
-
-    // Parse payment summary to get total received amount
-    let totalReceived = 0;
-    if (paymentSummary) {
-      const payments = paymentSummary.split("|");
-      payments.forEach((p) => {
-        const amount = parseFloat(p.split(":")[1]);
-        if (!isNaN(amount)) {
-          totalReceived += amount;
-        }
-      });
-    }
-
-    // For single payment mode without split, use the Amount
-    if (totalReceived === 0) {
-      totalReceived = originalAmount;
-    }
-
-    let shortAmount = 0;
-    if (totalReceived < originalAmount) {
-      shortAmount = originalAmount - totalReceived;
-    }
-
-    // Update the payment with verification
-    await pool
-      .request()
-      .input("paymentId", sql.Int, paymentId)
-      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
-        UPDATE OrderPayments
-        SET PaymentVerifyStatus = 'Verified',
-            ShortAmount = @shortAmount
-        WHERE PaymentID = @paymentId
-      `);
-
-    res.json({
-      message: `Payment marked as Verified for ${paymentMode}`,
-      shortAmount: shortAmount,
-    });
-  } catch (err) {
-    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };

@@ -30,8 +30,11 @@ const DemoInvoiceForm = () => {
   const [submittedData, setSubmittedData] = useState(null);
 
   const [customerInfo, setCustomerInfo] = useState({
+    ID: "", // New field for ID
+    DeliveryManName: "", // New field for Delivery Man Name
+    OrderTakenBy: "", // New field for Order Taken By
     InvoiceNo: `INV-${Date.now()}`,
-    InvoiceDate: new Date().toISOString().split("T")[0], // Naya field for Invoice Date
+    InvoiceDate: new Date().toISOString().split("T")[0],
     CustomerName: "",
     Address: "",
     Area: "",
@@ -136,6 +139,9 @@ const DemoInvoiceForm = () => {
     e.preventDefault();
     const payload = {
       ...customerInfo,
+      ID: customerInfo.ID || null, // Include new ID field
+      DeliveryManName: customerInfo.DeliveryManName || null, // Include new DeliveryManName field
+      OrderTakenBy: customerInfo.OrderTakenBy || null, // Include new OrderTakenBy field
       InvoiceDate: customerInfo.InvoiceDate || null,
       OrderDate: customerInfo.OrderDate || null,
       Po_Date: customerInfo.Po_Date || null,
@@ -186,7 +192,56 @@ const DemoInvoiceForm = () => {
       </div>
 
       <form onSubmit={handleSubmit} className={styles.invoiceForm}>
-        {/* Section 1: All Dates & Invoice Numbers */}
+        {/* Section 1: ID, Delivery Man, Order Taken By & Dates */}
+        <div className={styles.section}>
+          <h3>Order Information & Staff Details</h3>
+          <div className={styles.grid}>
+            <div className={styles.inputGroup}>
+              <label>ID</label>
+              <input
+                type="text"
+                placeholder="Enter Order ID"
+                value={customerInfo.ID}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    ID: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Delivery Man Name</label>
+              <input
+                type="text"
+                placeholder="Enter Delivery Person Name"
+                value={customerInfo.DeliveryManName}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    DeliveryManName: e.target.value,
+                  })
+                }
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label>Order Taken By</label>
+              <input
+                type="text"
+                placeholder="Enter Staff Name"
+                value={customerInfo.OrderTakenBy}
+                onChange={(e) =>
+                  setCustomerInfo({
+                    ...customerInfo,
+                    OrderTakenBy: e.target.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: All Dates & Invoice Numbers */}
         <div className={styles.section}>
           <h3>Dates & Reference Info</h3>
           <div className={styles.grid}>
@@ -270,7 +325,7 @@ const DemoInvoiceForm = () => {
           </div>
         </div>
 
-        {/* Section 2: Customer Details */}
+        {/* Section 3: Customer Details */}
         <div className={styles.section}>
           <h3>Customer Selection & Details</h3>
           <div className={styles.grid}>
@@ -328,7 +383,7 @@ const DemoInvoiceForm = () => {
           </div>
         </div>
 
-        {/* Section 3: Products */}
+        {/* Section 4: Products */}
         <div className={styles.section}>
           <h3>Products List</h3>
           <table className={styles.productTable}>

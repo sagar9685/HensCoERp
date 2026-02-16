@@ -469,7 +469,7 @@ const OrderForm = ({ onClose }) => {
               )}
             </div>
 
-            <div className={styles.inputGroup}>
+            {/* <div className={styles.inputGroup}>
               <label className={styles.inputLabel}>
                 Invoice Date <span className={styles.required}>*</span>
               </label>
@@ -480,7 +480,7 @@ const OrderForm = ({ onClose }) => {
                 onChange={handleChange}
                 className={styles.inputField}
               />
-            </div>
+            </div> */}
 
             <div className={styles.inputGroup}>
               <label className={styles.inputLabel}>
