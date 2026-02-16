@@ -1,0 +1,116 @@
+.formContainer {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 30px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  color: #2c3e50;
+}
+
+.section h3 {
+  font-size: 16px;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  margin-bottom: 15px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.invoiceForm input {
+  padding: 10px;
+  border: 1px solid #dcdde1;
+  border-radius: 6px;
+  outline: none;
+  transition: 0.3s;
+}
+
+.invoiceForm input:focus {
+  border-color: #3498db;
+  box-shadow: 0 0 5px rgba(52, 152, 219, 0.2);
+}
+
+.productRow {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.smallInput {
+  width: 100px;
+}
+
+.addBtn {
+  background: #2ecc71;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.removeBtn {
+  color: #e74c3c;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.submitBtn {
+  width: 100%;
+  margin-top: 30px;
+  padding: 15px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.submitBtn:hover {
+  background: #2980b9;
+}
+.submitBtn:disabled {
+  background: #bdc3c7;
+}
+.readOnlyInput {
+  background-color: #f1f3f5 !important;
+  color: #495057;
+  cursor: not-allowed;
+  border: 1px dashed #ced4da !important;
+}
+
+.invoiceForm select {
+  padding: 10px;
+  border: 1px solid #ced4da;
+  border-radius: 5px;
+  background-color: white;
+  width: 100%;
+}
+
+.invoiceForm select:focus {
+  border-color: #3498db;
+  outline: none;
+}

@@ -44,6 +44,7 @@ const OrderForm = ({ onClose }) => {
     contactNo: "",
     deliveryCharge: "",
     orderDate: "",
+    invoiceDate: "",
     orderTakenBy: "",
     otherOrderTakenBy: "",
     Po_No: "",
@@ -72,9 +73,11 @@ const OrderForm = ({ onClose }) => {
   // Fetch product types on component mount
   useEffect(() => {
     dispatch(fetchProductTypes());
+    const today = getTodayDate();
     setFormData((prev) => ({
       ...prev,
-      orderDate: getTodayDate(),
+      orderDate: today,
+      invoiceDate: today,
     }));
   }, [dispatch]);
 
@@ -311,6 +314,7 @@ const OrderForm = ({ onClose }) => {
         ContactNo: formData.contactNo,
         DeliveryCharge: Number(formData.deliveryCharge),
         OrderDate: formData.orderDate,
+        InvoiceDate: formData.invoiceDate,
         OrderTakenBy: finalOrderTakenBy,
         Po_No: formData.Po_No,
         Po_Date: formData.Po_Date,
@@ -465,29 +469,18 @@ const OrderForm = ({ onClose }) => {
               )}
             </div>
 
-            {/* <div className={styles.inputGroup}>
-            <label className={styles.inputLabel}>
-              Order Taken By <span className={styles.required}>*</span>
-            </label>
-                  <select
-              name="orderTakenBy"
-              value={formData.orderTakenBy}
-              onChange={handleChange}
-              className={styles.inputField}
-            >
-              <option value="">Select Name</option>
-
-              {Array.isArray(takenByList) &&
-                takenByList.map((d, idx) => (
-                  <option key={idx} value={d.Name || d.name}>
-                    {d.Name || d.name}
-                  </option>
-                ))}
-            </select>
-
-
-            {errors.orderTakenBy && <span className={styles.error}>{errors.orderTakenBy}</span>}
-          </div> */}
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>
+                Invoice Date <span className={styles.required}>*</span>
+              </label>
+              <input
+                type="date"
+                name="invoiceDate"
+                value={formData.invoiceDate}
+                onChange={handleChange}
+                className={styles.inputField}
+              />
+            </div>
 
             <div className={styles.inputGroup}>
               <label className={styles.inputLabel}>

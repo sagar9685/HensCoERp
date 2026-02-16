@@ -292,22 +292,29 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     </div>
                   </div>
                 </div>
+                {/* --- Meta Section Update --- */}
                 <div className={styles.invoiceMeta}>
                   <h1>Bill of Supply / Invoice</h1>
                   <div className={styles.invoiceDetails}>
                     <p>
-                      <strong>Invoice No:</strong>{" "}
-                      {orderData.InvoiceNo || orderData.InvoiceNo}
+                      <strong>Invoice No:</strong> {orderData.InvoiceNo}
                     </p>
                     <p>
                       <strong>Invoice Date:</strong>{" "}
-                      {new Date(
-                        orderData.DeliveryDate || new Date(),
-                      ).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      {/* Pehle check karega InvoiceDate, 
+          agar wo nahi hai toh OrderDate, 
+          agar dono nahi hai tabhi current date dikhayega 
+      */}
+                      {orderData.InvoiceDate
+                        ? new Date(orderData.InvoiceDate).toLocaleDateString(
+                            "en-GB",
+                            {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric",
+                            },
+                          )
+                        : "N/A"}
                     </p>
                   </div>
                 </div>

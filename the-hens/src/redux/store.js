@@ -19,6 +19,7 @@ import uiReducer from "../features/uiSlice";
 import deliveryBoyAnalysisReducer from "../features/deliveryBoyAnalysisSlice";
 import aiReducer from "../features/aiSlice";
 import headDailySaleReducer from "../features/headDailySaleSlice";
+import demoInvoiceReducer from "../features/demoInvoiceSlice";
 
 const store = configureStore({
   reducer: {
@@ -40,6 +41,7 @@ const store = configureStore({
     deliveryBoyAnalysis: deliveryBoyAnalysisReducer,
     ai: aiReducer,
     headDailySale: headDailySaleReducer,
+    demoInvoice: demoInvoiceReducer,
   },
 });
 

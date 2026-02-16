@@ -39,6 +39,25 @@ export const fetchOrder = createAsyncThunk(
   },
 );
 
+export const updateOrderQuantity = createAsyncThunk(
+  "order/updateQuantity",
+  async (payload, thunkAPI) => {
+    try {
+      const res = await axios.put(
+        `${API_BASE_URL}/api/orders/update-quantity`,
+        payload,
+      );
+      return {
+        ...res.data,
+        itemId: payload.itemId,
+        newQuantity: payload.newQuantity,
+      };
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.response?.data || "Update failed");
+    }
+  },
+);
+
 // FETCH ORDER TAKEN BY NAME LIST
 export const fetchOrderTakenBy = createAsyncThunk(
   "order/fetchOrderTakenBy",
@@ -97,6 +116,27 @@ export const orderSlice = createSlice({
     builder.addCase(fetchOrderTakenBy.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload;
+    });
+    builder.addCase(updateOrderQuantity.fulfilled, (state, action) => {
+      const { itemId, newQuantity } = action.payload;
+
+      state.record = state.record.map((order) => {
+        if (!order.ItemIDs) return order;
+
+        const ids = order.ItemIDs.split(",").map((id) => id.trim());
+        const qtys = order.Quantities.split(",").map((q) => q.trim());
+
+        const index = ids.indexOf(String(itemId));
+        if (index !== -1) {
+          qtys[index] = String(newQuantity);
+          return {
+            ...order,
+            Quantities: qtys.join(", "),
+          };
+        }
+
+        return order;
+      });
     });
   },
 });

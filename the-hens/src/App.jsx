@@ -23,6 +23,7 @@ import AIAssistant from "./component/AIAssistant";
 import ProductionUnit from "./pages/ProductinUnit";
 import CustomerReport from "./component/Reports/CustomerReport";
 import CustomerLedger from "./component/Reports/CustomerLedger";
+import DemoInvoiceForm from "./component/DemoInvoiceForm";
 
 function App() {
   return (
@@ -125,6 +126,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <CustomerLedger />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/demo"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <DemoInvoiceForm />
             </ProtectedRoute>
           }
         />

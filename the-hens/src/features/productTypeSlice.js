@@ -8,7 +8,7 @@ export const fetchProductTypes = createAsyncThunk(
   async () => {
     const res = await axios.get(`${API_BASE_URL}/api/products/types`);
     return res.data.map((item) => item.ProductType);
-  }
+  },
 );
 
 export const fetchWeightByType = createAsyncThunk(
@@ -16,15 +16,15 @@ export const fetchWeightByType = createAsyncThunk(
   async (type, { rejectWithValue }) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/products/weight/${type}`
+        `${API_BASE_URL}/api/products/weight/${type}`,
       );
       return res.data.weight;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Failed to fetch weight"
+        err.response?.data?.message || "Failed to fetch weight",
       );
     }
-  }
+  },
 );
 
 export const fetchRateByProductType = createAsyncThunk(
@@ -32,7 +32,7 @@ export const fetchRateByProductType = createAsyncThunk(
   async (productType, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/api/rates/type/${productType}`
+        `${API_BASE_URL}/api/rates/type/${productType}`,
       );
       const data = response.data;
 
@@ -46,7 +46,24 @@ export const fetchRateByProductType = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || error.message);
     }
-  }
+  },
+);
+
+export const fetchUPCByProductType = createAsyncThunk(
+  "product/fetchUPCByProductType",
+  async (type, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/products/upc/${type}`,
+      );
+
+      return response.data.UPC || response.data.upc || "";
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch UPC",
+      );
+    }
+  },
 );
 
 const productSlice = createSlice({
@@ -55,6 +72,7 @@ const productSlice = createSlice({
     types: [],
     weight: [],
     rate: 0,
+    upc: "",
     loading: false,
     error: null,
   },
@@ -92,6 +110,9 @@ const productSlice = createSlice({
       })
       .addCase(fetchRateByProductType.fulfilled, (state, action) => {
         state.rate = action.payload;
+      })
+      .addCase(fetchUPCByProductType.fulfilled, (state, action) => {
+        state.upc = action.payload;
       });
   },
 });

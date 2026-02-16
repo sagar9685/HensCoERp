@@ -18,6 +18,7 @@ import { toast } from "react-toastify";
 import ExcelExport from "../ExcelExport";
 import { useOrderFilter } from "./UserOrderFilter";
 import CancelOrderModal from "./CancelOrderModal";
+import UpdateQuantityModal from "./UpdateQuantityModal";
 
 const UserForm = () => {
   const dispatch = useDispatch();
@@ -27,6 +28,10 @@ const UserForm = () => {
   const [isCompleteModalOpen, setCompleteModalOpen] = useState(false);
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelOrder, setCancelOrder] = useState(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [selectedItemForUpdate, setSelectedItemForUpdate] = useState(null);
+  const [selectedOrderIdForUpdate, setSelectedOrderIdForUpdate] =
+    useState(null);
 
   // Use the custom hook for filtering and pagination
   const {
@@ -188,6 +193,15 @@ const UserForm = () => {
       console.error("UI ERROR:", err);
       toast.error(err.message || "Failed to process assignment");
     }
+  };
+
+  const handleEditClick = (row) => {
+    console.log("Full row:", row);
+    console.log("ItemIDs:", row.ItemIDs);
+    console.log("Quantities:", row.Quantities);
+
+    setSelectedItemForUpdate(row);
+    setIsUpdateModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -393,6 +407,7 @@ const UserForm = () => {
                                       setSelectedOrder(row);
                                       setIsModalOpen(true);
                                     }}
+                                    onEditClick={handleEditClick}
                                     formatPaymentSummary={formatPaymentSummary}
                                   />
                                 ))
@@ -461,6 +476,12 @@ const UserForm = () => {
         onClose={() => setCancelModalOpen(false)}
         onSubmit={handleCancelSubmit}
       />
+
+      <UpdateQuantityModal
+        isOpen={isUpdateModalOpen}
+        onClose={() => setIsUpdateModalOpen(false)}
+        row={selectedItemForUpdate}
+      />
     </>
   );
 };
@@ -470,6 +491,7 @@ const OrderTableRow = ({
   row,
   onStatusChange,
   onAssignClick,
+  onEditClick,
   formatPaymentSummary,
 }) => {
   const isLocked =
@@ -635,6 +657,14 @@ const OrderTableRow = ({
           title={isLocked ? "This order is locked and cannot be changed" : ""}
         >
           {row.AssignID ? "Reassign" : "Assign"}
+        </button>
+        <button
+          className="btn btn-info btn-sm"
+          onClick={() => onEditClick(row)}
+          disabled={isLocked} // Order complete hone par disable
+          title={isLocked ? "Order Locked" : "Edit Quantity"}
+        >
+          <i className="mdi mdi-pencil"></i>
         </button>
       </td>
 

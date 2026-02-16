@@ -1,0 +1,236 @@
+/* Overlay: Poori screen ko cover karne ke liye */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6); /* Thoda dark background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px); /* Background halka blur dikhega */
+}
+
+/* Modal Container */
+.modal {
+  background: #fff;
+  width: 90%;
+  max-width: 650px;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header Section */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.closeX {
+  background: none;
+  border: none;
+  font-size: 28px;
+  cursor: pointer;
+  color: #999;
+}
+
+/* Customer Info Boxes */
+.customerInfo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.infoBox {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+}
+
+.infoBox strong {
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.infoBox span {
+  color: #222;
+  font-weight: 600;
+}
+
+.badge {
+  color: #007bff !important;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+/* Table Styling */
+.itemTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.itemTable th {
+  text-align: left;
+  background: #f4f4f4;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #555;
+  border-bottom: 2px solid #ddd;
+}
+
+.itemTable td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  vertical-align: middle;
+}
+
+/* Inputs */
+.smallInput {
+  width: 70px;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.smallInput:focus {
+  border-color: #007bff;
+  outline: none;
+  box-shadow: 0 0 4px rgba(0, 123, 255, 0.2);
+}
+
+.rowTotal {
+  font-weight: bold;
+  color: #28a745; /* Green color for money */
+}
+
+/* Textarea for Reason */
+.textarea {
+  width: 100%;
+  height: 80px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  resize: none;
+  margin-top: 10px;
+  font-family: inherit;
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.cancelBtn {
+  padding: 10px 20px;
+  background: #f1f1f1;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.cancelBtn:hover {
+  background: #e5e5e5;
+}
+
+.saveBtn {
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.2s;
+}
+
+.saveBtn:hover {
+  background: #0056b3;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 480px) {
+  .modal {
+    padding: 15px;
+  }
+  .itemTable th,
+  .itemTable td {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+  .smallInput {
+    width: 50px;
+  }
+}
+.typeBadge {
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.required {
+  color: red;
+  font-weight: bold;
+}
+
+.label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #444;
+}
+
+.errorBorder {
+  border-color: #ff4d4f !important;
+}
+
+.tableContainer {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 15px;
+}
+
+.divider {
+  border: 0;
+  border-top: 1px solid #eee;
+  margin: 15px 0;
+}
