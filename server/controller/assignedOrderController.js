@@ -6,16 +6,14 @@ exports.assignOrder = async (req, res) => {
   const { orderId, deliveryManId, otherDeliveryManName, deliveryDate, remark } =
     req.body;
 
-  // Required fields check
   if (!orderId || !deliveryDate) {
     return res.status(400).json({ message: "Required fields missing" });
   }
 
-  // Delivery man validation
-  if (!deliveryManId && !otherDeliveryManName) {
-    return res
-      .status(400)
-      .json({ message: "Select delivery man or enter other name" });
+  const isOther = deliveryManId === null;
+
+  if (isOther && !otherDeliveryManName) {
+    return res.status(400).json({ message: "Enter other delivery man name." });
   }
 
   try {
@@ -24,23 +22,27 @@ exports.assignOrder = async (req, res) => {
     await pool
       .request()
       .input("OrderID", sql.Int, orderId)
-      .input("DeliveryManID", sql.Int, deliveryManId || null)
-      .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
-
+      .input("DeliveryManID", sql.Int, isOther ? null : deliveryManId)
+      .input(
+        "OtherDeliveryManName",
+        sql.NVarChar(255),
+        isOther ? otherDeliveryManName : null,
+      )
       .input("DeliveryDate", sql.Date, deliveryDate)
-      .input("Remark", sql.NVarChar, remark || null).query(`
+      .input("Remark", sql.NVarChar(255), remark || null).query(`
         INSERT INTO AssignedOrders 
-          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark)
-          
+        (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark)
         VALUES 
-          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark)
+        (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark)
       `);
 
     res.status(201).json({ message: "Order assigned successfully" });
   } catch (err) {
+    console.error("DB Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 // GET All Assigned Orders
 exports.getAssignedOrders = async (req, res) => {
   try {

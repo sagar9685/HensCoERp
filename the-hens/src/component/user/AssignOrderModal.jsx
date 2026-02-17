@@ -46,8 +46,8 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
       deliveryManId: order.DeliveryManID
         ? String(order.DeliveryManID)
         : order.OtherDeliveryManName
-        ? "other"
-        : "",
+          ? "other"
+          : "",
       otherDeliveryManName: order.OtherDeliveryManName || "",
       remark: order.Remark || "",
     });
@@ -62,8 +62,8 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
         deliveryManId: order.DeliveryManID
           ? String(order.DeliveryManID)
           : order.OtherDeliveryManName
-          ? "other"
-          : "",
+            ? "other"
+            : "",
         otherDeliveryManName: order.OtherDeliveryManName || "",
         remark: order.Remark || "",
       });
@@ -80,15 +80,16 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    setIsSubmitting(true); // disable button + show processing
+    setIsSubmitting(true);
 
     const payload = {
       orderId: order.OrderID,
+      // If it's "other", send null so the backend treats it as an external person
       deliveryManId:
         formData.deliveryManId === "other"
           ? null
           : Number(formData.deliveryManId),
+      // Only send the name if "other" is selected
       otherDeliveryManName:
         formData.deliveryManId === "other"
           ? formData.otherDeliveryManName
@@ -98,11 +99,11 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
     };
 
     try {
-      await onSubmit(payload); // parent function ko data bhejna
+      await onSubmit(payload);
     } catch (error) {
       console.error("Submit error:", error);
     } finally {
-      setIsSubmitting(false); // enable button back
+      setIsSubmitting(false);
     }
   };
 
@@ -242,6 +243,7 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
                     value={formData.otherDeliveryManName}
                     onChange={handleInputChange}
                     className={styles.formInput}
+                    required // <--- Isse empty submit nahi hoga
                   />
                 )}
               </div>
@@ -284,8 +286,8 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
             {isSubmitting
               ? "Processing..."
               : order?.AssignID
-              ? "Reassign Order"
-              : "Assign Order"}
+                ? "Reassign Order"
+                : "Assign Order"}
           </button>
         </div>
       </div>
