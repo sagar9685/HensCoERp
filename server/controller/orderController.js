@@ -157,7 +157,7 @@ exports.getAllorder = async (req, res) => {
          Items.ItemIDs, Items.ProductNames, Items.ProductTypes, Items.ProductUPCs, Items.MRPs,
         Items.Weights, Items.Quantities, Items.Rates, Items.ItemTotals, Items.GrandItemTotal,
         Payments.PaymentID, Payments.PaymentSummary, Payments.TotalPaid,
-        Payments.PaymentVerifyStatus, Payments.ShortAmount
+        Payments.PaymentVerifyStatus,Payments.VerifyMark, Payments.ShortAmount
       FROM OrdersTemp O WITH (NOLOCK) -- ⭐ Added NOLOCK
       OUTER APPLY (
           SELECT TOP 1 *
@@ -190,21 +190,24 @@ exports.getAllorder = async (req, res) => {
       ) Items
 
       OUTER APPLY (
-          SELECT
-              MAX(OP.PaymentID) AS PaymentID,
-              'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20)) 
-              AS PaymentSummary,
-              ISNULL(SUM(OP.Amount),0) AS TotalPaid,
-              ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
-              MAX(OP.PaymentVerifyStatus) AS PaymentVerifyStatus
-          FROM OrderPayments OP WITH (NOLOCK) -- ⭐ Added NOLOCK
-          LEFT JOIN PaymentModes PM WITH (NOLOCK) ON OP.PaymentModeID = PM.PaymentModeID -- ⭐ Added NOLOCK
-          WHERE OP.AssignID = A.AssignID
-      ) Payments
+    SELECT
+        MAX(OP.PaymentID) AS PaymentID,
+        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20)) 
+        AS PaymentSummary,
+        ISNULL(SUM(OP.Amount),0) AS TotalPaid,
+        ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
+        MAX(OP.PaymentVerifyStatus) AS PaymentVerifyStatus,
+        MAX(OP.VerificationRemarks) AS VerifyMark
+    FROM OrderPayments OP WITH (NOLOCK)
+    LEFT JOIN PaymentModes PM WITH (NOLOCK) 
+        ON OP.PaymentModeID = PM.PaymentModeID
+    WHERE OP.AssignID = A.AssignID
+) Payments
+
       ORDER BY O.OrderID DESC
     `);
 
