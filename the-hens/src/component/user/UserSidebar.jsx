@@ -18,11 +18,16 @@ const UserSideBar = () => {
     { path: "/datatable", icon: "mdi mdi-table-large", label: "Delivery Cash" },
     { path: "/stock", icon: "mdi mdi-package-variant", label: "Stock" },
     {
+      path: "/movement",
+      icon: "mdi mdi-package-variant",
+      label: "StockReport",
+    },
+    {
       path: "/rejected-stock",
       icon: "mdi mdi-package-variant",
       label: "Rejected Stock",
     },
-     {
+    {
       path: "/delivery-summary",
       icon: "mdi mdi-truck-delivery", // Updated professional icon
       label: "DeliveryBoy Report",

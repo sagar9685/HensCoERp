@@ -25,6 +25,8 @@ import {
   faAngleDoubleLeft,
   faAngleDoubleRight,
 } from "@fortawesome/free-solid-svg-icons";
+import { fetchOrder } from "../features/orderSlice";
+import { toast } from "react-toastify";
 
 function Customer() {
   const dispatch = useDispatch();
@@ -63,7 +65,7 @@ function Customer() {
       Contact_No: customer.Contact_No || "",
       Area: customer.Area || "",
       Pincode: customer.Pincode || "",
-      Gst_No: customer.Gst_No || "",
+      Gst_No: customer.Gst_No || customer.GST_No || "", // Dono check karein
     });
   };
 
@@ -73,8 +75,17 @@ function Customer() {
   };
 
   const handleSaveEdit = (customerId) => {
-    dispatch(updateCustomer({ id: customerId, data: editForm }));
-    setEditingCustomer(null);
+    dispatch(updateCustomer({ id: customerId, data: editForm }))
+      .unwrap()
+      .then(() => {
+        dispatch(fetchCustomerName());
+        dispatch(fetchOrder());
+        toast.success("Customer updated successfully");
+        setEditingCustomer(null);
+      })
+      .catch((err) => {
+        toast.error(err || "Update failed");
+      });
   };
 
   const handleCancelEdit = () => {
@@ -102,7 +113,7 @@ function Customer() {
 
   const areas = useMemo(
     () => [...new Set(customerName.map((c) => c.Area))],
-    [customerName]
+    [customerName],
   );
 
   // Pagination calculations
@@ -466,7 +477,7 @@ function Customer() {
                     >
                       {pageNum}
                     </button>
-                  )
+                  ),
                 )}
               </div>
 

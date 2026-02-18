@@ -10,7 +10,7 @@ const generateInwardNo = async () => {
   const sessionEndYear = sessionStartYear + 1;
 
   const session = `${String(sessionStartYear).slice(2)}-${String(
-    sessionEndYear
+    sessionEndYear,
   ).slice(2)}`;
   const prefix = `INV${session}/`;
 
@@ -36,7 +36,7 @@ const generateInwardNo = async () => {
 };
 
 exports.addStock = async (req, res) => {
-  const { item_name, quantity, weight } = req.body;
+  const { item_name, quantity, weight, chalan_no, chalan_date } = req.body;
 
   try {
     const inwardNo = await generateInwardNo();
@@ -48,9 +48,13 @@ exports.addStock = async (req, res) => {
       .input("inward_no", sql.VarChar, inwardNo)
       .input("item_name", sql.VarChar, item_name)
       .input("quantity", sql.Int, quantity)
-      .input("weight", sql.VarChar, weight || "").query(`
-        INSERT INTO Stock (inward_no, item_name, quantity, weight)
-        VALUES (@inward_no, @item_name, @quantity, @weight)
+      .input("weight", sql.VarChar, weight || "")
+      .input("chalan_no", sql.VarChar, chalan_no || "")
+      .input("chalan_date", sql.Date, chalan_date).query(`
+        INSERT INTO Stock 
+        (inward_no, item_name, quantity, weight, chalan_no, chalan_date)
+        VALUES 
+        (@inward_no, @item_name, @quantity, @weight, @chalan_no, @chalan_date)
       `);
 
     // 2️⃣ Insert into StockHistory
@@ -61,8 +65,10 @@ exports.addStock = async (req, res) => {
       .input("quantity", sql.Int, quantity)
       .input("type", sql.VarChar, "IN")
       .input("ref_no", sql.VarChar, inwardNo).query(`
-        INSERT INTO StockHistory (item_name, weight, quantity, type, ref_no)
-        VALUES (@item_name, @weight, @quantity, @type, @ref_no)
+        INSERT INTO StockHistory 
+        (item_name, weight, quantity, type, ref_no)
+        VALUES 
+        (@item_name, @weight, @quantity, @type, @ref_no)
       `);
 
     res.json({ message: "Stock added successfully", inward_no: inwardNo });
@@ -169,7 +175,7 @@ exports.rejectStock = async (req, res) => {
         .input("item_name", sql.NVarChar, item.item_name)
         .input("weight", sql.NVarChar, item.weight || "")
         .input("quantity", sql.Int, item.quantity)
-        .input("reason", sql.NVarChar,  item.reason || "").query(`
+        .input("reason", sql.NVarChar, item.reason || "").query(`
           INSERT INTO RejectedStock
           (reject_date, item_name, weight, quantity, reason)
           VALUES
@@ -185,7 +191,6 @@ exports.rejectStock = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-
 
 exports.getrejectStock = async (req, res) => {
   try {
@@ -203,5 +208,79 @@ exports.getrejectStock = async (req, res) => {
     res
       .status(500)
       .json({ message: "Internal server error", error: error.message });
+  }
+};
+
+exports.getStockMovement = async (req, res) => {
+  const { fromDate, toDate } = req.query;
+
+  if (!fromDate || !toDate) {
+    return res.status(400).json({ message: "fromDate and toDate required" });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool
+      .request()
+      .input("fromDate", sql.Date, fromDate)
+      .input("toDate", sql.Date, toDate).query(`
+        SELECT 
+            PT.ProductType,
+
+            -- Current Dashboard Stock
+            ISNULL((
+                SELECT SUM(S.quantity)
+                FROM Stock S
+                WHERE S.item_name = PT.ProductType
+            ), 0) AS Current_Stock,
+
+            -- Actual Stock Came IN (During selected range)
+            ISNULL((
+                SELECT SUM(SH.quantity)
+                FROM StockHistory SH
+                WHERE SH.item_name = PT.ProductType
+                AND SH.type = 'IN'
+                AND CAST(SH.date AS DATE) BETWEEN @fromDate AND @toDate
+            ), 0) AS Maal_Aaya,
+
+            -- Actual Sales (During selected range)
+            ISNULL((
+                SELECT SUM(OI.Quantity)
+                FROM OrderItems OI
+                JOIN AssignedOrders AO ON AO.OrderID = OI.OrderID
+                WHERE OI.ProductName = PT.ProductType
+                AND AO.DeliveryStatus != 'Cancel' 
+                AND CAST(AO.DeliveryDate AS DATE) BETWEEN @fromDate AND @toDate
+            ), 0) AS Maal_Gaya
+
+        FROM ProductTypes PT
+        ORDER BY PT.ProductType
+      `);
+
+    const finalData = result.recordset.map((item) => {
+      const closing = item.Current_Stock;
+      const sold = item.Maal_Gaya;
+      const inward = item.Maal_Aaya;
+
+      // Agar history mismatch hai, toh opening ko negative hone se bachane ke liye logic:
+      let opening = closing - inward + sold;
+
+      // Safety check: Agar Opening negative hai matlab History data corrupt hai
+      if (opening < 0) opening = 0;
+
+      return {
+        ProductType: item.ProductType,
+        Opening: opening,
+        Total_In: inward,
+        Total_Sold: sold,
+        Closing: closing,
+      };
+    });
+
+    res.json(finalData);
+  } catch (error) {
+    console.error("Stock Movement Error:", error);
+    res.status(500).json({ message: "Error generating report" });
   }
 };

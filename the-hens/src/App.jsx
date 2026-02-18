@@ -24,6 +24,7 @@ import ProductionUnit from "./pages/ProductinUnit";
 import CustomerReport from "./component/Reports/CustomerReport";
 import CustomerLedger from "./component/Reports/CustomerLedger";
 import DemoInvoiceForm from "./component/DemoInvoiceForm";
+import StockMovementReport from "./component/user/StockMovement";
 
 function App() {
   return (
@@ -156,6 +157,15 @@ function App() {
           element={
             <ProtectedRoute userOnly={true}>
               <UserPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/movement"
+          element={
+            <ProtectedRoute userOnly={true}>
+              <StockMovementReport />
             </ProtectedRoute>
           }
         />

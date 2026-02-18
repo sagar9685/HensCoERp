@@ -18,16 +18,16 @@ export const addCustomerData = createAsyncThunk(
     try {
       const res = await axios.post(
         `${API_BASE_URL}/api/customers/add`,
-        formData
+        formData,
       );
 
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "Something went wrong"
+        err.response?.data || "Something went wrong",
       );
     }
-  }
+  },
 );
 
 export const searchCustomers = createAsyncThunk(
@@ -35,14 +35,14 @@ export const searchCustomers = createAsyncThunk(
   async (name, thunkAPI) => {
     try {
       const res = await axios.get(
-        `${API_BASE_URL}/api/customers/search?name=${name}`
+        `${API_BASE_URL}/api/customers/search?name=${name}`,
       );
       console.log("Response from backend:", res.data);
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data || "Search failed");
     }
-  }
+  },
 );
 
 export const fetchArea = createAsyncThunk("area", async (_, thunkAPI) => {
@@ -63,10 +63,10 @@ export const fetchCustomerName = createAsyncThunk(
       return res.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "fetch customer name failed"
+        err.response?.data || "fetch customer name failed",
       );
     }
-  }
+  },
 );
 
 export const updateCustomer = createAsyncThunk(
@@ -78,7 +78,7 @@ export const updateCustomer = createAsyncThunk(
     } catch (err) {
       return thunkAPI.rejectWithValue(err.response?.data || "Update failed");
     }
-  }
+  },
 );
 
 const customerSlice = createSlice({
@@ -152,7 +152,7 @@ const customerSlice = createSlice({
         state.isLoading = false;
 
         const index = state.customerName.findIndex(
-          (c) => c.CustomerId === action.payload.id
+          (c) => Number(c.CustomerId) === Number(action.payload.id),
         );
 
         if (index !== -1) {
@@ -162,6 +162,7 @@ const customerSlice = createSlice({
           };
         }
       })
+
       .addCase(updateCustomer.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload;

@@ -5,13 +5,14 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const verifyPayment = createAsyncThunk(
   "payment/verifyPayment",
-  async ({ paymentId, receivedAmount }) => {
+  async ({ paymentId, receivedAmount, verificationRemarks }) => {
     const res = await axios.post(`${API_BASE_URL}/api/users/verify`, {
       paymentId,
       receivedAmount,
+      verificationRemarks, // ✅ add this
     });
     return res.data;
-  }
+  },
 );
 
 export const markVerified = createAsyncThunk(
@@ -21,7 +22,7 @@ export const markVerified = createAsyncThunk(
       paymentId,
     });
     return res.data;
-  }
+  },
 );
 
 const paymentSlice = createSlice({

@@ -9,29 +9,29 @@ export const rejectStock = createAsyncThunk(
     try {
       const response = await axios.post(
         `${API_BASE_URL}/api/stock/rejected-stock`,
-        data
+        data,
       );
       dispatch(fetchAvailableStock()); // Refresh available stock after rejection
       return response.data;
     } catch (err) {
       return rejectWithValue(err.response.data);
     }
-  }
+  },
 );
-
 
 export const fetchRejectedStock = createAsyncThunk(
   "stock/fetchRejectedStock",
   async (_, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/stock/rejected-stock`);
+      const response = await axios.get(
+        `${API_BASE_URL}/api/stock/rejected-stock`,
+      );
       return response.data; // assume backend returns array of stock items
     } catch (err) {
       return rejectWithValue(err.response.data);
     }
-  }
+  },
 );
-
 
 export const addStock = createAsyncThunk(
   "stock/addStock",
@@ -42,7 +42,7 @@ export const addStock = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response.data);
     }
-  }
+  },
 );
 
 export const fetchStock = createAsyncThunk(
@@ -54,7 +54,7 @@ export const fetchStock = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response.data);
     }
-  }
+  },
 );
 
 export const fetchAvailableStock = createAsyncThunk(
@@ -66,7 +66,23 @@ export const fetchAvailableStock = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.response.data);
     }
-  }
+  },
+);
+
+export const fetchStockMovement = createAsyncThunk(
+  "stock/fetchStockMovement",
+  async ({ fromDate, toDate }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        // Yahan movement ki jagah report karein jo aapka working endpoint hai
+        `${API_BASE_URL}/api/stock/report?fromDate=${fromDate}&toDate=${toDate}`,
+      );
+      return response.data;
+    } catch (err) {
+      // Safety check agar err.response undefined ho
+      return rejectWithValue(err.response?.data || "Something went wrong");
+    }
+  },
 );
 
 const stockSlice = createSlice({
@@ -77,7 +93,8 @@ const stockSlice = createSlice({
     lastInwardNo: null,
     items: [],
     available: [],
-    rejected :[]
+    rejected: [],
+    movementReport: [],
   },
   reducers: {
     openStockModal: (state) => {
@@ -130,15 +147,25 @@ const stockSlice = createSlice({
       .addCase(rejectStock.rejected, (state) => {
         state.loading = false;
       })
-       .addCase(fetchRejectedStock.pending, (state) => {
+      .addCase(fetchRejectedStock.pending, (state) => {
         state.loading = true;
       })
-      .addCase(fetchRejectedStock.fulfilled, (state,action) => {
+      .addCase(fetchRejectedStock.fulfilled, (state, action) => {
         state.loading = false;
-        state.rejected = action.payload
+        state.rejected = action.payload;
         // Handle any specific success state here
       })
       .addCase(fetchRejectedStock.rejected, (state) => {
+        state.loading = false;
+      })
+      .addCase(fetchStockMovement.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchStockMovement.fulfilled, (state, action) => {
+        state.loading = false;
+        state.movementReport = action.payload;
+      })
+      .addCase(fetchStockMovement.rejected, (state) => {
         state.loading = false;
       });
   },

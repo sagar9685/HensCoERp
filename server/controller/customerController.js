@@ -14,7 +14,7 @@ exports.addCustomer = async (req, res) => {
       Bulk_Mode,
       Credit_Limit,
       PAN_No,
-      Vendor_Name
+      Vendor_Name,
     } = req.body;
 
     if (!CustomerName || !Contact_No || !Area || !Address) {
@@ -45,17 +45,17 @@ VALUES
     request.input(
       "Bulk_Mode",
       sql.Bit,
-      Bulk_Mode !== undefined ? Bulk_Mode : 0
+      Bulk_Mode !== undefined ? Bulk_Mode : 0,
     );
 
     request.input(
       "Credit_Limit",
       sql.Decimal(18, 2),
-      Credit_Limit ? parseFloat(Credit_Limit) : 0
+      Credit_Limit ? parseFloat(Credit_Limit) : 0,
     );
 
-      request.input("PAN_No", sql.NVarChar, PAN_No || null);
-      request.input("Vendor_Name",sql.VarChar, Vendor_Name || null );
+    request.input("PAN_No", sql.NVarChar, PAN_No || null);
+    request.input("Vendor_Name", sql.VarChar, Vendor_Name || null);
 
     await request.query(query);
     res.status(200).json({ message: "Customer added successfully!" });
@@ -132,7 +132,6 @@ exports.searchCustomersByName = async (req, res) => {
 exports.updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
-
     const {
       CustomerName,
       Contact_No,
@@ -140,18 +139,10 @@ exports.updateCustomer = async (req, res) => {
       Area,
       Pincode,
       Address,
-      GST_No,
+      Gst_No, // 👈 yaha change karo
     } = req.body;
 
-    if (!id) {
-      return res.status(400).json({ message: "Customer id is required" });
-    }
-
     const pool = await poolPromise;
-    if (!pool) {
-      return res.status(500).json({ message: "Db connection failed" });
-    }
-
     const query = `
       UPDATE Customers
       SET
@@ -173,17 +164,11 @@ exports.updateCustomer = async (req, res) => {
     request.input("Area", sql.NVarChar, Area);
     request.input("Pincode", sql.VarChar, Pincode || null);
     request.input("Address", sql.NVarChar, Address);
-    request.input("GST_No", sql.VarChar, GST_No || null);
+    request.input("GST_No", sql.VarChar, Gst_No || null);
 
     await request.query(query);
-
-    res.status(200).json({
-      message: "Customer updated successfully",
-    });
+    res.status(200).json({ message: "Customer updated successfully" });
   } catch (err) {
-    console.log("Error updating customer:", err);
-    res.status(500).json({
-      message: "Internal server error",
-    });
+    res.status(500).json({ message: "Internal server error" });
   }
 };

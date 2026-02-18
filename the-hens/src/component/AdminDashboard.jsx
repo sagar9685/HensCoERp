@@ -42,6 +42,7 @@ const AdminDashboard = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
+  const [verificationRemarks, setVerificationRemarks] = useState("");
 
   const [isFilterLoading, setIsFilterLoading] = useState(false);
 
@@ -160,16 +161,28 @@ const AdminDashboard = () => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
+  // const handleStatusChange = (row, value) => {
+  //   if (value === "Verified") {
+  //     dispatch(markVerified({ paymentId: row.PaymentID }))
+  //       .unwrap()
+  //       .then(() => {
+  //         dispatch(fetchOrder());
+  //         toast.success("Payment marked as Verified!");
+  //         setIsPaymentModalOpen(false);
+  //       })
+  //       .catch((err) => toast.error(err.message || "Failed to verify"));
+  //   }
+
+  //   if (value === "Incomplete") {
+  //     setSelectedPayment(row);
+  //     setIsPaymentModalOpen(true);
+  //   }
+  // };
+
   const handleStatusChange = (row, value) => {
     if (value === "Verified") {
-      dispatch(markVerified({ paymentId: row.PaymentID }))
-        .unwrap()
-        .then(() => {
-          dispatch(fetchOrder());
-          toast.success("Payment marked as Verified!");
-          setIsPaymentModalOpen(false);
-        })
-        .catch((err) => toast.error(err.message || "Failed to verify"));
+      setSelectedPayment(row);
+      setIsPaymentModalOpen(true); // modal open karo
     }
 
     if (value === "Incomplete") {
@@ -183,6 +196,7 @@ const AdminDashboard = () => {
       verifyPayment({
         paymentId: selectedPayment.PaymentID,
         receivedAmount: Number(receivedAmount),
+        verificationRemarks,
       }),
     )
       .unwrap()
@@ -915,10 +929,13 @@ const AdminDashboard = () => {
         onClose={() => {
           setIsPaymentModalOpen(false);
           setReceivedAmount("");
+          setVerificationRemarks("");
         }}
         selectedPayment={selectedPayment}
         receivedAmount={receivedAmount}
         setReceivedAmount={setReceivedAmount}
+        verificationRemarks={verificationRemarks}
+        setVerificationRemarks={setVerificationRemarks}
         onVerifyPayment={handleVerifyPayment}
       />
 

@@ -8,6 +8,8 @@ const PaymentModal = ({
   selectedPayment,
   receivedAmount,
   setReceivedAmount,
+  verificationRemarks,
+  setVerificationRemarks,
   onVerifyPayment,
   loading = false,
 }) => {
@@ -123,6 +125,18 @@ const PaymentModal = ({
               Received amount cannot exceed total amount
             </p>
           )}
+        </div>
+        {/* Verification Remarks */}
+        <div className={styles.inputSection}>
+          <label className={styles.inputLabel}>Verification Remarks</label>
+
+          <textarea
+            className={styles.remarksInput}
+            placeholder="Enter verification remarks (optional)"
+            value={verificationRemarks}
+            onChange={(e) => setVerificationRemarks(e.target.value)}
+            rows={3}
+          />
         </div>
 
         {/* Short Amount Warning */}

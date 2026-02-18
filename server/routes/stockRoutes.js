@@ -8,5 +8,6 @@ router.get("/", stockController.getStock);
 router.get("/avilable", stockController.getAvailableStock);
 router.post("/rejected-stock", stockController.rejectStock);
 router.get("/rejected-stock", stockController.getrejectStock);
+router.get("/report", stockController.getStockMovement);
 
 module.exports = router;

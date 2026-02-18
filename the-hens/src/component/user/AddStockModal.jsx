@@ -16,6 +16,9 @@ const AddStockModal = () => {
   const [quantity, setQty] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const productTypes = useSelector((state) => state.product?.types ?? []);
+  const [chalanNo, setChalanNo] = useState("");
+  const [chalanDate, setChalanDate] = useState("");
+
   //   const loading = useSelector((state) => state.product?.loading ?? false);
 
   useEffect(() => {
@@ -59,6 +62,8 @@ const AddStockModal = () => {
       item_name,
       weight,
       quantity,
+      chalan_no: chalanNo,
+      chalan_date: chalanDate,
     };
 
     try {
@@ -88,12 +93,11 @@ const AddStockModal = () => {
             <X size={24} />
           </button>
         </div>
-
         <form onSubmit={handleSubmit} className={styles.form}>
+          {/* Row 1: Product Type */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              <span className={styles.labelIcon}>🏷️</span>
-              Product Type
+              <span className={styles.labelIcon}>🏷️</span> Product Type
             </label>
             <select
               value={item_name}
@@ -111,10 +115,10 @@ const AddStockModal = () => {
             </select>
           </div>
 
+          {/* Row 2: Weight */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              <span className={styles.labelIcon}>⚖️</span>
-              Weight
+              <span className={styles.labelIcon}>⚖️</span> Weight
             </label>
             <select
               value={weight}
@@ -124,77 +128,75 @@ const AddStockModal = () => {
               disabled={!item_name || isSubmitting}
             >
               <option value="">Select weight</option>
-              {weightOptions.length > 0 ? (
-                weightOptions.map((w, i) => (
-                  <option key={i} value={w}>
-                    {w}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Select product type first</option>
-              )}
+              {weightOptions.map((w, i) => (
+                <option key={i} value={w}>
+                  {w}
+                </option>
+              ))}
             </select>
-            {!item_name && (
-              <div className={styles.hint}>
-                Select a product type to see available weights
-              </div>
-            )}
           </div>
 
+          {/* Row 3: Grid for Qty and Chalan No (Saves Height) */}
+          <div className={styles.formGrid}>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                <span className={styles.labelIcon}>🔢</span> Qty
+              </label>
+              <input
+                type="number"
+                placeholder="0"
+                value={quantity}
+                onChange={(e) => setQty(e.target.value)}
+                className={styles.input}
+                required
+                min="1"
+              />
+            </div>
+            <div className={styles.formGroup}>
+              <label className={styles.label}>
+                <span className={styles.labelIcon}>📄</span> Chalan No
+              </label>
+              <input
+                type="text"
+                placeholder="No."
+                value={chalanNo}
+                onChange={(e) => setChalanNo(e.target.value)}
+                className={styles.input}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Row 4: Chalan Date */}
           <div className={styles.formGroup}>
             <label className={styles.label}>
-              <span className={styles.labelIcon}>🔢</span>
-              Quantity
+              <span className={styles.labelIcon}>📅</span> Chalan Date
             </label>
             <input
-              type="number"
-              placeholder="Enter quantity"
-              value={quantity}
-              onChange={(e) => setQty(e.target.value)}
+              type="date"
+              value={chalanDate}
+              onChange={(e) => setChalanDate(e.target.value)}
               className={styles.input}
               required
-              min="1"
-              disabled={isSubmitting}
             />
           </div>
 
+          {/* Buttons */}
           <div className={styles.btnRow}>
             <button
               type="button"
               onClick={handleClose}
               className={styles.cancel}
-              disabled={isSubmitting}
             >
               Cancel
             </button>
             <button
               type="submit"
               className={styles.save}
-              disabled={isSubmitting || !item_name || !weight || !quantity}
+              disabled={isSubmitting || !item_name || !weight}
             >
-              {isSubmitting ? (
-                <>
-                  <span className={styles.spinner}></span>
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <span className={styles.saveIcon}>✓</span>
-                  Add Stock
-                </>
-              )}
+              {isSubmitting ? "Adding..." : "Add Stock"}
             </button>
-          </div>
-
-          <div className={styles.formHint}>
-            <div className={styles.hintItem}>
-              <span className={styles.hintDot}>•</span>
-              All fields are required
-            </div>
-            <div className={styles.hintItem}>
-              <span className={styles.hintDot}>•</span>
-              Quantity must be a positive number
-            </div>
           </div>
         </form>
       </div>

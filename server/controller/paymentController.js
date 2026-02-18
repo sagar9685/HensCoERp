@@ -24,7 +24,8 @@ exports.completeOrder = async (req, res) => {
     // ------------------------------------
     await new sql.Request(transaction)
       .input("Status", sql.VarChar, status)
-      .input("Remarks", sql.VarChar, remarks || null)
+      .input("Remarks", sql.VarChar(500), remarks ?? null)
+
       .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || null)
       .input("ActualDate", sql.Date, paymentReceivedDate || null)
       .input("AssignedOrderID", sql.Int, assignedOrderId).query(`
@@ -252,7 +253,7 @@ exports.addDenominations = async (req, res) => {
 };
 
 exports.verifyPayment = async (req, res) => {
-  const { paymentId, receivedAmount } = req.body;
+  const { paymentId, receivedAmount, verificationRemarks } = req.body;
 
   if (!paymentId || receivedAmount == null) {
     return res
@@ -263,7 +264,7 @@ exports.verifyPayment = async (req, res) => {
   try {
     const pool = await poolPromise;
 
-    // 1. Fetch original order payment amount
+    // 1️⃣ Fetch original amount
     const payment = await pool.request().input("paymentId", sql.Int, paymentId)
       .query(`
         SELECT Amount 
@@ -285,15 +286,18 @@ exports.verifyPayment = async (req, res) => {
       shortAmount = originalAmount - receivedAmount;
     }
 
-    // 2. Update record with status
+    // 2️⃣ Update with remarks also
     await pool
       .request()
       .input("paymentId", sql.Int, paymentId)
       .input("status", sql.VarChar, status)
-      .input("shortAmount", sql.Decimal(10, 2), shortAmount).query(`
+      .input("shortAmount", sql.Decimal(10, 2), shortAmount)
+      .input("remarks", sql.VarChar(500), verificationRemarks ?? null).query(`
         UPDATE OrderPayments
-        SET PaymentVerifyStatus = @status,
-            ShortAmount = @shortAmount
+        SET 
+            PaymentVerifyStatus = @status,
+            ShortAmount = @shortAmount,
+            VerificationRemarks = @remarks
         WHERE PaymentID = @paymentId
       `);
 
@@ -304,6 +308,7 @@ exports.verifyPayment = async (req, res) => {
       receivedAmount,
       status,
       shortAmount,
+      verificationRemarks,
     });
   } catch (error) {
     console.error(error);
@@ -339,16 +344,13 @@ exports.handoverCash = async (req, res) => {
     deliveryManId,
     totalHandoverAmount,
     denominationJSON,
-    orderPaymentIds,
+    orderPaymentIds, // Yeh optional ho jayega part payment ke liye
   } = req.body;
 
-  console.log("Handover payload:", req.body); // 🔹 payload check
-
-  if (!deliveryManId || !totalHandoverAmount) {
-    console.log("Missing deliveryManId or totalHandoverAmount");
+  if (!deliveryManId || totalHandoverAmount <= 0) {
     return res
       .status(400)
-      .json({ message: "DeliveryManID and Amount required!" });
+      .json({ message: "DeliveryManID and valid Amount required!" });
   }
 
   const pool = await poolPromise;
@@ -356,42 +358,29 @@ exports.handoverCash = async (req, res) => {
 
   try {
     await transaction.begin();
-    console.log("Transaction started");
 
-    // 1️⃣ Get current balance
-    const balanceResult = await new sql.Request(transaction).input(
-      "DeliveryManID",
-      sql.Int,
-      deliveryManId,
-    ).query(`
-        SELECT CurrentBalance 
-        FROM DeliveryMenCashBalance 
-        WHERE DeliveryManID = @DeliveryManID
-      `);
+    // 1️⃣ Current Balance Check karein
+    const balanceResult = await new sql.Request(transaction)
+      .input("DeliveryManID", sql.Int, deliveryManId)
+      .query(
+        `SELECT CurrentBalance FROM DeliveryMenCashBalance WHERE DeliveryManID = @DeliveryManID`,
+      );
 
-    if (balanceResult.recordset.length === 0) {
-      throw new Error("Delivery man balance record not found");
-    }
+    if (balanceResult.recordset.length === 0)
+      throw new Error("Balance record not found");
 
     const currentBalance = balanceResult.recordset[0].CurrentBalance;
-    console.log("Current balance:", currentBalance);
 
-    // Check sufficient balance
+    // Part Payment ke liye check: Amount balance se zyada nahi honi chahiye
     if (currentBalance < totalHandoverAmount) {
-      return res.status(400).json({ message: "Insufficient balance" });
+      return res
+        .status(400)
+        .json({
+          message: `Insufficient balance. Available: ₹${currentBalance}`,
+        });
     }
 
-    // 🔹 Handle empty orderPaymentIds safely
-    if (!orderPaymentIds || orderPaymentIds.length === 0) {
-      console.log("No orders to handover");
-      await transaction.commit();
-      return res.status(200).json({
-        message: "Nothing to handover",
-        updatedBalance: currentBalance,
-      });
-    }
-
-    // 2️⃣ Subtract balance
+    // 2️⃣ Sabse pehle Balance Subtract karein (Part Payment logic)
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount).query(`
@@ -399,9 +388,8 @@ exports.handoverCash = async (req, res) => {
         SET CurrentBalance = CurrentBalance - @Amount
         WHERE DeliveryManID = @DeliveryManID
       `);
-    console.log("Balance updated");
 
-    // 3️⃣ Insert into CashDepartment
+    // 3️⃣ CashDepartment mein entry karein
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
       .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
@@ -410,78 +398,41 @@ exports.handoverCash = async (req, res) => {
         sql.NVarChar(sql.MAX),
         JSON.stringify(denominationJSON),
       ).query(`
-        INSERT INTO CashDepartment 
-        (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
+        INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
         VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
       `);
-    console.log("Inserted into CashDepartment");
 
-    // 4️⃣ Validate & mark payments
-    const paymentCheck = await new sql.Request(transaction)
-      .input("DeliveryManID", sql.Int, deliveryManId)
-      .input("IDs", sql.VarChar, orderPaymentIds.join(",")).query(`
-        SELECT SUM(OP.Amount) AS TotalCash
-        FROM OrderPayments OP
-        JOIN AssignedOrders A ON OP.AssignID = A.AssignID
-        WHERE 
-          OP.IsHandovered = 0
-          AND A.DeliveryManID = @DeliveryManID
-          AND OP.PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
-      `);
-
-    const calculatedAmount = paymentCheck.recordset[0].TotalCash || 0;
-    console.log("Calculated order amount:", calculatedAmount);
-
-    if (calculatedAmount !== totalHandoverAmount) {
-      throw new Error(
-        `Handover amount mismatch. Selected orders total ₹${calculatedAmount}`,
-      );
+    // 4️⃣ Orders ko 'IsHandovered' mark karein (Agar IDs bheji gayi hain)
+    // Part payment mein ho sakta hai admin orders select na kare, bas cash le le
+    if (orderPaymentIds && orderPaymentIds.length > 0) {
+      await new sql.Request(transaction).input(
+        "IDs",
+        sql.VarChar,
+        orderPaymentIds.join(","),
+      ).query(`
+          UPDATE OrderPayments
+          SET IsHandovered = 1
+          WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
+        `);
     }
 
-    await new sql.Request(transaction).input(
-      "IDs",
-      sql.VarChar,
-      orderPaymentIds.join(","),
-    ).query(`
-        UPDATE OrderPayments
-        SET IsHandovered = 1
-        WHERE PaymentID IN (SELECT value FROM STRING_SPLIT(@IDs, ','))
-      `);
-    console.log("OrderPayments marked as handed over");
-
-    // 5️⃣ Insert history
+    // 5️⃣ History Table Update
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
-      .input("Type", sql.VarChar, "DEBIT").query(`
-        INSERT INTO CashHandoverHistory
-        (DeliveryManID, Amount, TransactionType, EntryDate)
-        VALUES (@DeliveryManID, @Amount, @Type, GETDATE())
-      `);
-    console.log("History inserted");
-
-    // 6️⃣ Fetch updated balance
-    const updatedBalanceResult = await new sql.Request(transaction).input(
-      "DeliveryManID",
-      sql.Int,
-      deliveryManId,
-    ).query(`
-        SELECT CurrentBalance 
-        FROM DeliveryMenCashBalance 
-        WHERE DeliveryManID = @DeliveryManID
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount).query(`
+        INSERT INTO CashHandoverHistory (DeliveryManID, Amount, TransactionType, EntryDate)
+        VALUES (@DeliveryManID, @Amount, 'DEBIT', GETDATE())
       `);
 
-    const updatedBalance = updatedBalanceResult.recordset[0].CurrentBalance;
     await transaction.commit();
-    console.log("Transaction committed, updated balance:", updatedBalance);
-
-    res.status(200).json({
-      message: "Cash Handover Successful!",
-      updatedBalance,
-    });
+    res
+      .status(200)
+      .json({
+        message: "Handover Successful!",
+        updatedBalance: currentBalance - totalHandoverAmount,
+      });
   } catch (err) {
     await transaction.rollback();
-    console.error("Handover failed:", err.message);
     res.status(500).json({ message: "Handover failed", error: err.message });
   }
 };
