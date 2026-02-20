@@ -41,8 +41,10 @@ const UserForm = () => {
     setStatusFilter,
     areaFilter,
     setAreaFilter,
-    dateFilter,
-    setDateFilter,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
     deliveryManFilter,
     setDeliveryManFilter,
     sortConfig,
@@ -167,31 +169,52 @@ const UserForm = () => {
       toast.error("Failed to update status");
     }
   };
+  // const handleAssignSubmit = async (payload) => {
+  //   try {
+  //     // Note: Check if your table row data uses 'AssignID' (uppercase/lowercase)
+  //     const assignmentId = selectedOrder?.AssignID;
+
+  //     if (assignmentId) {
+  //       console.log("Action: Reassigning Order ID", assignmentId);
+  //       await dispatch(
+  //         updateAssignedOrder({
+  //           assignmentId: assignmentId,
+  //           ...payload,
+  //         }),
+  //       ).unwrap();
+  //       toast.success("Order reassigned successfully");
+  //     } else {
+  //       console.log("Action: First time assignment");
+  //       await dispatch(assignOrder(payload)).unwrap();
+  //       toast.success("Order assigned successfully");
+  //     }
+
+  //     dispatch(fetchAssignOrder());
+  //     handleCloseModal();
+  //   } catch (err) {
+  //     console.error("UI ERROR:", err);
+  //     toast.error(err.message || "Failed to process assignment");
+  //   }
+  // };
+
   const handleAssignSubmit = async (payload) => {
     try {
-      // Note: Check if your table row data uses 'AssignID' (uppercase/lowercase)
-      const assignmentId = selectedOrder?.AssignID;
-
-      if (assignmentId) {
-        console.log("Action: Reassigning Order ID", assignmentId);
+      // Agar row mein pehle se AssignID hai, toh update route hit karo
+      if (selectedOrder?.AssignID) {
         await dispatch(
           updateAssignedOrder({
-            assignmentId: assignmentId,
+            assignmentId: selectedOrder.AssignID,
             ...payload,
           }),
         ).unwrap();
-        toast.success("Order reassigned successfully");
       } else {
-        console.log("Action: First time assignment");
+        // Naya assignment
         await dispatch(assignOrder(payload)).unwrap();
-        toast.success("Order assigned successfully");
       }
-
       dispatch(fetchAssignOrder());
       handleCloseModal();
     } catch (err) {
-      console.error("UI ERROR:", err);
-      toast.error(err.message || "Failed to process assignment");
+      toast.error(err.message);
     }
   };
 
@@ -220,6 +243,8 @@ const UserForm = () => {
         <UserSideBar />
         <div className="container-fluid page-body-wrapper">
           <UserNavbar />
+          {/* Header Section ke turant baad ye add karein */}
+
           <div className="main-panel">
             <div className="content-wrapper">
               <div className="page-header">
@@ -235,120 +260,192 @@ const UserForm = () => {
                   </ol>
                 </nav>
               </div>
+              <div className={styles.statsRow}>
+                <div className={styles.statCard}>
+                  <div
+                    className={styles.statIcon}
+                    style={{ background: "#e3f2fd", color: "#1976d2" }}
+                  >
+                    <i className="mdi mdi-package-variant"></i>
+                  </div>
+                  <div className={styles.statDetail}>
+                    <p>Total Orders</p>
+                    <h4>{filteredAndSortedOrders.length}</h4>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div
+                    className={styles.statIcon}
+                    style={{ background: "#e8f5e9", color: "#2e7d32" }}
+                  >
+                    <i className="mdi mdi-check-circle"></i>
+                  </div>
+                  <div className={styles.statDetail}>
+                    <p>Complete</p>
+                    <h4>
+                      {
+                        filteredAndSortedOrders.filter(
+                          (o) => o.OrderStatus === "Complete",
+                        ).length
+                      }
+                    </h4>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div
+                    className={styles.statIcon}
+                    style={{ background: "#fff3e0", color: "#ef6c00" }}
+                  >
+                    <i className="mdi mdi-clock-outline"></i>
+                  </div>
+                  <div className={styles.statDetail}>
+                    <p>Pending</p>
+                    <h4>
+                      {
+                        filteredAndSortedOrders.filter(
+                          (o) =>
+                            o.OrderStatus === "Pending" ||
+                            o.OrderStatus === "In Progress",
+                        ).length
+                      }
+                    </h4>
+                  </div>
+                </div>
+
+                <div className={styles.statCard}>
+                  <div
+                    className={styles.statIcon}
+                    style={{ background: "#ffebee", color: "#c62828" }}
+                  >
+                    <i className="mdi mdi-close-circle"></i>
+                  </div>
+                  <div className={styles.statDetail}>
+                    <p>Cancelled</p>
+                    <h4>
+                      {
+                        filteredAndSortedOrders.filter(
+                          (o) => o.OrderStatus === "Cancel",
+                        ).length
+                      }
+                    </h4>
+                  </div>
+                </div>
+              </div>
 
               <div className="row">
                 <div className="col-12 grid-margin">
                   <div className="card">
                     <div className="card-body">
                       {/* Header Section */}
-                      <div className={styles.cardHeader}>
-                        <div className={styles.headerContent}>
-                          <h4 className={styles.cardTitle}>Orders List</h4>
-                          <div className={styles.orderStats}>
-                            <div className={styles.statItem}>
-                              <span className={styles.statNumber}>
-                                {assignedOrders?.length || 0}
-                              </span>
-                              <span className={styles.statLabel}>
-                                Total Orders
-                              </span>
-                            </div>
-                            <div className={styles.statItem}>
-                              <span className={styles.statNumber}>
-                                {assignedOrders?.filter(
-                                  (o) => o.OrderStatus === "Complete",
-                                ).length || 0}
-                              </span>
-                              <span className={styles.statLabel}>
-                                Completed
-                              </span>
-                            </div>
+                      {/* Header Actions Section Update */}
+                      <div className={styles.headerActions}>
+                        <div className={styles.filterControls}>
+                          {/* Search Box */}
+                          <div className={styles.searchBox}>
+                            <i className="mdi mdi-magnify"></i>
+                            <input
+                              type="text"
+                              placeholder="Search..."
+                              value={searchTerm}
+                              onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                           </div>
-                        </div>
 
-                        <div className={styles.headerActions}>
-                          <div className={styles.filterControls}>
-                            {/* Search */}
-                            <div className={styles.searchBox}>
-                              <i className="mdi mdi-magnify"></i>
-                              <input
-                                type="text"
-                                placeholder="Search orders..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                              />
-                            </div>
-
-                            {/* Dynamic Area Filter */}
+                          {/* Date Range Group - Wrapping in a div helps layout */}
+                          <div className={styles.dateGroup}>
+                            <label>From:</label>
                             <input
                               type="date"
-                              value={dateFilter}
-                              onChange={(e) => setDateFilter(e.target.value)}
-                              className={styles.dateInput} // 👈 'your-style' ko isse replace karein
+                              value={fromDate}
+                              onChange={(e) => setFromDate(e.target.value)}
+                              className={styles.dateInput}
                             />
-
-                            <select
-                              className={styles.statusFilter}
-                              value={areaFilter}
-                              onChange={(e) => setAreaFilter(e.target.value)}
-                            >
-                              <option value="all">All Areas</option>
-                              {[...new Set(assignedOrders?.map((i) => i.Area))]
-                                .filter(Boolean)
-                                .sort()
-                                .map((a) => (
-                                  <option key={a} value={a}>
-                                    {a}
-                                  </option>
-                                ))}
-                            </select>
-
-                            {/* Dynamic Delivery Boy Filter */}
-                            <select
-                              className={styles.statusFilter}
-                              value={deliveryManFilter}
-                              onChange={(e) =>
-                                setDeliveryManFilter(e.target.value)
-                              }
-                            >
-                              <option value="all">All Delivery Boys</option>
-                              {[
-                                ...new Set(
-                                  assignedOrders
-                                    ?.filter((o) => o.DeliveryManName)
-                                    .map((o) => o.DeliveryManName),
-                                ),
-                              ]
-                                .sort()
-                                .map((n) => (
-                                  <option key={n} value={n}>
-                                    {n}
-                                  </option>
-                                ))}
-                            </select>
-
-                            {/* Status Filter */}
-                            <select
-                              className={styles.statusFilter}
-                              value={statusFilter}
-                              onChange={(e) => setStatusFilter(e.target.value)}
-                            >
-                              <option value="all">All Status</option>
-                              <option value="pending">Pending</option>
-                              <option value="complete">Completed</option>
-                              <option value="cancel">Cancel</option>
-                            </select>
+                            <label>To:</label>
+                            <input
+                              type="date"
+                              value={toDate}
+                              onChange={(e) => setToDate(e.target.value)}
+                              className={styles.dateInput}
+                            />
                           </div>
 
-                          <ExcelExport
-                            data={filteredAndSortedOrders}
-                            fileName="Filtered_Orders.xlsx"
+                          {/* Dropdowns */}
+                          <select
+                            className={styles.statusFilter}
+                            value={areaFilter}
+                            onChange={(e) => setAreaFilter(e.target.value)}
                           >
-                            <button className="btn btn-success">
-                              <i className="mdi mdi-download"></i> Export
-                            </button>
-                          </ExcelExport>
+                            <option value="all">All Areas</option>
+                            {[...new Set(assignedOrders?.map((i) => i.Area))]
+                              .filter(Boolean)
+                              .sort()
+                              .map((a) => (
+                                <option key={a} value={a}>
+                                  {a}
+                                </option>
+                              ))}
+                          </select>
+
+                          <select
+                            className={styles.statusFilter}
+                            value={deliveryManFilter}
+                            onChange={(e) =>
+                              setDeliveryManFilter(e.target.value)
+                            }
+                          >
+                            <option value="all">All Delivery Boys</option>
+                            {[
+                              ...new Set(
+                                assignedOrders
+                                  ?.filter((o) => o.DeliveryManName)
+                                  .map((o) => o.DeliveryManName),
+                              ),
+                            ]
+                              .sort()
+                              .map((n) => (
+                                <option key={n} value={n}>
+                                  {n}
+                                </option>
+                              ))}
+                          </select>
+
+                          <select
+                            className={styles.statusFilter}
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                          >
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="complete">Completed</option>
+                            <option value="cancel">Cancel</option>
+                          </select>
+
+                          {/* Reset Button (Highly Recommended) */}
+                          <button
+                            className="btn btn-light btn-sm"
+                            onClick={() => {
+                              setFromDate("");
+                              setToDate("");
+                              setSearchTerm("");
+                              setAreaFilter("all");
+                              setStatusFilter("all");
+                              setDeliveryManFilter("all");
+                            }}
+                          >
+                            Clear
+                          </button>
                         </div>
+
+                        <ExcelExport
+                          data={filteredAndSortedOrders}
+                          fileName="Orders.xlsx"
+                        >
+                          <button className="btn btn-success">
+                            <i className="mdi mdi-download"></i> Export
+                          </button>
+                        </ExcelExport>
                       </div>
 
                       {/* Table Section */}

@@ -10,7 +10,7 @@ export const fetchDeliveryMen = createAsyncThunk(
     const res = await axios.get(`${API_BASE_URL}/api/users/delivery-men`);
 
     return res.data;
-  }
+  },
 );
 
 // FETCH PAYMENT MODES
@@ -20,7 +20,7 @@ export const fetchPaymentModes = createAsyncThunk(
     const res = await axios.get(`${API_BASE_URL}/api/users/payment-modes`);
 
     return res.data;
-  }
+  },
 );
 
 export const fetchCashByDeliveryMen = createAsyncThunk(
@@ -28,7 +28,7 @@ export const fetchCashByDeliveryMen = createAsyncThunk(
   async () => {
     const res = await axios.get(`${API_BASE_URL}/api/users/cash`);
     return res.data;
-  }
+  },
 );
 
 // ASSIGN ORDER
@@ -37,10 +37,10 @@ export const assignOrder = createAsyncThunk(
   async (formData) => {
     const res = await axios.post(
       `${API_BASE_URL}/api/users/assign-order`,
-      formData
+      formData,
     );
     return res.data;
-  }
+  },
 );
 
 export const cancelAssignedOrder = createAsyncThunk(
@@ -48,19 +48,18 @@ export const cancelAssignedOrder = createAsyncThunk(
   async ({ assignId, reason }) => {
     const res = await axios.post(
       `${API_BASE_URL}/api/orders/cancel/${assignId}`,
-      { reason }
+      { reason },
     );
     return res.data;
-  }
+  },
 );
-
 
 export const fetchAssignOrder = createAsyncThunk(
   "fetchAssignOrder",
   async () => {
     const res = await axios.get(`${API_BASE_URL}/api/users/assigned-orders`);
     return res.data;
-  }
+  },
 );
 
 // assignedOrderSlice.js
@@ -91,7 +90,7 @@ export const updateAssignedOrder = createAsyncThunk(
 
       const res = await axios.put(
         `${API_BASE_URL}/api/users/assigned-orders/${assignmentId}`,
-        payload
+        payload,
       );
 
       console.log("FRONTEND: Reassign Success:", res.data);
@@ -99,12 +98,12 @@ export const updateAssignedOrder = createAsyncThunk(
     } catch (err) {
       console.error(
         "FRONTEND ERROR: Reassign failed:",
-        err.response?.data || err.message
+        err.response?.data || err.message,
       );
       // Return the error message to the component
       return rejectWithValue(err.response?.data || "Something went wrong");
     }
-  }
+  },
 );
 // You can also add it to extraReducers if you want to handle loading/error
 
@@ -114,14 +113,14 @@ export const updateDeliveryStatus = createAsyncThunk(
     try {
       const res = await axios.put(
         `${API_BASE_URL}/api/users/assigned-orders/${assignId}/status`,
-        { status }
+        { status },
       );
 
       return res.data; // { assignId, status }
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to update status");
     }
-  }
+  },
 );
 
 const assignedOrderSlice = createSlice({
@@ -166,7 +165,17 @@ const assignedOrderSlice = createSlice({
       })
       .addCase(fetchAssignOrder.fulfilled, (state, action) => {
         state.loading = false;
-        state.data = action.payload;
+
+        // 1. Response data ko array ensure karein
+        const rawData = Array.isArray(action.payload) ? action.payload : [];
+
+        // 2. Map ka use karke unique OrderID nikalen
+        // Isse agar backend 2 rows bhej bhi raha hai, toh UI sirf ek dikhayega
+        const uniqueData = Array.from(
+          new Map(rawData.map((item) => [item.OrderID, item])).values(),
+        );
+
+        state.data = uniqueData; // Unique orders hi state mein jayenge
       })
       .addCase(fetchAssignOrder.rejected, (state) => {
         state.loading = false;
@@ -203,57 +212,58 @@ const assignedOrderSlice = createSlice({
       // })
       // assignedOrderSlice.js ke extraReducers mein:
 
-// assignedOrderSlice.js mein updateDeliveryStatus.fulfilled badlein:
+      // assignedOrderSlice.js mein updateDeliveryStatus.fulfilled badlein:
 
-.addCase(updateDeliveryStatus.fulfilled, (state, action) => {
-    // action.meta.arg mein wo data hota hai jo aapne dispatch karte waqt bheja tha
-    const { assignId, status } = action.meta.arg;
-    
-    // Loose equality (==) use karein taaki string/number mismatch na ho
-    const index = state.data.findIndex((o) => o.AssignID == assignId);
+      .addCase(updateDeliveryStatus.fulfilled, (state, action) => {
+        // action.meta.arg mein wo data hota hai jo aapne dispatch karte waqt bheja tha
+        const { assignId, status } = action.meta.arg;
 
-    if (index !== -1) {
-        // Direct state update (Immer handle kar lega)
-        state.data[index].DeliveryStatus = status;
-        state.data[index].OrderStatus = status; 
+        // Loose equality (==) use karein taaki string/number mismatch na ho
+        const index = state.data.findIndex((o) => o.AssignID == assignId);
 
-        if (status === "Complete") {
+        if (index !== -1) {
+          // Direct state update (Immer handle kar lega)
+          state.data[index].DeliveryStatus = status;
+          state.data[index].OrderStatus = status;
+
+          if (status === "Complete") {
             const now = new Date().toISOString();
             state.data[index].ActualDeliveryDate = now;
             state.data[index].PaymentReceivedDate = now;
+          }
+
+          // Success flag ko true karein taaki UI re-render ho
+          state.success = true;
         }
-        
-        // Success flag ko true karein taaki UI re-render ho
-        state.success = true;
-    }
-})
-.addCase(cancelAssignedOrder.fulfilled, (state, action) => {
-    const { assignId, reason } = action.meta.arg;
-    const index = state.data.findIndex((o) => o.AssignID == assignId);
+      })
+      .addCase(cancelAssignedOrder.fulfilled, (state, action) => {
+        const { assignId, reason } = action.meta.arg;
+        const index = state.data.findIndex((o) => o.AssignID == assignId);
 
-    if (index !== -1) {
-        state.data[index].DeliveryStatus = "Cancel";
-        state.data[index].OrderStatus = "Cancel";
-        state.data[index].Remark = reason;
-    }
-})
-.addCase(completeOrder.fulfilled, (state, action) => {
-    // action.payload se orderId ya assignedOrderId nikalen (jo bhi backend return kar raha hai)
-    const { assignedOrderId } = action.meta.arg; // meta.arg mein payload data hota hai
-    
-    const index = state.data.findIndex((o) => o.AssignID == assignedOrderId);
+        if (index !== -1) {
+          state.data[index].DeliveryStatus = "Cancel";
+          state.data[index].OrderStatus = "Cancel";
+          state.data[index].Remark = reason;
+        }
+      })
+      .addCase(completeOrder.fulfilled, (state, action) => {
+        // action.payload se orderId ya assignedOrderId nikalen (jo bhi backend return kar raha hai)
+        const { assignedOrderId } = action.meta.arg; // meta.arg mein payload data hota hai
 
-    if (index !== -1) {
-        state.data[index].DeliveryStatus = "Complete";
-        state.data[index].OrderStatus = "Complete";
-        
-        // Instant dates update
-        const now = new Date().toISOString();
-        state.data[index].ActualDeliveryDate = now;
-        state.data[index].PaymentReceivedDate = now;
-    }
-})
+        const index = state.data.findIndex(
+          (o) => o.AssignID == assignedOrderId,
+        );
 
+        if (index !== -1) {
+          state.data[index].DeliveryStatus = "Complete";
+          state.data[index].OrderStatus = "Complete";
+
+          // Instant dates update
+          const now = new Date().toISOString();
+          state.data[index].ActualDeliveryDate = now;
+          state.data[index].PaymentReceivedDate = now;
+        }
+      });
   },
 });
 

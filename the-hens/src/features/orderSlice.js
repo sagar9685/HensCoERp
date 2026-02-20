@@ -91,11 +91,19 @@ export const orderSlice = createSlice({
     builder.addCase(fetchOrder.pending, (state) => {
       state.loading = true;
     });
+    // orderSlice.js mein builder section change karein
     builder.addCase(fetchOrder.fulfilled, (state, action) => {
       state.loading = false;
-      state.record = Array.isArray(action.payload)
+      const rawData = Array.isArray(action.payload)
         ? action.payload
         : action.payload?.data || [];
+
+      // ⭐ Yahan OrderID ke base par duplicate hatayein
+      const uniqueOrders = Array.from(
+        new Map(rawData.map((item) => [item.OrderID, item])).values(),
+      );
+
+      state.record = uniqueOrders;
     });
 
     builder.addCase(fetchOrder.rejected, (state, action) => {

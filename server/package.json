@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.4",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.0",
@@ -7,6 +8,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "groq-sdk": "^0.37.0",
     "mssql": "^12.1.0",
     "multer": "^2.0.2",
     "mysql2": "^3.16.0",

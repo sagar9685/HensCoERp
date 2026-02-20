@@ -9,7 +9,9 @@ export const useOrderFilter = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
-  const [dateFilter, setDateFilter] = useState("");
+  // const [dateFilter, setDateFilter] = useState("");
+  const [fromDate, setFromDate] = useState(""); // New
+  const [toDate, setToDate] = useState("");
 
   const rawAssignedOrders = useSelector(
     (state) => state.assignedOrders.data || [],
@@ -61,24 +63,24 @@ export const useOrderFilter = () => {
         // ✅ 5. Date Logic (Order Date)
         // ✅ 5. Date Logic (Fix: Local Date Comparison)
         const matchesDate = (() => {
-          if (!dateFilter) return true;
+          // Agar dono dates empty hain toh saare dikhao
+          if (!fromDate && !toDate) return true;
 
-          // Prefer DeliveryDate, fallback to OrderDate
           const orderDateRaw = order.DeliveryDate || order.OrderDate;
           if (!orderDateRaw) return false;
 
-          const dateObj = new Date(orderDateRaw);
+          // Convert order date to YYYY-MM-DD string
+          const d = new Date(orderDateRaw);
+          const orderDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-          // Invalid date check
-          if (isNaN(dateObj.getTime())) return false;
-
-          // Format date as YYYY-MM-DD using local time
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, "0");
-          const day = String(dateObj.getDate()).padStart(2, "0");
-          const formattedOrderDate = `${year}-${month}-${day}`;
-
-          return formattedOrderDate === dateFilter;
+          if (fromDate && toDate) {
+            return orderDateStr >= fromDate && orderDateStr <= toDate;
+          } else if (fromDate) {
+            return orderDateStr >= fromDate;
+          } else if (toDate) {
+            return orderDateStr <= toDate;
+          }
+          return true;
         })();
 
         return (
@@ -103,7 +105,8 @@ export const useOrderFilter = () => {
     statusFilter,
     areaFilter,
     deliveryManFilter,
-    dateFilter, // 👈 dependency me add karna mat bhoolna
+    fromDate,
+    toDate,
     sortConfig,
   ]);
 
@@ -120,9 +123,14 @@ export const useOrderFilter = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, areaFilter, deliveryManFilter, dateFilter]);
-
-  console.log("Filter temp:", dateFilter);
+  }, [
+    searchTerm,
+    statusFilter,
+    areaFilter,
+    deliveryManFilter,
+    fromDate,
+    toDate,
+  ]);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
   const nextPage = () =>
@@ -184,8 +192,10 @@ export const useOrderFilter = () => {
     setAreaFilter,
     deliveryManFilter,
     setDeliveryManFilter,
-    dateFilter, // 👈 Add this
-    setDateFilter,
+    fromDate,
+    setFromDate,
+    toDate,
+    setToDate,
     sortConfig,
     currentPage,
     currentItems,

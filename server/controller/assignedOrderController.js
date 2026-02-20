@@ -2,43 +2,47 @@ const { sql, poolPromise } = require("../utils/db");
 const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 
 // CREATE Assigned Order
+// Updated assignOrder Controller
 exports.assignOrder = async (req, res) => {
   const { orderId, deliveryManId, otherDeliveryManName, deliveryDate, remark } =
     req.body;
 
-  if (!orderId || !deliveryDate) {
-    return res.status(400).json({ message: "Required fields missing" });
-  }
-
-  const isOther = deliveryManId === null;
-
-  if (isOther && !otherDeliveryManName) {
-    return res.status(400).json({ message: "Enter other delivery man name." });
-  }
-
   try {
     const pool = await poolPromise;
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
-    await pool
-      .request()
-      .input("OrderID", sql.Int, orderId)
-      .input("DeliveryManID", sql.Int, isOther ? null : deliveryManId)
-      .input(
-        "OtherDeliveryManName",
-        sql.NVarChar(255),
-        isOther ? otherDeliveryManName : null,
-      )
-      .input("DeliveryDate", sql.Date, deliveryDate)
-      .input("Remark", sql.NVarChar(255), remark || null).query(`
-        INSERT INTO AssignedOrders 
-        (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark)
-        VALUES 
-        (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark)
-      `);
+    try {
+      // ⭐ Step 1: Pehle is OrderID ki purani sari assignments delete karo
+      // Taaki hamesha fresh aur single entry rahe
+      await transaction
+        .request()
+        .input("OrderID", sql.Int, orderId)
+        .query("DELETE FROM AssignedOrders WHERE OrderID = @OrderID");
 
-    res.status(201).json({ message: "Order assigned successfully" });
+      // ⭐ Step 2: Ab nayi assignment insert karo
+      await transaction
+        .request()
+        .input("OrderID", sql.Int, orderId)
+        .input("DeliveryManID", sql.Int, deliveryManId || null)
+        .input(
+          "OtherDeliveryManName",
+          sql.NVarChar,
+          otherDeliveryManName || null,
+        )
+        .input("DeliveryDate", sql.Date, deliveryDate)
+        .input("Remark", sql.NVarChar, remark || null).query(`
+          INSERT INTO AssignedOrders (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus)
+          VALUES (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending')
+        `);
+
+      await transaction.commit();
+      res.status(201).json({ message: "Order assigned successfully" });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   } catch (err) {
-    console.error("DB Error:", err);
     res.status(500).json({ message: err.message });
   }
 };

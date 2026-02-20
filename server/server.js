@@ -20,6 +20,7 @@ const analyticsRoutes = require("./routes/analyticRoutes");
 const askAiRoutes = require("./routes/askAiRoutes");
 const productionRoutes = require("./routes/productionRoutes");
 const demoInvoice = require("./routes/demoInvoiceRoutes");
+const aiRoutes = require("./routes/aiRoutes");
 
 dotenv.config();
 const app = express();
@@ -50,6 +51,8 @@ app.use("/api/users", assignedOrderRoutes);
 app.use("/api/customer-analysis", customerAnalysisRoutes);
 
 app.use("/api/production", productionRoutes);
+
+app.use("/api", aiRoutes);
 
 const PORT = process.env.PORT || 5005;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

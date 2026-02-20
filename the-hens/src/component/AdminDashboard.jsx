@@ -694,6 +694,7 @@ const AdminDashboard = () => {
                   <th>Remark</th>
                   <th>Payment Status</th>
                   <th>Actions</th>
+                  <th>Verfication Remark</th>
                 </tr>
               </thead>
               <tbody>
@@ -842,6 +843,9 @@ const AdminDashboard = () => {
                         >
                           <FaFileInvoiceDollar />
                         </button>
+                      </td>
+                      <td className={styles.tableData}>
+                        {row.VerifyMark || "-"}
                       </td>
                     </tr>
                   ))

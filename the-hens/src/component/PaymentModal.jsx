@@ -14,8 +14,11 @@ const PaymentModal = ({
   loading = false,
 }) => {
   if (!isOpen) return null;
+  const totalOrderAmount =
+    Number(selectedPayment?.GrandItemTotal || 0) +
+    Number(selectedPayment?.DeliveryCharge || 0);
 
-  const shortAmount = selectedPayment?.Amount - receivedAmount;
+  const shortAmount = totalOrderAmount - receivedAmount;
   const isShortPayment = shortAmount > 0;
   console.log("SUMMARY ===>", selectedPayment?.PaymentSummary);
 
@@ -86,7 +89,7 @@ const PaymentModal = ({
             <div className={styles.originalAmount}>
               <span className={styles.amountLabel}>Total Amount:</span>
               <span className={styles.amountValue}>
-                ₹{selectedPayment?.Amount}
+                ₹{totalOrderAmount} {/* Yahan fix kiya */}
               </span>
             </div>
 
