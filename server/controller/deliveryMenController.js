@@ -161,6 +161,7 @@ SELECT
     A.AssignID,
     A.DeliveryDate,
     A.PaymentReceivedDate,
+    A.DeliveryStatus,
     DM.Name AS DeliveryBoyName,
 
     -- ITEMS
@@ -172,14 +173,17 @@ SELECT
     IT.ItemsTotal,
 
     -- PAYMENTS
-    ISNULL(PAY.Cash,0) AS Cash,
-    ISNULL(PAY.GPay,0) AS GPay,
-    ISNULL(PAY.Paytm,0) AS Paytm,
-    ISNULL(PAY.FOC,0) AS FOC,
-    ISNULL(PAY.BankTransfer,0) AS BankTransfer,
+    CASE WHEN A.DeliveryStatus = 'Cancel' THEN 0 ELSE ISNULL(PAY.Cash,0) END AS Cash,
+CASE WHEN A.DeliveryStatus = 'Cancel' THEN 0 ELSE ISNULL(PAY.GPay,0) END AS GPay,
+CASE WHEN A.DeliveryStatus = 'Cancel' THEN 0 ELSE ISNULL(PAY.Paytm,0) END AS Paytm,
+CASE WHEN A.DeliveryStatus = 'Cancel' THEN 0 ELSE ISNULL(PAY.FOC,0) END AS FOC,
+CASE WHEN A.DeliveryStatus = 'Cancel' THEN 0 ELSE ISNULL(PAY.BankTransfer,0) END AS BankTransfer,
 
     -- FINAL TOTAL
-    IT.ItemsTotal + ISNULL(O.DeliveryCharge,0) AS OrderTotal
+   CASE 
+   WHEN A.DeliveryStatus = 'Cancel' THEN 0
+   ELSE IT.ItemsTotal + ISNULL(O.DeliveryCharge,0)
+END AS OrderTotal
 
 FROM AssignedOrders A
 JOIN OrdersTemp O ON A.OrderID = O.OrderID
