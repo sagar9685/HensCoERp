@@ -35,6 +35,9 @@ export default function UserDataTable() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [passError, setPassError] = useState("");
 
   const [manualDenominations, setManualDenominations] = useState(
     DENOMINATIONS.reduce((acc, note) => ({ ...acc, [note]: "" }), {}),
@@ -65,6 +68,18 @@ export default function UserDataTable() {
   const { list: pendingCashOrders } = useSelector(
     (state) => state.pendingCashOrders,
   );
+
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem("isDataTableAuthorized");
+    if (authStatus === "true") {
+      setIsAuthorized(true);
+    }
+
+    // YE FIX HAI: Jab user dusre route par jayega, ye function chalega
+    return () => {
+      sessionStorage.removeItem("isDataTableAuthorized");
+    };
+  }, []);
 
   useEffect(() => {
     if (dSuccess) {
@@ -210,6 +225,7 @@ export default function UserDataTable() {
       })
       .catch((err) => setError(err.message || "Handover failed"));
   };
+
   const clearSelection = () => {
     setSelectedId("");
     setError("");
@@ -251,6 +267,59 @@ export default function UserDataTable() {
     if (sortConfig.key !== key) return "↕️";
     return sortConfig.direction === "asc" ? "↑" : "↓";
   };
+
+  const passwordScreenStyles = {
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    height: "100vh",
+    backgroundColor: "#f8f9fa",
+  };
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    const SECRET_PASSWORD = "Sagar@9685"; // Apna password yahan rakhein
+
+    if (passwordInput === SECRET_PASSWORD) {
+      sessionStorage.setItem("isDataTableAuthorized", "true");
+      setIsAuthorized(true);
+      setPassError("");
+    } else {
+      setPassError("Wrong Password! Access Denied.");
+    }
+  };
+
+  if (!isAuthorized) {
+    return (
+      <div style={passwordScreenStyles}>
+        <div
+          className={styles.container}
+          style={{ maxWidth: "400px", marginTop: "100px", textAlign: "center" }}
+        >
+          <h2 className={styles.title}>🔐 Security Check</h2>
+          <p>Please enter password to access Cash Management</p>
+          <form onSubmit={handlePasswordSubmit}>
+            <input
+              type="password"
+              placeholder="Enter Password"
+              className="form-control mb-3"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              style={{ padding: "10px", fontSize: "16px" }}
+            />
+            {passError && <p style={{ color: "red" }}>{passError}</p>}
+            <button
+              type="submit"
+              className={styles.downloadButton}
+              style={{ width: "100%" }}
+            >
+              Unlock Access
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

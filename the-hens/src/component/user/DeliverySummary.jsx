@@ -8,9 +8,10 @@ import { fetchDeliveryMen } from "../../features/assignedOrderSlice";
 import styles from "./DeliverySummary.module.css";
 import UserSideBar from "./UserSidebar";
 import UserNavbar from "./UserNavBar";
-import * as XLSX from "xlsx";
+
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable"; // Add this import
+import * as XLSX from "xlsx-js-style";
 
 const DeliverySummary = () => {
   const dispatch = useDispatch();
@@ -208,9 +209,8 @@ const DeliverySummary = () => {
         );
 
         for (let j = 0; j < rowCount; j++) {
-          // Logic: String se sirf numbers nikalne ke liye (e.g., "Tray(5)" -> "5")
           const rawQty = qtyList[j]?.trim() || "";
-          const cleanQty = rawQty.replace(/[^0-9.]/g, ""); // Ye sirf digits aur decimal rakhega
+          const cleanQty = rawQty.replace(/[^0-9.]/g, "");
 
           excelData.push({
             "S.No": j === 0 ? i + 1 : "",
@@ -220,9 +220,10 @@ const DeliverySummary = () => {
             "Contact No": o.ContactNo,
             "Delivery Boy": o.DeliveryBoyName,
             "Delivery Date": formatDate(o.DeliveryDate?.slice(0, 10)) || "",
+            Status: j === 0 ? o.DeliveryStatus : "", // ✅ Added
             "Items Detail": itemList[j]?.trim() || "",
             Weight: weightList[j]?.trim() || "",
-            "Item Qty": cleanQty, // Ab yahan sirf '5' aayega
+            "Item Qty": cleanQty,
             "Total Qty": j === 0 ? o.TotalQty || 0 : "",
             Rate: rateList[j]?.trim() || "",
             "Delivery Charge": j === 0 ? o.DeliveryCharge || 0 : "",
@@ -241,7 +242,6 @@ const DeliverySummary = () => {
         }
       });
 
-      // --- Baki ka logic (Summary aur Download) pehle jaisa hi rahega ---
       const summaryRow = {
         "Customer Name": "GRAND TOTAL",
         "Cash (₹)": summary.cash || 0,
@@ -255,7 +255,40 @@ const DeliverySummary = () => {
       const finalData = [...excelData, {}, summaryRow];
       const ws = XLSX.utils.json_to_sheet(finalData);
 
-      const wscols = [
+      // ✅ Apply Red Style For Cancel Rows
+      const range = XLSX.utils.decode_range(ws["!ref"]);
+
+      // Status column index = 7 (0 based)
+      const statusColumnIndex = 7;
+
+      for (let R = 1; R <= range.e.r; ++R) {
+        const statusCellAddress = XLSX.utils.encode_cell({
+          r: R,
+          c: statusColumnIndex,
+        });
+
+        const statusCell = ws[statusCellAddress];
+
+        if (
+          statusCell &&
+          statusCell.v &&
+          statusCell.v.toString().toLowerCase().includes("cancel")
+        ) {
+          for (let C = 0; C <= range.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+
+            if (!ws[cellAddress]) continue;
+
+            ws[cellAddress].s = {
+              fill: { fgColor: { rgb: "FFCCCC" } },
+              font: { color: { rgb: "FF0000" }, bold: true },
+            };
+          }
+        }
+      }
+
+      // Column widths
+      ws["!cols"] = [
         { wch: 6 },
         { wch: 25 },
         { wch: 30 },
@@ -263,9 +296,9 @@ const DeliverySummary = () => {
         { wch: 15 },
         { wch: 20 },
         { wch: 15 },
+        { wch: 12 }, // Status
         { wch: 20 },
         { wch: 15 },
-        { wch: 10 }, // Item Qty width set
         { wch: 10 },
         { wch: 10 },
         { wch: 15 },
@@ -276,13 +309,17 @@ const DeliverySummary = () => {
         { wch: 15 },
         { wch: 12 },
         { wch: 12 },
+        { wch: 15 },
         { wch: 15 },
       ];
-      ws["!cols"] = wscols;
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Delivery_Report");
-      const fileName = `Delivery_Report_${fromDeliveryDate || "All"}_to_${toDeliveryDate || "Today"}.xlsx`;
+
+      const fileName = `Delivery_Report_${
+        fromDeliveryDate || "All"
+      }_to_${toDeliveryDate || "Today"}.xlsx`;
+
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error("Excel Export Error:", error);
@@ -416,7 +453,12 @@ const DeliverySummary = () => {
                   </thead>
                   <tbody>
                     {currentRows.map((o, i) => (
-                      <tr key={o.AssignID}>
+                      <tr
+                        key={o.AssignID}
+                        className={
+                          o.DeliveryStatus === "Cancel" ? styles.cancelRow : ""
+                        }
+                      >
                         <td>{indexOfFirstRow + i + 1}</td>
                         <td>{o.CustomerName}</td>
                         <td>{o.Address}</td>
