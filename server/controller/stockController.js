@@ -85,15 +85,29 @@ exports.getStock = async (req, res) => {
       return res.status(500).json({ message: "Database connection failed." });
     }
 
-    const result = await pool
-      .request()
-      .query("select * from Stock order by id desc");
+    const query = `
+      SELECT 
+        pt.ProductType as ProductName, 
+        SUM(CAST(s.quantity AS INT)) as CurrentStock,
+        CASE 
+          WHEN SUM(CAST(s.quantity AS INT)) <= 0 THEN 'Out Of Stock'
+          WHEN SUM(CAST(s.quantity AS INT)) <= 5 THEN 'Low Stock'
+          WHEN SUM(CAST(s.quantity AS INT)) > 20 THEN 'High Stock'
+          ELSE 'Medium Stock'
+        END as Status
+      FROM ProductTypes pt
+      LEFT JOIN Stock s ON pt.ProductType = s.item_name
+      GROUP BY pt.ProductType
+    `;
+
+    const result = await pool.request().query(query);
     res.status(200).json(result.recordset);
   } catch (error) {
-    console.error("Error fetching customers:", error);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+    console.error("Error fetching stock:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 };
 

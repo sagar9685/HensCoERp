@@ -5,140 +5,143 @@ exports.addOrder = async (req, res) => {
   const transaction = new sql.Transaction(pool);
 
   try {
-    const {
-      CustomerName,
-      Address,
-      Area,
-      ContactNo,
-      DeliveryCharge,
-      OrderDate,
-      InvoiceDate,
-      OrderTakenBy,
-      Items,
-      Po_No,
-      Po_Date,
-    } = req.body;
-
-    if (!Items || !Array.isArray(Items) || Items.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "Order must contain at least one item." });
-    }
+    const { Items, OrderDate } = req.body;
 
     await transaction.begin();
-
     const request = new sql.Request(transaction);
+
+    // ===============================
+    // 1️⃣ Invoice Number Generate
+    // ===============================
 
     const orderDt = new Date(OrderDate);
     const year = orderDt.getFullYear();
     const month = orderDt.getMonth() + 1;
+
     const fyStart = month >= 4 ? year : year - 1;
-    const fyEnd = month >= 4 ? year + 1 : year;
+    const fyEnd = fyStart + 1;
     const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
     const lastInvoiceResult = await request.query(`
-      SELECT TOP 1 InvoiceNo 
-      FROM OrdersTemp
-      WHERE InvoiceNo LIKE '${fyString}/%'
-      ORDER BY OrderID DESC;
-    `);
-    let nextSequence = 1;
+  SELECT TOP 1 InvoiceNo 
+  FROM OrdersTemp 
+  WHERE InvoiceNo LIKE '${fyString}/%'
+  ORDER BY 
+  CAST(SUBSTRING(InvoiceNo, CHARINDEX('/', InvoiceNo) + 1, 10) AS INT) DESC
+`);
+
+    let nextSeq = 1;
+
     if (lastInvoiceResult.recordset.length > 0) {
-      const lastInvoice = lastInvoiceResult.recordset[0].InvoiceNo;
-      const lastSeq = parseInt(lastInvoice.split("/")[1]);
-      nextSequence = lastSeq + 1;
+      const parts = lastInvoiceResult.recordset[0].InvoiceNo.split("/");
+      nextSeq = (parseInt(parts[1]) || 0) + 1;
     }
-    const invoiceNo = `${fyString}/${String(nextSequence).padStart(2, "0")}`;
 
-    // ----------------- 3️⃣ INSERT ORDER -----------------
-    request.input("CustomerName", sql.NVarChar, CustomerName);
-    request.input("Address", sql.NVarChar, Address);
-    request.input("Area", sql.NVarChar, Area);
-    request.input("ContactNo", sql.VarChar, ContactNo);
-    request.input("DeliveryCharge", sql.Decimal(10, 2), DeliveryCharge);
-    request.input("OrderDate", sql.Date, OrderDate);
-    request.input("InvoiceDate", sql.Date, InvoiceDate || OrderDate);
-    request.input("OrderTakenBy", sql.NVarChar, OrderTakenBy);
-    request.input("InvoiceNo", sql.NVarChar, invoiceNo);
-    request.input("Po_No", sql.NVarChar, Po_No);
-    request.input("Po_Date", sql.Date, Po_Date);
+    const invoiceNo = `${fyString}/${nextSeq}`;
+    // ===============================
+    // 2️⃣ Insert Order Header
+    // ===============================
 
-    const orderInsertResult = await request.query(`
-      INSERT INTO OrdersTemp 
-      (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, InvoiceDate, OrderTakenBy, InvoiceNo, Po_No , Po_Date)
-      OUTPUT INSERTED.OrderID
-      VALUES (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @InvoiceDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date);
-    `);
+    const orderInsert = await request
+      .input("CustomerName", sql.NVarChar, req.body.CustomerName)
+      .input("Address", sql.NVarChar, req.body.Address)
+      .input("Area", sql.NVarChar, req.body.Area)
+      .input("ContactNo", sql.NVarChar, req.body.ContactNo)
+      .input("DeliveryCharge", sql.Decimal(18, 2), req.body.DeliveryCharge || 0)
+      .input("OrderDate", sql.Date, req.body.OrderDate)
+      .input("OrderTakenBy", sql.NVarChar, req.body.OrderTakenBy)
+      .input("InvoiceNo", sql.NVarChar, invoiceNo)
+      .input("Po_No", sql.NVarChar, req.body.Po_No || null)
+      .input("Po_Date", sql.Date, req.body.Po_Date || null)
+      .input("InvoiceDate", sql.Date, req.body.InvoiceDate).query(`
+        INSERT INTO OrdersTemp
+        (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo, Po_No, Po_Date, InvoiceDate)
+        OUTPUT INSERTED.OrderID
+        VALUES
+        (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date, @InvoiceDate)
+      `);
 
-    const orderId = orderInsertResult.recordset[0].OrderID;
+    const orderId = orderInsert.recordset[0].OrderID;
 
-    // ----------------- 4️⃣ PROCESS ITEMS & STOCK -----------------
+    // ===============================
+    // 3️⃣ Process Each Item
+    // ===============================
+
     for (let item of Items) {
-      let remainingQty = item.Quantity;
+      const target = item.ProductType.trim();
+      let qtyToDeduct = parseInt(item.Quantity);
 
-      // Fetch stock rows (FIFO)
-      const stockRowsResult = await transaction
+      // 🔎 Get Available Stock (FIFO)
+      const stockRes = await transaction
         .request()
-        .input("ProductType", sql.NVarChar, item.ProductType).query(`
-          SELECT ID, Quantity 
-          FROM Stock
-          WHERE item_name = @ProductType AND Quantity > 0
-          ORDER BY ID ASC
+        .input("Target", sql.NVarChar, target).query(`
+          SELECT id, quantity 
+          FROM Stock 
+          WHERE LTRIM(RTRIM(item_name)) = @Target 
+          AND quantity > 0
+          ORDER BY id ASC
         `);
 
-      const stockRows = stockRowsResult.recordset;
+      // 🔻 Deduct Stock
+      for (let row of stockRes.recordset) {
+        if (qtyToDeduct <= 0) break;
 
-      for (let stockRow of stockRows) {
-        if (remainingQty <= 0) break;
-
-        const deductQty = Math.min(stockRow.Quantity, remainingQty);
+        const deduct = Math.min(row.quantity, qtyToDeduct);
 
         await transaction
           .request()
-          .input("DeductQty", sql.Int, deductQty)
-          .input("ID", sql.Int, stockRow.ID).query(`
-            UPDATE Stock
-            SET Quantity = Quantity - @DeductQty
-            WHERE ID = @ID
+          .input("D", sql.Int, deduct)
+          .input("ID", sql.Int, row.id).query(`
+            UPDATE Stock 
+            SET quantity = quantity - @D 
+            WHERE id = @ID
           `);
 
-        remainingQty -= deductQty;
+        qtyToDeduct -= deduct;
       }
 
-      if (remainingQty > 0) {
-        throw new Error(
-          `Not enough stock for ${item.ProductType}. Remaining ${remainingQty}`,
-        );
+      if (qtyToDeduct > 0) {
+        throw new Error(`Not enough stock for ${target}`);
       }
 
-      // Insert order item
+      // ===============================
+      // 4️⃣ Insert Into OrderItems
+      // ===============================
+      const total = Number(item.Quantity) * Number(item.Rate);
+
       await transaction
         .request()
         .input("OrderID", sql.Int, orderId)
-        .input("ProductName", sql.NVarChar, item.ProductName)
+        .input("ProductName", sql.NVarChar, item.ProductName || null)
         .input("ProductType", sql.NVarChar, item.ProductType)
-        .input("Weight", sql.NVarChar, item.Weight || "")
+        .input("Weight", sql.NVarChar, item.Weight || null)
         .input("Quantity", sql.Int, item.Quantity)
-        .input("Rate", sql.Decimal(10, 2), item.Rate)
-        .input("Total", sql.Decimal(10, 2), item.Quantity * item.Rate).query(`
-          INSERT INTO OrderItems 
-          (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
-          VALUES (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
-        `);
+        .input("Rate", sql.Decimal(18, 2), item.Rate)
+        .input("Total", sql.Decimal(18, 2), total).query(`
+    INSERT INTO OrderItems
+    (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+    VALUES
+    (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+  `);
     }
 
-    await transaction.commit(); // ✅ Commit only after all inserts & stock updates succeed
+    // ===============================
+    // 5️⃣ Commit Transaction
+    // ===============================
+
+    await transaction.commit();
 
     res.status(200).json({
-      message: "Order placed & stock updated safely!",
-      orderId,
+      success: true,
+      message: "Order Added Successfully!",
       invoiceNo,
     });
-  } catch (error) {
-    await transaction.rollback(); // 🔴 Rollback if any error
-    console.error("❌ Error adding order:", error);
+  } catch (err) {
+    await transaction.rollback();
+
     res.status(500).json({
-      message: error.message || "Internal server error",
+      success: false,
+      message: err.message,
     });
   }
 };

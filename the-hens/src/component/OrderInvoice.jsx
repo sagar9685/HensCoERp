@@ -6,13 +6,11 @@ import {
   FaDownload,
   FaTimes,
   FaFileInvoice,
-  FaPrint,
   FaRupeeSign,
   FaFileAlt,
   FaUser,
   FaMapMarkerAlt,
   FaPhone,
-  FaTruck,
   FaFileSignature,
 } from "react-icons/fa";
 
@@ -90,7 +88,6 @@ const COMPANY_INFO = {
   pan: "AAGCV7020A",
   gstin: "23AAGCV7020A1ZX",
   address: "201/15, Ratan Colony, Gorakhpur, Jabalpur, Madhya Pradesh 482001",
-
   phone: "7880008188",
   email: "info@thehensco.com",
   bankDetails: {
@@ -107,16 +104,13 @@ const COMPANY_INFO = {
 const InvoiceGenerator = ({ orderData, onClose }) => {
   const downloadPdf = async () => {
     const element = document.getElementById("invoice-print-content");
-
-    // Create a container to host the clone
     const container = document.createElement("div");
     container.style.position = "absolute";
     container.style.top = "-9999px";
     container.style.left = "0";
-    container.style.width = "1000px"; // Standard width for capture
+    container.style.width = "1000px";
     document.body.appendChild(container);
 
-    // Clone the element
     const clone = element.cloneNode(true);
     clone.style.width = "1000px";
     clone.style.margin = "0";
@@ -125,30 +119,22 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     container.appendChild(clone);
 
     try {
-      // Wait for a small timeout to ensure images/styles are applied to the clone
       await new Promise((resolve) => setTimeout(resolve, 500));
-
       const canvas = await html2canvas(clone, {
-        scale: 2, // Higher scale for better quality
+        scale: 2,
         useCORS: true,
         logging: false,
         allowTaint: true,
         backgroundColor: "#ffffff",
-        windowWidth: 1000, // Forces the canvas to think the window is 1000px wide
+        windowWidth: 1000,
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 1.0);
       const pdf = new jsPDF("p", "mm", "a4");
-
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      // Calculate aspect ratio to fit A4
-      const imgWidth = pdfWidth - 20; // 10mm margins
+      const imgWidth = pdfWidth - 20;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-      // If content is longer than one page, it will scale to fit one page.
-      // If you want multiple pages, that requires a loop.
       pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
       pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
     } catch (err) {
@@ -157,9 +143,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
       document.body.removeChild(container);
     }
   };
-  // const handlePrint = () => {
-  //     window.print();
-  // };
 
   if (!orderData) {
     return (
@@ -181,82 +164,150 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     );
   }
 
-  // Parse product data
   const productItems = [];
-  console.log(productItems, "productItems in admin invoice");
   let subTotalVal = 0;
   let totalQty = 0;
 
-  if (orderData) {
-    const names = orderData.ProductNames
-      ? orderData.ProductNames.split(",")
-      : [];
-    const qtys = orderData.Quantities ? orderData.Quantities.split(",") : [];
-    const rates = orderData.Rates ? orderData.Rates.split(",") : [];
-    const types = orderData.ProductTypes
-      ? orderData.ProductTypes.split(",")
-      : [];
+  console.log("Raw orderData:", orderData);
 
-    const weight = orderData.Weights ? orderData.Weights.split(",") : [];
+  if (Array.isArray(orderData.products)) {
+    orderData.products.forEach((item) => {
+      if (Array.isArray(item)) {
+        const productDesc = item[1] || "N/A";
+        const weightDesc = item[2] || "-";
 
-    const upcs = orderData.ProductUPCs ? orderData.ProductUPCs.split(",") : [];
+        // Logic fix: Keywords se check karein ki UPC kiska hai
+        let upc = "N/A";
+        if (productDesc.toLowerCase().includes("egg") && item[3] !== "NULL") {
+          upc = item[3] || "N/A";
+        }
 
-    const mrps = orderData.MRPs ? orderData.MRPs.split(",") : [];
+        const price = parseFloat(item[4]) || 0;
+        const q = 1;
+        const r = price;
+        const t = q * r;
 
-    const Gst_No = orderData.Gst_No ? orderData.Gst_No.split(",") : [];
+        totalQty += q;
+        subTotalVal += t;
 
-    const PAN_No = orderData.PAN_No ? orderData.PAN_No.split(",") : [];
+        productItems.push({
+          productName: productDesc,
+          productType: productDesc,
+          weight: weightDesc,
+          qty: q,
+          BasicCost: r.toFixed(2),
+          totalAmt: t.toFixed(2),
+          hsn: COMPANY_INFO.hsnCode,
+          gstRate: 0,
+          ProductUPC: upc,
+          MRP: r.toFixed(2),
+          Gst_No: orderData.Gst_No || "",
+          PAN_No: orderData.PAN_No || "",
+          Po_No: orderData.Po_No || "",
+          Po_Date: orderData.Po_Date || "",
+          DeliveryManName: orderData.DeliveryManName || "",
+        });
+      } else {
+        const productDesc = item.productName || item.name || "N/A";
+        let upc = "N/A";
+        // Dynamic check for UPC mapping based on product description
+        if (productDesc.toLowerCase().includes("egg")) {
+          upc = item.ProductUPC || item.upc || "N/A";
+        }
 
-    const Po_No = orderData.Po_No ? orderData.Po_No.split(",") : [];
+        const q = Number(item.qty || item.Quantity || 1);
+        const r = Number(item.rate || item.Price || 0);
+        const t = q * r;
 
-    const Po_Date = orderData.Po_Date ? orderData.Po_Date.split(",") : [];
+        totalQty += q;
+        subTotalVal += t;
 
-    const dname = orderData.DeliveryManName
-      ? orderData.DeliveryManName.split(",")
-      : [];
+        productItems.push({
+          productName: productDesc,
+          productType: item.productType || productDesc,
+          weight: item.weight || "-",
+          qty: q,
+          BasicCost: r,
+          totalAmt: t.toFixed(2),
+          hsn: item.hsn || COMPANY_INFO.hsnCode,
+          gstRate: 0,
+          ProductUPC: upc,
+          MRP: item.mrp || r || "0",
+          Gst_No: item.Gst_No || orderData.Gst_No || "",
+          PAN_No: item.PAN_No || orderData.PAN_No || "",
+          Po_No: item.Po_No || orderData.Po_No || "",
+          Po_Date: item.Po_Date || orderData.Po_Date || "",
+          DeliveryManName:
+            item.DeliveryManName || orderData.DeliveryManName || "",
+        });
+      }
+    });
+  } else {
+    const parseAndCleanArray = (str) =>
+      str ? str.split(",").map((item) => item.trim()) : [];
 
-    console.log(mrps, Gst_No, Po_No, Po_Date, "abhi new");
+    const names = parseAndCleanArray(orderData.ProductNames);
+    const types = parseAndCleanArray(orderData.ProductTypes);
+    const qtys = parseAndCleanArray(orderData.Quantities).map(Number);
+    const rates = parseAndCleanArray(orderData.Rates).map(Number);
+    const weights = parseAndCleanArray(orderData.Weights);
+    const upcs = parseAndCleanArray(orderData.ProductUPCs);
+    const mrps = parseAndCleanArray(orderData.MRPs).map(Number);
 
-    names.forEach((name, i) => {
-      const q = Number(qtys[i] || 0);
-      totalQty += q;
-      const r = Number(rates[i] || 0);
-      const t = q * r;
-      const w = weight[i] || " ";
-      const g = Gst_No[i] || " ";
-      const p = PAN_No[i] || " ";
-      const po = Po_No[i] || "";
-      const pd = Po_Date[i] || "";
-      const dn = dname[i] || "";
+    const productCount = Math.max(names.length, types.length, rates.length);
+    let upcPointer = 0; // loop ke bahar declare karo
+    for (let i = 0; i < productCount; i++) {
+      let upc = "N/A";
 
-      subTotalVal += t;
+      const productType = types[i] || names[i] || "N/A";
+      const productName = names[i] || productType;
+
+      const isBoxProduct = productType.toLowerCase().includes("box");
+
+      if (isBoxProduct && upcPointer < upcs.length) {
+        upc = upcs[upcPointer] || "N/A";
+        upcPointer++; // next UPC only when box found
+      } else {
+        upc = "N/A";
+      }
+
+      // Fix: UPC only for EGG products, and match properly by index if present
+
+      const qty = qtys[i] || 1;
+      const rate = rates[i] || 0;
+      const weight = weights[i] || "-";
+      const mrp = i < mrps.length ? mrps[i] : rate;
+      const total = qty * rate;
+
+      totalQty += qty;
+      subTotalVal += total;
+
       productItems.push({
-        productName: name,
-        productType: types[i] || "N/A",
-        weight: w,
-        qty: q,
-        Gst_No: g,
-        DeliveryManName: dn,
-        PAN_No: p,
-        Po_No: po,
-        Po_Date: pd,
-        BasicCost: r,
-        rate: r.toFixed(2),
-        totalAmt: t.toFixed(2),
+        productName: productName,
+        productType: productType,
+        weight: weight,
+        qty: qty,
+        BasicCost: rate.toFixed(2),
+        totalAmt: total.toFixed(2),
         hsn: COMPANY_INFO.hsnCode,
         gstRate: 0,
-        ProductUPC: upcs[i]?.trim() || "N/A",
-        MRP: mrps[i]?.trim() || "0",
+        ProductUPC: upc,
+        MRP: mrp.toFixed(2),
+        Gst_No: orderData.Gst_No || "",
+        PAN_No: orderData.PAN_No || "",
+        Po_No: orderData.Po_No || "",
+        Po_Date: orderData.Po_Date || "",
+        DeliveryManName: orderData.DeliveryManName || "",
       });
-    });
+    }
   }
+
   const totalItemsCount = productItems.length;
   const deliveryChargeVal = orderData?.DeliveryCharge
     ? Number(orderData.DeliveryCharge)
     : 0;
   const totalAmountVal = subTotalVal + deliveryChargeVal;
   const amountInWords = numberToWords(Math.round(totalAmountVal));
-  console.log(orderData, "orderData for invoice");
 
   return (
     <div className={styles.modalOverlay}>
@@ -274,7 +325,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         <div className={styles.invoiceWrapper}>
           <div className={styles.invoiceBody}>
             <div id="invoice-print-content" className={styles.invoiceContainer}>
-              {/* --- HEADER --- */}
               <div className={styles.header}>
                 <div className={styles.companyInfo}>
                   <div className={styles.logoContainer}>
@@ -298,7 +348,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         <FaMapMarkerAlt /> {COMPANY_INFO.address}
                       </p>
                       <p>
-                        <FaPhone /> +91 {COMPANY_INFO.phone}{" "}
+                        <FaPhone /> +91 {COMPANY_INFO.phone}
                       </p>
                       <p>
                         <strong>GSTIN:</strong> {COMPANY_INFO.gstin}{" "}
@@ -307,7 +357,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     </div>
                   </div>
                 </div>
-                {/* --- Meta Section Update --- */}
                 <div className={styles.invoiceMeta}>
                   <h1>Bill of Supply / Invoice</h1>
                   <div className={styles.invoiceDetails}>
@@ -316,18 +365,10 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     </p>
                     <p>
                       <strong>Invoice Date:</strong>{" "}
-                      {/* Pehle check karega InvoiceDate, 
-          agar wo nahi hai toh OrderDate, 
-          agar dono nahi hai tabhi current date dikhayega 
-      */}
                       {orderData.InvoiceDate
                         ? new Date(orderData.InvoiceDate).toLocaleDateString(
                             "en-GB",
-                            {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            },
+                            { day: "2-digit", month: "short", year: "numeric" },
                           )
                         : "N/A"}
                     </p>
@@ -335,7 +376,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                 </div>
               </div>
 
-              {/* --- CUSTOMER & ORDER DETAILS --- */}
               <div className={styles.customerDetails}>
                 <div className={styles.detailBox}>
                   <h3>
@@ -353,8 +393,8 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <FaPhone /> {orderData.ContactNo || "Contact Number"}
                     </p>
                     <p className={styles.customerGst}>
-                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"}{" "}
-                      <br></br>
+                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"}
+                      <br />
                       <strong>PAN:</strong> {orderData.PAN_No || "N/A"}
                     </p>
                   </div>
@@ -382,54 +422,40 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <strong>Order Taken By:</strong>{" "}
                       {orderData.OrderTakenBy || "N/A"}
                     </p>
-                    {/* <p>
-                      <strong>Delivery Date:</strong>{" "}
-                      {new Date(
-                        orderData.DeliveryDate || new Date(),
-                      ).toLocaleDateString("en-GB")}
-                    </p> */}
                     <p>
-                      <strong> P.O. Number -: </strong>{" "}
-                      {orderData.Po_No || "N/A"} <br></br>
-                      <strong> P.O. Date -: </strong> {""}
-                      {new Date(
-                        orderData.Po_Date || new Date(),
-                      ).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                      <strong>P.O. Number -:</strong> {orderData.Po_No || "N/A"}
+                      <br />
+                      <strong>P.O. Date -:</strong>{" "}
+                      {orderData.Po_Date
+                        ? new Date(orderData.Po_Date).toLocaleDateString(
+                            "en-GB",
+                            { day: "2-digit", month: "short", year: "numeric" },
+                          )
+                        : "N/A"}
                     </p>
                     <p>
-                      <strong> Payment Terms -: 7 Days </strong>
+                      <strong>Payment Terms -: 7 Days</strong>
                     </p>
                   </div>
                 </div>
-
                 <div className={styles.detailBox}>
                   <h3>
                     <FaFileAlt /> FSSAI
                   </h3>
                   <div className={styles.orderInfo}>
                     <p>
-                      <strong> FSSAI - Phoenix Poultry 11424170000122 </strong>{" "}
-                      <br></br>
+                      <strong>FSSAI - Phoenix Poultry 11424170000122</strong>
+                      <br />
                       <strong>
-                        {" "}
-                        FSSAI - VND Ventures Pvt. LTD. 11421170000373{" "}
-                      </strong>{" "}
-                      <br></br>
-                      <strong>
-                        {" "}
-                        FSSAI - The Hen`s Co. 21420170000432{" "}
-                      </strong>{" "}
-                      <br></br>
+                        FSSAI - VND Ventures Pvt. LTD. 11421170000373
+                      </strong>
+                      <br />
+                      <strong>FSSAI - The Hen's Co. 21420170000432</strong>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* --- PRODUCTS TABLE --- */}
               <div className={styles.tableContainer}>
                 <table className={styles.productsTable}>
                   <thead>
@@ -437,19 +463,13 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <th className={styles.textCenter}>#</th>
                       <th>Product Description</th>
                       <th>Product Weight</th>
-
                       <th className={styles.textCenter}>HSN Code</th>
                       <th className={styles.textCenter}>Product UPC</th>
-
-                      <th className={styles.textRight}>
-                        {" "}
-                        Basic Cost Price (₹)
-                      </th>
-                      <th className={styles.textRight}> CGST %</th>
-                      <th className={styles.textRight}> SGST %</th>
-                      <th className={styles.textRight}> Landing Rate</th>
+                      <th className={styles.textRight}>Basic Cost Price (₹)</th>
+                      <th className={styles.textRight}>CGST %</th>
+                      <th className={styles.textRight}>SGST %</th>
+                      <th className={styles.textRight}>Landing Rate</th>
                       <th className={styles.textCenter}>Qty</th>
-
                       <th className={styles.textRight}>MRP (₹)</th>
                       <th className={styles.textRight}>Total Amt</th>
                     </tr>
@@ -462,41 +482,28 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                           <span style={{ fontWeight: "bold" }}>
                             {item.productType}
                           </span>
-                          <br />
                         </td>
                         <td>
                           <span style={{ fontWeight: "bold" }}>
                             {item.weight}
                           </span>
-                          <br />
                         </td>
-
                         <td className={styles.textCenter}>{item.hsn}</td>
                         <td className={styles.textCenter}>{item.ProductUPC}</td>
-                        <td className={styles.textCenter}>{item.BasicCost}</td>
-                        <td className={styles.textCenter}>{item.gstRate}</td>
-                        <td className={styles.textCenter}>{item.gstRate}</td>
-                        <td className={styles.textCenter}>{item.BasicCost}</td>
+                        <td className={styles.textRight}>{item.BasicCost}</td>
+                        <td className={styles.textRight}>{item.gstRate}</td>
+                        <td className={styles.textRight}>{item.gstRate}</td>
+                        <td className={styles.textRight}>{item.BasicCost}</td>
                         <td className={styles.textCenter}>{item.qty}</td>
-
-                        <td className={styles.textCenter}>{item.MRP}</td>
-                        <td className={styles.textCenter}>{item.totalAmt}</td>
+                        <td className={styles.textRight}>{item.MRP}</td>
+                        <td className={styles.textRight}>{item.totalAmt}</td>
                       </tr>
                     ))}
-                    {productItems.length === 0 && (
-                      <tr>
-                        <td colSpan="6" className={styles.textCenter}>
-                          No products found
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
 
-              {/* --- ENHANCED FOOTER GRID --- */}
               <div className={styles.footerSection}>
-                {/* Column 1: Amount in Words & Terms */}
                 <div className={styles.footerColumn}>
                   <div className={styles.amountInWords}>
                     <span>
@@ -526,8 +533,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     </div>
                   </div>
                 </div>
-
-                {/* Column 2: Payment Details & QR */}
                 <div className={styles.footerColumn}>
                   <div className={styles.paymentInfo}>
                     <h4>PAYMENT DETAILS</h4>
@@ -538,42 +543,34 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                         className={styles.qrPaymentImg}
                         onError={(e) => {
                           e.target.style.display = "none";
-                          e.target.parentElement.innerHTML = `
-                                                        <div class="${styles.noQrMessage}">
-                                                            <h4>Payment Details</h4>
-                                                            <p>Scan QR Code Not Available</p>
-                                                            <p>Please use bank transfer</p>
-                                                        </div>
-                                                    `;
+                          e.target.parentElement.innerHTML = `<div class="${styles.noQrMessage}"><h4>Payment Details</h4><p>Scan QR Code Not Available</p><p>Please use bank transfer</p></div>`;
                         }}
                       />
                       <div className={styles.bankDetailsText}>
                         <p>
-                          <strong>Bank:</strong>
+                          <strong>Bank:</strong>{" "}
                           <span>{COMPANY_INFO.bankDetails.bankName}</span>
                         </p>
                         <p>
-                          <strong>A/C Name:</strong>
+                          <strong>A/C Name:</strong>{" "}
                           <span>{COMPANY_INFO.bankDetails.accountName}</span>
                         </p>
                         <p>
-                          <strong>A/C Number:</strong>
+                          <strong>A/C Number:</strong>{" "}
                           <span>{COMPANY_INFO.bankDetails.accountNumber}</span>
                         </p>
                         <p>
-                          <strong>IFSC:</strong>
+                          <strong>IFSC:</strong>{" "}
                           <span>{COMPANY_INFO.bankDetails.ifscCode}</span>
                         </p>
                         <p>
-                          <strong>Branch:</strong>
+                          <strong>Branch:</strong>{" "}
                           <span>{COMPANY_INFO.bankDetails.branch}</span>
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
-
-                {/* Column 3: Totals & Signature */}
                 <div className={styles.footerColumn}>
                   <div className={styles.totalsBox}>
                     <div className={styles.totalRow}>
@@ -590,16 +587,14 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                       <span>₹{subTotalVal.toFixed(2)}</span>
                     </div>
                     <div className={styles.totalRow}>
-                      <span>Packaging :</span>
+                      <span>Packaging:</span>
                       <span>₹{deliveryChargeVal.toFixed(2)}</span>
                     </div>
-
                     <div className={styles.grandTotalRow}>
                       <span>GRAND TOTAL:</span>
                       <span>₹{totalAmountVal.toFixed(2)}</span>
                     </div>
                   </div>
-
                   <div className={styles.signatureSection}>
                     <div className={styles.signatureContainer}>
                       <img
@@ -622,8 +617,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                   </div>
                 </div>
               </div>
-
-              {/* --- FOOTER NOTES --- */}
               <div className={styles.footerNotes}>
                 <div className={styles.noteBox}>
                   <p>
@@ -638,9 +631,6 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         </div>
 
         <div className={styles.modalActions}>
-          {/* <button className={`${styles.btn} ${styles.btnPrint}`} onClick={handlePrint}>
-                        <FaPrint /> Print
-                    </button> */}
           <button
             className={`${styles.btn} ${styles.btnDownload}`}
             onClick={downloadPdf}

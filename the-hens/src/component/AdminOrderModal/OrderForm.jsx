@@ -60,6 +60,7 @@ const OrderForm = ({ onClose }) => {
 
   const dispatch = useDispatch();
   const productTypes = useSelector((state) => state.product.types || []);
+
   const [fetchedData, setFetchedData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -178,7 +179,7 @@ const OrderForm = ({ onClose }) => {
 
   const saveItem = () => {
     const itemErrors = {};
-    if (!currentItem.productName.trim())
+    if (!currentItem.productName?.trim())
       itemErrors.productName = "Product name is required";
     if (!currentItem.productType)
       itemErrors.productType = "Product type is required";
@@ -192,54 +193,52 @@ const OrderForm = ({ onClose }) => {
       return;
     }
 
-    // ✅ Sum total stock for this product + weight
-    const totalStock =
-      stockList
-        ?.filter(
-          (s) =>
-            s.item_name === currentItem.productType &&
-            s.weight === currentItem.weight,
-        )
-        .reduce((sum, s) => sum + Number(s.quantity), 0) || 0;
+    // 1. Flexible Stock Calculation (Weight check ko optional banaya hai)
+    const totalStock = (stockList || []).reduce((sum, s) => {
+      const dbItemName = String(s?.ProductName || "")
+        .trim()
+        .toLowerCase();
 
-    // ✅ Subtract already added in this order
-    const alreadyAddedQty = orderItems
+      const selectedItemName = String(currentItem.productType || "")
+        .trim()
+        .toLowerCase();
+
+      if (dbItemName === selectedItemName) {
+        return sum + Number(s.CurrentStock || 0);
+      }
+
+      return sum;
+    }, 0);
+    // Debugging ke liye console log zaroor dekhein
+    console.log("Checking Stock for:", currentItem.productType);
+    console.log("Total Stock Found:", totalStock);
+
+    const alreadyInCart = orderItems
       .filter(
-        (i) =>
-          i.productType === currentItem.productType &&
-          i.weight === currentItem.weight,
+        (i, idx) =>
+          idx !== editingIndex &&
+          String(i.productType).trim().toLowerCase() ===
+            String(currentItem.productType).trim().toLowerCase(),
       )
-      .reduce((sum, i) => sum + Number(i.quantity), 0);
+      .reduce((sum, i) => sum + Number(i.quantity || 0), 0);
 
-    const availableQty = totalStock - alreadyAddedQty;
+    const availableNow = totalStock - alreadyInCart;
 
-    // Check stock
-    if (availableQty <= 0) {
-      toast.error(`Item "${currentItem.productType}" is out of stock!`);
-      return; // don’t auto-fill, just show error
-    }
-
-    // Add item with requested quantity (do not auto-fill)
-    if (Number(currentItem.quantity) > availableQty) {
-      toast.error(
-        `Only ${availableQty} available for "${currentItem.productType}"!`,
-      );
+    if (totalStock <= 0 || availableNow < Number(currentItem.quantity)) {
+      toast.error(`Stock low! Available: ${availableNow}`);
       return;
     }
 
-    // ✅ Add or update item in order
+    // Update logic...
     if (editingIndex !== null) {
       setOrderItems((prev) =>
         prev.map((item, index) =>
           index === editingIndex ? { ...currentItem } : item,
         ),
       );
-      toast.success("Item updated successfully!");
     } else {
       setOrderItems((prev) => [...prev, { ...currentItem }]);
-      toast.success("Item added successfully!");
     }
-
     closeItemModal();
   };
 

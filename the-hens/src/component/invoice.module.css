@@ -5,15 +5,16 @@ and uses a modal for on-screen preview.
 */
 
 :root {
-  --primary-color:#db2024; /* Blue for highlights and buttons */
+  --primary-color: #db2024; /* Blue for highlights and buttons */
   --secondary-color: #6c757d; /* Grey for borders and secondary text */
   --accent-color: #28a745; /* Green for success/download */
   --text-dark: #343a40;
   --text-light: #6a6f74;
   --border-light: #dee2e6;
   --background-light: #f8f9fa;
-  --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  --font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
 }
 
 body {
@@ -157,7 +158,7 @@ We force a smaller font size and tighter padding.
 }
 
 .logoImage {
-  width:400%;
+  width: 400%;
   height: 100%;
   object-fit: contain;
 }
@@ -195,7 +196,7 @@ We force a smaller font size and tighter padding.
 
 .invoiceDetails p {
   margin: 2px 0;
-  font-size: 0.9em;
+  font-size: 1rem;
 }
 
 /*
@@ -371,7 +372,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   padding: 3px; /* Increased padding */
   background: white;
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .qrText {
@@ -466,7 +467,7 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
 
 .bankDetailsText p {
   margin: 1px 0;
-  font-size: 0.90em;
+  font-size: 0.9em;
   line-height: 1.2;
   width: 110%;
   font-weight: 500;
@@ -610,7 +611,9 @@ Uses CSS Grid to manage three columns for optimal use of horizontal space.
   display: flex;
   align-items: center;
   gap: 8px;
-  transition: background-color 0.2s, opacity 0.2s;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
 }
 
 .btnDownload {
@@ -680,7 +683,7 @@ This is the final, crucial step to try and enforce a single page.
   .productsTable {
     font-size: 7pt !important;
   }
-  
+
   .productsTable th,
   .productsTable td {
     padding: 2px 4px !important;
@@ -690,16 +693,16 @@ This is the final, crucial step to try and enforce a single page.
   .invoiceMeta h1 {
     font-size: 14pt !important;
   }
-  
+
   .companyDetails p,
   .invoiceDetails p {
     font-size: 7pt !important;
   }
-  
+
   .detailBox h3 {
     font-size: 9pt !important;
   }
-  
+
   .customerInfo p,
   .orderInfo p {
     font-size: 7pt !important;
@@ -710,19 +713,19 @@ This is the final, crucial step to try and enforce a single page.
     padding: 5px !important;
     gap: 5px !important;
   }
-  
+
   .amountInWords p {
     font-size: 7pt !important;
   }
-  
+
   .termsBox li {
     font-size: 6pt !important;
   }
-  
+
   .bankDetailsText p {
     font-size: 6pt !important;
   }
-  
+
   .totalRow {
     font-size: 8pt !important;
   }
@@ -740,7 +743,6 @@ This is the final, crucial step to try and enforce a single page.
     print-color-adjust: exact !important;
     background-color: #e6f7ed !important;
     border-color: #28a745 !important;
-    
   }
 
   /* Enforce portrait page */
@@ -764,64 +766,64 @@ This is the final, crucial step to try and enforce a single page.
     max-height: 297mm;
     overflow: hidden !important; /* Prevent native print from adding pages */
   }
-}/* Table को और compact बनाएं */
+} /* Table को और compact बनाएं */
 @media print {
   .productsTable {
     transform: scale(0.95);
     transform-origin: top left;
     width: 105%; /* Compensate for scaling */
   }
-  
+
   /* Reduce logo size in print */
   .logoContainer {
     width: 40px !important;
     height: 40px !important;
   }
-  
+
   /* Reduce QR code sizes */
   .qrPaymentImg {
     width: 90px !important;
     height: 90px !important;
   }
-  
+
   .qrSmall {
     width: 25px !important;
     height: 25px !important;
   }
-  
+
   /* Reduce signature size */
   .signImg {
     height: 70px !important;
   }
   @media print {
-  /* ...existing print styles... */
-  
-  /* Enhanced QR in print */
-  .qrTermContainer {
-    margin-top: 10px !important;
-    background: transparent !important;
-    border: 1px solid #ccc !important;
+    /* ...existing print styles... */
+
+    /* Enhanced QR in print */
+    .qrTermContainer {
+      margin-top: 10px !important;
+      background: transparent !important;
+      border: 1px solid #ccc !important;
+    }
+
+    .qrSmall {
+      width: 45px !important; /* Larger in print */
+      height: 45px !important;
+      border: 2px solid #000 !important;
+    }
+
+    .qrText p {
+      font-size: 9pt !important;
+      font-weight: 600 !important;
+    }
+
+    .termsBox {
+      border: 2px solid #000 !important;
+      padding: 8px !important;
+    }
+
+    .termsBox li {
+      font-size: 8pt !important;
+      margin-bottom: 3px !important;
+    }
   }
-  
-  .qrSmall {
-    width: 45px !important; /* Larger in print */
-    height: 45px !important;
-    border: 2px solid #000 !important;
-  }
-  
-  .qrText p {
-    font-size: 9pt !important;
-    font-weight: 600 !important;
-  }
-  
-  .termsBox {
-    border: 2px solid #000 !important;
-    padding: 8px !important;
-  }
-  
-  .termsBox li {
-    font-size: 8pt !important;
-    margin-bottom: 3px !important;
-  }
-}
 }
