@@ -239,55 +239,68 @@ exports.getStockMovement = async (req, res) => {
       .request()
       .input("fromDate", sql.Date, fromDate)
       .input("toDate", sql.Date, toDate).query(`
-        SELECT 
-            PT.ProductType,
 
-            -- Current Dashboard Stock
-            ISNULL((
-                SELECT SUM(S.quantity)
-                FROM Stock S
-                WHERE S.item_name = PT.ProductType
-            ), 0) AS Current_Stock,
+      SELECT 
+          PT.ProductType,
 
-            -- Actual Stock Came IN (During selected range)
-            ISNULL((
-                SELECT SUM(SH.quantity)
-                FROM StockHistory SH
-                WHERE SH.item_name = PT.ProductType
-                AND SH.type = 'IN'
-                AND CAST(SH.date AS DATE) BETWEEN @fromDate AND @toDate
-            ), 0) AS Maal_Aaya,
+          -- Opening Stock
+          ISNULL((
+              SELECT SUM(SH.quantity)
+              FROM StockHistory SH
+              WHERE SH.item_name = PT.ProductType
+              AND (
+                    (SH.type = 'OPENING' AND CAST(SH.date AS DATE) <= @fromDate)
+                    OR
+                    (SH.type = 'IN' AND CAST(SH.date AS DATE) < @fromDate)
+                  )
+          ),0)
+          -
+          ISNULL((
+              SELECT SUM(OI.Quantity)
+              FROM OrderItems OI
+              JOIN OrdersTemp OT 
+                  ON OT.OrderID = OI.OrderID
+              WHERE OI.ProductType = PT.ProductType
+              AND CAST(OT.OrderDate AS DATE) < @fromDate
+          ),0)
+          AS Opening,
 
-            -- Actual Sales (During selected range)
-            ISNULL((
-                SELECT SUM(OI.Quantity)
-                FROM OrderItems OI
-                JOIN AssignedOrders AO ON AO.OrderID = OI.OrderID
-                WHERE OI.ProductName = PT.ProductType
-                AND AO.DeliveryStatus != 'Cancel' 
-                AND CAST(AO.DeliveryDate AS DATE) BETWEEN @fromDate AND @toDate
-            ), 0) AS Maal_Gaya
+          -- Total IN in range
+          ISNULL((
+              SELECT SUM(SH.quantity)
+              FROM StockHistory SH
+              WHERE SH.item_name = PT.ProductType
+              AND SH.type = 'IN'
+              AND CAST(SH.date AS DATE)
+                  BETWEEN @fromDate AND @toDate
+          ),0) AS Total_In,
 
-        FROM ProductTypes PT
-        ORDER BY PT.ProductType
+          -- Total Sell in range
+          ISNULL((
+              SELECT SUM(OI.Quantity)
+              FROM OrderItems OI
+              JOIN OrdersTemp OT 
+                  ON OT.OrderID = OI.OrderID
+              WHERE OI.ProductType = PT.ProductType
+              AND CAST(OT.OrderDate AS DATE)
+                  BETWEEN @fromDate AND @toDate
+          ),0) AS Total_Sell
+
+      FROM ProductTypes PT
+      ORDER BY PT.ProductType
       `);
 
     const finalData = result.recordset.map((item) => {
-      const closing = item.Current_Stock;
-      const sold = item.Maal_Gaya;
-      const inward = item.Maal_Aaya;
-
-      // Agar history mismatch hai, toh opening ko negative hone se bachane ke liye logic:
-      let opening = closing - inward + sold;
-
-      // Safety check: Agar Opening negative hai matlab History data corrupt hai
-      if (opening < 0) opening = 0;
+      const opening = item.Opening || 0;
+      const inward = item.Total_In || 0;
+      const sell = item.Total_Sell || 0;
+      const closing = opening + inward - sell;
 
       return {
         ProductType: item.ProductType,
         Opening: opening,
         Total_In: inward,
-        Total_Sold: sold,
+        Total_Sell: sell,
         Closing: closing,
       };
     });

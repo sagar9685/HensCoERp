@@ -255,29 +255,19 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     const mrps = parseAndCleanArray(orderData.MRPs).map(Number);
 
     const productCount = Math.max(names.length, types.length, rates.length);
-    let upcPointer = 0; // loop ke bahar declare karo
-    for (let i = 0; i < productCount; i++) {
-      let upc = "N/A";
+    // let upcPointer = 0;
 
+    for (let i = 0; i < productCount; i++) {
       const productType = types[i] || names[i] || "N/A";
       const productName = names[i] || productType;
-
-      const isBoxProduct = productType.toLowerCase().includes("box");
-
-      if (isBoxProduct && upcPointer < upcs.length) {
-        upc = upcs[upcPointer] || "N/A";
-        upcPointer++; // next UPC only when box found
-      } else {
-        upc = "N/A";
-      }
-
-      // Fix: UPC only for EGG products, and match properly by index if present
 
       const qty = qtys[i] || 1;
       const rate = rates[i] || 0;
       const weight = weights[i] || "-";
       const mrp = i < mrps.length ? mrps[i] : rate;
       const total = qty * rate;
+
+      const upc = upcs[i] && upcs[i] !== "NULL" ? upcs[i] : "N/A";
 
       totalQty += qty;
       subTotalVal += total;

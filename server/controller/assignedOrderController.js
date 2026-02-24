@@ -9,19 +9,16 @@ exports.assignOrder = async (req, res) => {
 
   try {
     const pool = await poolPromise;
-    const transaction = new sql.Transaction(pool);
-    await transaction.begin();
 
-    try {
-      // ⭐ Step 1: Pehle is OrderID ki purani sari assignments delete karo
-      // Taaki hamesha fresh aur single entry rahe
-      await transaction
-        .request()
-        .input("OrderID", sql.Int, orderId)
-        .query("DELETE FROM AssignedOrders WHERE OrderID = @OrderID");
+    // 🔎 Check karo pehle se assignment exist karta hai ya nahi
+    const check = await pool
+      .request()
+      .input("OrderID", sql.Int, orderId)
+      .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
 
-      // ⭐ Step 2: Ab nayi assignment insert karo
-      await transaction
+    if (check.recordset.length > 0) {
+      // ✅ Agar exist karta hai → UPDATE karo
+      await pool
         .request()
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -32,17 +29,39 @@ exports.assignOrder = async (req, res) => {
         )
         .input("DeliveryDate", sql.Date, deliveryDate)
         .input("Remark", sql.NVarChar, remark || null).query(`
-          INSERT INTO AssignedOrders (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus)
-          VALUES (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending')
+          UPDATE AssignedOrders
+          SET 
+            DeliveryManID = @DeliveryManID,
+            OtherDeliveryManName = @OtherDeliveryManName,
+            DeliveryDate = @DeliveryDate,
+            Remark = @Remark
+          WHERE OrderID = @OrderID
         `);
 
-      await transaction.commit();
-      res.status(201).json({ message: "Order assigned successfully" });
-    } catch (err) {
-      await transaction.rollback();
-      throw err;
+      return res.json({ message: "Order reassigned successfully" });
+    } else {
+      // ✅ Agar exist nahi karta → INSERT karo
+      await pool
+        .request()
+        .input("OrderID", sql.Int, orderId)
+        .input("DeliveryManID", sql.Int, deliveryManId || null)
+        .input(
+          "OtherDeliveryManName",
+          sql.NVarChar,
+          otherDeliveryManName || null,
+        )
+        .input("DeliveryDate", sql.Date, deliveryDate)
+        .input("Remark", sql.NVarChar, remark || null).query(`
+          INSERT INTO AssignedOrders 
+          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus)
+          VALUES 
+          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending')
+        `);
+
+      return res.status(201).json({ message: "Order assigned successfully" });
     }
   } catch (err) {
+    console.error("Assign error:", err);
     res.status(500).json({ message: err.message });
   }
 };

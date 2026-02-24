@@ -1,251 +1,140 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { askAiAction } from "../features/aiSlice";
 import styles from "./AiAssistant.module.css";
 
-// Premium Icons with animations
-const SendIcon = ({ isHovered }) => (
+const SendIcon = () => (
   <svg
-    width="22"
-    height="22"
+    width="20"
+    height="20"
     viewBox="0 0 24 24"
     fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-    className={isHovered ? styles.sendIconHover : ""}
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
   >
-    <path
-      d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <line x1="22" y1="2" x2="11" y2="13"></line>
+    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
   </svg>
 );
 
 const AIIcon = () => (
   <svg
-    width="28"
-    height="28"
+    width="24"
+    height="24"
     viewBox="0 0 24 24"
     fill="none"
-    xmlns="http://www.w3.org/2000/svg"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
   >
-    <path
-      d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"
-      fill="currentColor"
-    />
+    <path d="M12 2a10 10 0 1 0 10 10H12V2z"></path>
+    <path d="M12 12L2.69 7"></path>
+    <path d="M12 12l5.63 8.36"></path>
   </svg>
 );
 
-const MicIcon = () => (
+const SparkleIcon = () => (
   <svg
-    width="18"
-    height="18"
+    width="16"
+    height="16"
     viewBox="0 0 24 24"
     fill="none"
-    xmlns="http://www.w3.org/2000/svg"
+    stroke="currentColor"
+    strokeWidth="2"
   >
-    <path
-      d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
-      stroke="currentColor"
-      strokeWidth="2"
-      fill="none"
-    />
-    <path
-      d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-    <path
-      d="M12 19v3"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const AttachIcon = () => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <path
-      d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-    />
+    <path d="M12 3L14.5 9.5L21 12L14.5 14.5L12 21L9.5 14.5L3 12L9.5 9.5L12 3Z" />
   </svg>
 );
 
 const AiAssistant = () => {
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
-  const [isSendHovered, setIsSendHovered] = useState(false);
-  const [selectedSuggestion, setSelectedSuggestion] = useState(null);
 
   const dispatch = useDispatch();
   const { chatHistory, loading } = useSelector((state) => state.ai);
   const chatEndRef = useRef(null);
-  const inputRef = useRef(null);
-  const containerRef = useRef(null);
+
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-    });
-  }, [chatHistory]);
+    scrollToBottom();
+  }, [chatHistory, loading]);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+  const handleSend = (e) => {
+    e.preventDefault();
+    if (!input.trim() || loading) return;
 
-  const handleSend = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (!input.trim() || loading) return;
-
-      setIsTyping(true);
-      dispatch(askAiAction(input));
-      setInput("");
-
-      setTimeout(() => setIsTyping(false), 1500);
-    },
-    [dispatch, input, loading],
-  );
-
-  const handleKeyPress = useCallback(
-    (e) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        handleSend(e);
-      }
-    },
-    [handleSend],
-  );
-
-  const handleSuggestionClick = useCallback(
-    (suggestion) => {
-      setSelectedSuggestion(suggestion);
-      setInput(suggestion);
-      setTimeout(() => {
-        dispatch(askAiAction(suggestion));
-        setInput("");
-        setSelectedSuggestion(null);
-      }, 300);
-    },
-    [dispatch],
-  );
-
-  const suggestions = [
-    { text: "Best chicken breeds", icon: "🐔", color: "#FF6B6B" },
-    { text: "Layer management", icon: "🥚", color: "#4ECDC4" },
-    { text: "Disease prevention", icon: "💉", color: "#45B7D1" },
-    { text: "Feed optimization", icon: "🌽", color: "#96CEB4" },
-  ];
+    dispatch(askAiAction(input));
+    setInput("");
+  };
 
   return (
-    <div className={styles.container} ref={containerRef}>
-      {/* Animated Background */}
-      <div className={styles.gradientBg}>
-        <div className={styles.gradientOrb}></div>
-        <div className={styles.gradientOrb2}></div>
-        <div className={styles.gradientOrb3}></div>
-      </div>
+    <div className={styles.container}>
+      <div className={styles.animatedGradient}></div>
+      <div className={styles.floatingParticles}></div>
 
-      {/* Premium Header */}
-      <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.logoWrapper}>
-            <div className={styles.logoPulse}></div>
-            <div className={styles.logoGlow}></div>
-            <div className={styles.logo}>
+      <header className={styles.header}>
+        <div className={styles.headerInfo}>
+          <div className={styles.aiLogo}>
+            <AIIcon />
+          </div>
+          <div>
+            <h1 className={styles.brandName}>
+              HensCo Intelligence
+              <SparkleIcon />
+            </h1>
+            <p className={styles.subtitle}>
+              Powered by Sagar Gupta Engineering
+            </p>
+          </div>
+        </div>
+        <div className={styles.statusIndicator}>
+          <div className={loading ? styles.pulseGreen : styles.pulseIdle}></div>
+          <span>{loading ? "AI is Thinking" : "Online & Ready"}</span>
+        </div>
+      </header>
+
+      <div className={styles.chatBody}>
+        {chatHistory.length === 0 && !loading && (
+          <div className={styles.welcomeState}>
+            <div className={styles.welcomeIcon}>
               <AIIcon />
             </div>
-          </div>
-          <div className={styles.headerText}>
-            <h1 className={styles.title}>HensCo AI</h1>
-            <div className={styles.badgeContainer}>
-              <span className={styles.badge}>✨ Premium AI Assistant</span>
-              <span className={styles.badgeTag}>By Sagar Gupta</span>
-            </div>
-          </div>
-        </div>
-        <div className={styles.status}>
-          <span className={styles.statusPulse}></span>
-          <span className={styles.statusDot}></span>
-          <span className={styles.statusText}>
-            {loading ? "Processing..." : "Active"}
-          </span>
-        </div>
-      </div>
-
-      {/* Chat Body */}
-      <div className={styles.chatBody}>
-        {chatHistory.length === 0 && (
-          <div className={styles.welcomeContainer}>
-            <div className={styles.welcomeIconWrapper}>
-              <div className={styles.welcomeIconGlow}></div>
-              <div className={styles.welcomeIcon}>
-                <AIIcon />
-              </div>
-            </div>
-
-            <div className={styles.welcomeContent}>
-              <h2 className={styles.welcomeTitle}>
-                Hello! I'm{" "}
-                <span className={styles.gradientText}>HensCo AI</span>
-              </h2>
-              <p className={styles.welcomeText}>
-                Your intelligent assistant for poultry farming excellence. Ask
-                me anything about:
-              </p>
-
-              <div className={styles.featureGrid}>
-                <div className={styles.featureItem}>
-                  <span className={styles.featureIcon}>🐔</span>
-                  <span>Breed Management</span>
-                </div>
-                <div className={styles.featureItem}>
-                  <span className={styles.featureIcon}>🥚</span>
-                  <span>Production Tracking</span>
-                </div>
-                <div className={styles.featureItem}>
-                  <span className={styles.featureIcon}>💊</span>
-                  <span>Health & Disease</span>
-                </div>
-                <div className={styles.featureItem}>
-                  <span className={styles.featureIcon}>📊</span>
-                  <span>Business Analytics</span>
-                </div>
-              </div>
-            </div>
-
-            <div className={styles.suggestionsContainer}>
-              <p className={styles.suggestionsLabel}>Quick suggestions</p>
-              <div className={styles.suggestions}>
-                {suggestions.map((s, index) => (
-                  <button
-                    key={index}
-                    className={`${styles.suggestionChip} ${
-                      selectedSuggestion === s.text ? styles.selected : ""
-                    }`}
-                    onClick={() => handleSuggestionClick(s.text)}
-                    style={{ "--chip-color": s.color }}
-                  >
-                    <span className={styles.suggestionIcon}>{s.icon}</span>
-                    <span>{s.text}</span>
-                  </button>
-                ))}
-              </div>
+            <h2>Good day! 🌟 How can I help with your poultry business?</h2>
+            <p>
+              I'm your cheerful AI consultant, ready to boost your farm's
+              success with data-driven insights!
+            </p>
+            <div className={styles.suggestionChips}>
+              <button
+                className={styles.chip}
+                onClick={() =>
+                  dispatch(askAiAction("How to increase egg production?"))
+                }
+              >
+                🥚 Increase egg production
+              </button>
+              <button
+                className={styles.chip}
+                onClick={() =>
+                  dispatch(askAiAction("Optimal feed ratio for broilers"))
+                }
+              >
+                🌽 Feed optimization
+              </button>
+              <button
+                className={styles.chip}
+                onClick={() =>
+                  dispatch(askAiAction("Prevent common poultry diseases"))
+                }
+              >
+                🩺 Disease prevention
+              </button>
             </div>
           </div>
         )}
@@ -253,167 +142,116 @@ const AiAssistant = () => {
         {chatHistory.map((chat, index) => (
           <div
             key={index}
-            className={`${styles.messageWrapper} ${
-              chat.sender === "user" ? styles.userWrapper : styles.aiWrapper
-            }`}
-            style={{
-              animationDelay: `${index * 0.1}s`,
-            }}
+            className={`${styles.messageRow} ${chat.sender === "user" ? styles.userRow : styles.aiRow}`}
           >
             {chat.sender === "ai" && (
               <div className={styles.aiAvatar}>
-                <div className={styles.avatarGlow}></div>
                 <AIIcon />
               </div>
             )}
-
             <div
-              className={`${styles.bubble} ${
-                chat.sender === "user" ? styles.userBubble : styles.aiBubble
-              }`}
+              className={`${styles.bubble} ${chat.sender === "ai" ? styles.aiBubble : styles.userBubble}`}
             >
-              <div className={styles.bubbleContent}>
-                <p className={styles.messageText}>
-                  {chat.sender === "user" ? chat.text : chat.message}
-                </p>
+              <div className={styles.messageHeader}>
+                {chat.sender === "ai" ? (
+                  <span className={styles.aiName}>HensCo AI ✨</span>
+                ) : (
+                  <span className={styles.userName}>You</span>
+                )}
+              </div>
+              <div className={styles.messageText}>
+                {chat.sender === "user" ? chat.text : chat.message || chat.text}
+              </div>
 
-                {/* Premium Table */}
-                {chat.data &&
-                  Array.isArray(chat.data) &&
-                  chat.data.length > 0 && (
-                    <div className={styles.tableWrapper}>
-                      <div className={styles.tableHeader}>
-                        <span className={styles.tableTitle}>📊 Results</span>
-                        <span className={styles.tableCount}>
-                          {chat.data.length} records
-                        </span>
-                      </div>
-                      <div className={styles.tableContainer}>
-                        <table className={styles.aiTable}>
-                          <thead>
-                            <tr>
-                              {Object.keys(chat.data[0]).map((k) => (
-                                <th key={k}>
-                                  <span>{k}</span>
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {chat.data.map((row, i) => (
-                              <tr key={i}>
-                                {Object.values(row).map((v, j) => (
-                                  <td key={j}>{String(v)}</td>
-                                ))}
-                              </tr>
+              {chat.data &&
+                Array.isArray(chat.data) &&
+                chat.data.length > 0 && (
+                  <div className={styles.tableContainer}>
+                    <table className={styles.premiumTable}>
+                      <thead>
+                        <tr>
+                          {Object.keys(chat.data[0]).map((key) => (
+                            <th key={key}>
+                              {key.split("_").join(" ").toUpperCase()}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chat.data.map((row, i) => (
+                          <tr key={i}>
+                            {Object.values(row).map((val, j) => (
+                              <td key={j}>{String(val)}</td>
                             ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
-                {/* Premium Identity Card */}
-                {chat.data && !Array.isArray(chat.data) && (
-                  <div className={styles.identityCard}>
-                    <div className={styles.identityIconWrapper}>
-                      <span className={styles.identityIcon}>✨</span>
-                    </div>
-                    <div className={styles.identityContent}>
-                      <div className={styles.identityLabel}>AI Response</div>
-                      <div className={styles.identityText}>{chat.data}</div>
-                    </div>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
 
-                {/* Message Footer */}
-                <div className={styles.messageFooter}>
-                  <span className={styles.timestamp}>
-                    {new Date().toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+              {chat.sender === "ai" && (
+                <div className={styles.signature}>
+                  <span className={styles.verified}>
+                    <SparkleIcon /> Verified Insight
                   </span>
-                  {chat.sender === "ai" && (
-                    <span className={styles.messageStatus}>✓ Delivered</span>
-                  )}
+                  <span className={styles.architect}>Built by Sagar Gupta</span>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         ))}
 
-        {/* Premium Loading Animation */}
         {loading && (
-          <div className={styles.loadingWrapper}>
+          <div className={`${styles.messageRow} ${styles.aiRow}`}>
             <div className={styles.aiAvatar}>
-              <div className={styles.avatarGlow}></div>
               <AIIcon />
             </div>
-            <div className={styles.loadingBubble}>
+            <div
+              className={`${styles.bubble} ${styles.aiBubble} ${styles.loadingBubble}`}
+            >
               <div className={styles.typingIndicator}>
                 <span></span>
                 <span></span>
                 <span></span>
               </div>
-              <div className={styles.loadingContent}>
-                <span className={styles.loadingText}>
-                  Searching HensCo Database
-                </span>
-                <span className={styles.loadingDots}>...</span>
-              </div>
+              <span className={styles.loadingNote}>
+                Sagar's AI is thinking...
+              </span>
             </div>
           </div>
         )}
-
         <div ref={chatEndRef} />
       </div>
 
-      {/* Premium Input Form */}
-      <form onSubmit={handleSend} className={styles.footer}>
-        <div
-          className={`${styles.inputContainer} ${isFocused ? styles.focused : ""}`}
+      <footer className={styles.footer}>
+        <form
+          onSubmit={handleSend}
+          className={`${styles.inputWrapper} ${isFocused ? styles.inputActive : ""}`}
         >
-          <div className={styles.inputWrapper}>
-            <button type="button" className={styles.attachButton}>
-              <AttachIcon />
-            </button>
-
-            <input
-              ref={inputRef}
-              className={styles.input}
-              placeholder="Type your message..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
-              onFocus={() => setIsFocused(true)}
-              onBlur={() => setIsFocused(false)}
-              disabled={loading}
-            />
-
-            <button type="button" className={styles.micButton}>
-              <MicIcon />
-            </button>
-          </div>
-
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder="Ask me anything about your poultry business..."
+            disabled={loading}
+          />
           <button
             type="submit"
-            className={`${styles.sendButton} ${
-              input.trim() ? styles.active : ""
-            } ${loading ? styles.disabled : ""}`}
-            onMouseEnter={() => setIsSendHovered(true)}
-            onMouseLeave={() => setIsSendHovered(false)}
-            disabled={loading || !input.trim()}
+            className={styles.sendBtn}
+            disabled={!input.trim() || loading}
           >
-            <SendIcon isHovered={isSendHovered} />
+            <SendIcon />
           </button>
+        </form>
+        <div className={styles.legalBranding}>
+          <span>❤️ Made with passion by Sagar Gupta</span>
+          <span className={styles.separator}>•</span>
+          <span>HensCo v2.0</span>
         </div>
-
-        <div className={styles.footerNote}>
-          <span className={styles.noteIcon}>⚡</span>
-          <span>AI-powered insights • 24/7 available • Secure</span>
-        </div>
-      </form>
+      </footer>
     </div>
   );
 };
