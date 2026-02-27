@@ -9,17 +9,19 @@ import {
   FaSyncAlt,
   FaShieldAlt,
   FaFileInvoiceDollar,
+  FaTruck,
 } from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
 import { useDispatch, useSelector } from "react-redux";
-import { verifyPayment, markVerified } from "../features/paymentVerifySlice";
+import { verifyPayment } from "../features/paymentVerifySlice";
 import { toast } from "react-toastify";
 import { fetchOrder } from "../features/orderSlice";
 import PaymentModal from "./PaymentModal";
 import Loader from "./Loader";
 import InvoiceGenerator from "./OrderInvoice";
+import ChalanGenerator from "./Chalan";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 
@@ -52,6 +54,9 @@ const AdminDashboard = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
+
+  const [selectedOrderForChalan, setSelectedOrderForChalan] = useState(null);
+  const [isChalanModalOpen, setIsChalanModalOpen] = useState(false);
 
   // Fix: Proper date comparison function
   const isDateInRange = (orderDate, fromDate, toDate) => {
@@ -161,23 +166,10 @@ const AdminDashboard = () => {
     setFilters({ ...filters, [e.target.name]: e.target.value });
   };
 
-  // const handleStatusChange = (row, value) => {
-  //   if (value === "Verified") {
-  //     dispatch(markVerified({ paymentId: row.PaymentID }))
-  //       .unwrap()
-  //       .then(() => {
-  //         dispatch(fetchOrder());
-  //         toast.success("Payment marked as Verified!");
-  //         setIsPaymentModalOpen(false);
-  //       })
-  //       .catch((err) => toast.error(err.message || "Failed to verify"));
-  //   }
-
-  //   if (value === "Incomplete") {
-  //     setSelectedPayment(row);
-  //     setIsPaymentModalOpen(true);
-  //   }
-  // };
+  const handleGenerateChalan = (orderRow) => {
+    setSelectedOrderForChalan(orderRow);
+    setIsChalanModalOpen(true);
+  };
 
   const handleStatusChange = (row, value) => {
     if (value === "Verified") {
@@ -843,6 +835,15 @@ const AdminDashboard = () => {
                         >
                           <FaFileInvoiceDollar />
                         </button>
+                        <button
+                          className={styles.actionBtn}
+                          title="Generate Chalan"
+                          onClick={() => handleGenerateChalan(row)}
+                          disabled={isFilterLoading}
+                          style={{ color: "#d35400" }} // Optional: Chalan ke liye alag color
+                        >
+                          <FaTruck />
+                        </button>
                       </td>
                       <td className={styles.tableData}>
                         {row.VerifyMark || "-"}
@@ -947,6 +948,13 @@ const AdminDashboard = () => {
         <InvoiceGenerator
           orderData={selectedOrderForInvoice}
           onClose={closeInvoiceModal}
+        />
+      )}
+
+      {isChalanModalOpen && (
+        <ChalanGenerator
+          orderData={selectedOrderForChalan}
+          onClose={() => setIsChalanModalOpen(false)}
         />
       )}
     </div>

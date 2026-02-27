@@ -17,7 +17,7 @@ const stockRoutes = require("./routes/stockRoutes");
 const customerAnalysisRoutes = require("./routes/customerAnalysisRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const analyticsRoutes = require("./routes/analyticRoutes");
-const askAiRoutes = require("./routes/askAiRoutes");
+
 const productionRoutes = require("./routes/productionRoutes");
 const demoInvoice = require("./routes/demoInvoiceRoutes");
 const aiRoutes = require("./routes/aiRoutes");
@@ -41,7 +41,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api", areaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api/ai", askAiRoutes);
+
 app.use("/api", demoInvoice);
 
 app.use("/api/users", authRoutes);

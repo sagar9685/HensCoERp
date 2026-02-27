@@ -227,8 +227,8 @@ LEFT JOIN (
         SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount ELSE 0 END) AS BankTransfer
     FROM OrderPayments OP
     JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-    WHERE OP.PaymentReceivedDate 
-          BETWEEN @FromDeliveryDate AND @ToDeliveryDate
+    JOIN AssignedOrders AO ON OP.AssignID = AO.AssignID
+    WHERE AO.DeliveryStatus <> 'Cancel'  -- ignore canceled orders
     GROUP BY OP.AssignID
 ) PAY ON PAY.AssignID = A.AssignID
 
