@@ -28,14 +28,20 @@ import "react-loading-skeleton/dist/skeleton.css";
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
 
-  const [filters, setFilters] = useState({
-    ProductId: "",
-    ProductName: "",
-    ProductType: "",
-    customer: "",
-    fromDate: today,
-    toDate: today,
-    orderStatus: "",
+  const [filters, setFilters] = useState(() => {
+    const savedFilters = localStorage.getItem("adminFilters");
+    return savedFilters
+      ? JSON.parse(savedFilters)
+      : {
+          ProductId: "",
+          ProductName: "",
+          ProductType: "",
+          customer: "",
+          fromDate: today,
+          toDate: today,
+          orderStatus: "",
+          paymentStatus: "", // 🔥 ADD THIS
+        };
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -151,15 +157,23 @@ const AdminDashboard = () => {
     dispatch(fetchOrder());
   }, [dispatch]);
 
-  // Initialize filtered data with today's orders
   useEffect(() => {
-    if (orders && orders.length > 0) {
-      const todayOrders = orders.filter((item) => {
-        const orderDate = new Date(item.OrderDate).toISOString().split("T")[0];
-        return orderDate === today;
-      });
-      setFilteredData(todayOrders);
+    localStorage.setItem("adminFilters", JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    if (!orders || orders.length === 0) return;
+
+    let filtered = [...orders];
+
+    // Apply date filter from saved filters
+    if (filters.fromDate || filters.toDate) {
+      filtered = filtered.filter((item) =>
+        isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
+      );
     }
+
+    setFilteredData(filtered);
   }, [orders]);
 
   const handleChange = (e) => {
@@ -212,19 +226,101 @@ const AdminDashboard = () => {
       fromDate: today,
       toDate: today,
       orderStatus: "",
+      paymentStatus: "",
     };
-    setFilters(resetFilters);
 
-    // Reset to today's orders
-    if (orders && orders.length > 0) {
-      const todayOrders = orders.filter((item) => {
-        const orderDate = new Date(item.OrderDate).toISOString().split("T")[0];
-        return orderDate === today;
-      });
-      setFilteredData(todayOrders);
-    }
+    setFilters(resetFilters);
+    localStorage.removeItem("adminFilters"); // 🔥 important
     setCurrentPage(1);
   };
+
+  // const handleSearch = () => {
+  //   if (!orders || orders.length === 0) return;
+
+  //   setIsFilterLoading(true);
+
+  //   setTimeout(() => {
+  //     let filtered = [...orders];
+
+  //     // 1. Date Range Filter
+  //     if (filters.fromDate || filters.toDate) {
+  //       filtered = filtered.filter((item) =>
+  //         isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
+  //       );
+  //     }
+
+  //     // 2. Order Status Filter (FIXED LOGIC)
+  //     if (filters.orderStatus) {
+  //       const selectedStatus = filters.orderStatus.toLowerCase().trim();
+
+  //       filtered = filtered.filter((item) => {
+  //         // Item ka status safely extract karein
+  //         const itemStatus = (item.OrderStatus || "").toLowerCase().trim();
+
+  //         if (selectedStatus === "complete") {
+  //           // "complete" aur "completed" dono ko match karega
+  //           return itemStatus === "complete" || itemStatus === "completed";
+  //         }
+
+  //         if (selectedStatus === "pending") {
+  //           // N/A ya Empty status ko bhi Pending treat kar sakte hain
+  //           return (
+  //             itemStatus === "pending" ||
+  //             itemStatus === "n/a" ||
+  //             itemStatus === ""
+  //           );
+  //         }
+
+  //         if (filters.paymentStatus) {
+  //           filtered = filtered.filter(
+  //             (item) =>
+  //               (item.PaymentVerifyStatus || "Pending") ===
+  //               filters.paymentStatus,
+  //           );
+  //         }
+
+  //         return itemStatus === selectedStatus;
+  //       });
+  //     }
+
+  //     // 3. Payment Status Filter
+  //     if (filters.paymentStatus) {
+  //       filtered = filtered.filter(
+  //         (item) =>
+  //           (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
+  //       );
+  //     }
+
+  //     // 3. Text Filters (Customer Name, Product ID etc.)
+  //     Object.keys(filters).forEach((key) => {
+  //       // In keys ko skip karein kyunki inka logic upar likha ja chuka hai
+  //       if (["fromDate", "toDate", "orderStatus"].includes(key)) return;
+
+  //       const searchTerm = filters[key].trim().toLowerCase();
+  //       if (searchTerm) {
+  //         filtered = filtered.filter((item) => {
+  //           switch (key) {
+  //             case "ProductId":
+  //               // Dashboard mein OrderID display ho raha hai filter ProductId ke naam se hai
+  //               return item.OrderID?.toString()
+  //                 .toLowerCase()
+  //                 .includes(searchTerm);
+  //             case "customer":
+  //               return item.CustomerName?.toLowerCase().includes(searchTerm);
+  //             case "ProductName":
+  //               return item.ProductNames?.toLowerCase().includes(searchTerm);
+  //             default:
+  //               return item[key]?.toString().toLowerCase().includes(searchTerm);
+  //           }
+  //         });
+  //       }
+  //     });
+
+  //     setFilteredData(filtered);
+  //     setCurrentPage(1);
+  //     setIsFilterLoading(false);
+  //   }, 500);
+  // };
 
   const handleSearch = () => {
     if (!orders || orders.length === 0) return;
@@ -234,28 +330,25 @@ const AdminDashboard = () => {
     setTimeout(() => {
       let filtered = [...orders];
 
-      // 1. Date Range Filter
+      // 1️⃣ Date Filter
       if (filters.fromDate || filters.toDate) {
         filtered = filtered.filter((item) =>
           isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
         );
       }
 
-      // 2. Order Status Filter (FIXED LOGIC)
+      // 2️⃣ Order Status Filter
       if (filters.orderStatus) {
         const selectedStatus = filters.orderStatus.toLowerCase().trim();
 
         filtered = filtered.filter((item) => {
-          // Item ka status safely extract karein
           const itemStatus = (item.OrderStatus || "").toLowerCase().trim();
 
           if (selectedStatus === "complete") {
-            // "complete" aur "completed" dono ko match karega
             return itemStatus === "complete" || itemStatus === "completed";
           }
 
           if (selectedStatus === "pending") {
-            // N/A ya Empty status ko bhi Pending treat kar sakte hain
             return (
               itemStatus === "pending" ||
               itemStatus === "n/a" ||
@@ -267,24 +360,37 @@ const AdminDashboard = () => {
         });
       }
 
-      // 3. Text Filters (Customer Name, Product ID etc.)
+      // 3️⃣ Payment Status Filter (ALWAYS separate)
+      if (filters.paymentStatus) {
+        filtered = filtered.filter(
+          (item) =>
+            (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
+        );
+      }
+
+      // 4️⃣ Text Filters
       Object.keys(filters).forEach((key) => {
-        // In keys ko skip karein kyunki inka logic upar likha ja chuka hai
-        if (["fromDate", "toDate", "orderStatus"].includes(key)) return;
+        if (
+          ["fromDate", "toDate", "orderStatus", "paymentStatus"].includes(key)
+        )
+          return;
 
         const searchTerm = filters[key].trim().toLowerCase();
+
         if (searchTerm) {
           filtered = filtered.filter((item) => {
             switch (key) {
               case "ProductId":
-                // Dashboard mein OrderID display ho raha hai filter ProductId ke naam se hai
                 return item.OrderID?.toString()
                   .toLowerCase()
                   .includes(searchTerm);
+
               case "customer":
                 return item.CustomerName?.toLowerCase().includes(searchTerm);
+
               case "ProductName":
                 return item.ProductNames?.toLowerCase().includes(searchTerm);
+
               default:
                 return item[key]?.toString().toLowerCase().includes(searchTerm);
             }
@@ -297,7 +403,6 @@ const AdminDashboard = () => {
       setIsFilterLoading(false);
     }, 500);
   };
-
   const handleAddOrder = (orderData) => {
     console.log("New order data:", orderData);
     alert("Order created successfully!");
@@ -496,6 +601,22 @@ const AdminDashboard = () => {
                 <option value="cancel">
                   Cancel ({getStatusCount("cancel")})
                 </option>
+              </select>
+            </div>
+
+            {/* Payment Status Filter */}
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>PAYMENT STATUS</label>
+              <select
+                name="paymentStatus"
+                value={filters.paymentStatus}
+                onChange={handleChange}
+                className={styles.select}
+              >
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Verified">Verified</option>
+                <option value="Incomplete">Incomplete</option>
               </select>
             </div>
 
