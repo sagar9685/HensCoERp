@@ -1,7 +1,8 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMonthlyReport } from "../../features/reportSlice";
-import { Bar } from "react-chartjs-2";
+import { Bar, Doughnut } from "react-chartjs-2";
+import * as XLSX from "xlsx";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,47 +11,136 @@ import {
   Title,
   Tooltip,
   Legend,
+  ArcElement,
 } from "chart.js";
 
 import styles from "./MonthlyReport.module.css";
 
-// Register Chart.js components (only once)
 ChartJS.register(
   CategoryScale,
   LinearScale,
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  ArcElement,
 );
 
 const MonthlyReport = () => {
   const dispatch = useDispatch();
   const { monthly, monthlyLoading, error } = useSelector(
-    (state) => state.report
+    (state) => state.report,
   );
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth() + 1;
-
-  const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
   const fetchData = () => {
     dispatch(fetchMonthlyReport({ year: selectedYear, month: selectedMonth }));
   };
 
-  // Calculate total received from payment breakdown (fallback if backend doesn't send TotalReceived)
-  const totalReceived =
-    monthly?.payment?.reduce((sum, p) => sum + (Number(p.Amount) || 0), 0) || 0;
+  const formatINR = (val) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0,
+    }).format(val || 0);
 
-  // Chart 1: Payment Methods Breakdown
+  // --- Full Excel Export Logic ---
+  const handleExportExcel = () => {
+    if (!monthly?.summary) return;
+
+    const monthName = new Date(0, selectedMonth - 1).toLocaleString("en", {
+      month: "long",
+    });
+
+    const wb = XLSX.utils.book_new();
+    const productData = monthly.productTypeSummary || [];
+
+    const totalQty = productData.reduce(
+      (sum, item) => sum + Number(item.TotalQty || 0),
+      0,
+    );
+
+    const totalRevenue = productData.reduce(
+      (sum, item) => sum + Number(item.TotalAmount || 0),
+      0,
+    );
+
+    // =========================
+    // PROFESSIONAL MASTER SHEET
+    // =========================
+
+    const masterSheet = [
+      ["THE HENS CO - MONTHLY BUSINESS REPORT"],
+      [`Month: ${monthName} ${selectedYear}`],
+      [`Generated On: ${new Date().toLocaleDateString()}`],
+      [],
+      ["================ FINANCIAL SUMMARY ================"],
+      ["Total Orders", monthly.summary.TotalOrders],
+      ["Total Sales (₹)", monthly.summary.TotalSales],
+      ["Total Received (₹)", monthly.summary.TotalReceived],
+      ["Outstanding (₹)", monthly.summary.TotalOutstanding],
+      [],
+      ["================ CHICKEN SUMMARY ================"],
+      ["Total Weight (KG)", monthly.chickenSummary?.TotalKG || 0],
+      ["Total Revenue (₹)", monthly.chickenSummary?.TotalAmount || 0],
+      [],
+      ["================ EGG SUMMARY ================"],
+      ["Total Eggs (Pcs)", monthly.eggSummary?.TotalEggs || 0],
+      ["Total Revenue (₹)", monthly.eggSummary?.TotalAmount || 0],
+      [],
+      ["================ PRODUCT PERFORMANCE ================"],
+      [],
+      ["Product Name", "Quantity", "Avg Rate (₹)", "Revenue (₹)"],
+
+      ...productData.map((item) => [
+        item.ProductType,
+        item.TotalQty,
+        item.AvgRate ? Number(item.AvgRate).toFixed(2) : "0.00",
+        item.TotalAmount,
+      ]),
+
+      [],
+      ["GRAND TOTAL", totalQty, "", totalRevenue],
+    ];
+
+    const wsMaster = XLSX.utils.aoa_to_sheet(masterSheet);
+
+    wsMaster["!cols"] = [{ wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 20 }];
+
+    XLSX.utils.book_append_sheet(wb, wsMaster, "Monthly Report");
+
+    // =========================
+    // PAYMENT SHEET
+    // =========================
+
+    const paymentRows = [
+      ["Payment Mode", "Amount (₹)"],
+      ...(monthly.payment || []).map((p) => [p.ModeName, p.Amount]),
+    ];
+
+    const wsPayment = XLSX.utils.aoa_to_sheet(paymentRows);
+
+    wsPayment["!cols"] = [{ wch: 25 }, { wch: 20 }];
+
+    XLSX.utils.book_append_sheet(wb, wsPayment, "Payment Breakdown");
+
+    // =========================
+    // DOWNLOAD
+    // =========================
+
+    XLSX.writeFile(
+      wb,
+      `TheHensCo_Professional_Monthly_Report_${monthName}_${selectedYear}.xlsx`,
+    );
+  };
+  // Chart Configs
   const paymentChartData = {
-    labels: monthly?.payment?.map((p) => p.ModeName) || [],
+    labels: monthly.payment?.map((p) => p.ModeName) || [],
     datasets: [
       {
-        label: "Amount (₹)",
-        data: monthly?.payment?.map((p) => Number(p.Amount) || 0) || [],
+        data: monthly.payment?.map((p) => p.Amount) || [],
         backgroundColor: [
           "#3b82f6",
           "#10b981",
@@ -58,218 +148,246 @@ const MonthlyReport = () => {
           "#ef4444",
           "#8b5cf6",
           "#ec4899",
-          "#6366f1",
         ],
+        borderWidth: 2,
         borderColor: "#ffffff",
-        borderWidth: 1,
-        borderRadius: 6,
       },
     ],
   };
 
-  const paymentChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: {
-        display: true,
-        text: "Payment Methods Breakdown",
-        font: { size: 18, weight: "bold" },
-        color: "#111827",
-        padding: { top: 10, bottom: 20 },
-      },
-      tooltip: {
-        backgroundColor: "rgba(0,0,0,0.8)",
-        titleFont: { size: 14 },
-        bodyFont: { size: 13 },
-        callbacks: {
-          label: (context) => ` ₹${context.parsed.y.toLocaleString("en-IN")}`,
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false } },
-      y: {
-        beginAtZero: true,
-        grid: { color: "#e5e7eb" },
-        ticks: {
-          callback: (value) => "₹" + value.toLocaleString("en-IN"),
-          font: { size: 12 },
-        },
-      },
-    },
-  };
-
-  // Chart 2: Sales vs Received vs Outstanding (Outstanding in RED)
   const salesVsOutstandingData = {
-    labels: ["Total Sales", "Received", "Outstanding"],
+    labels: ["Sales", "Received", "Pending"],
     datasets: [
       {
         label: "Amount (₹)",
         data: [
-          Number(monthly?.summary?.TotalSales || 0),
-          totalReceived,
-          Number(monthly?.summary?.TotalOutstanding || 0),
+          monthly.summary?.TotalSales || 0,
+          monthly.summary?.TotalReceived || 0,
+          monthly.summary?.TotalOutstanding || 0,
         ],
-        backgroundColor: ["#3b82f6", "#10b981", "#dc2626"],
-        borderColor: ["#1d4ed8", "#059669", "#b91c1c"],
-        borderWidth: 1,
+        backgroundColor: ["#3b82f6", "#10b981", "#ef4444"],
         borderRadius: 8,
-        hoverBackgroundColor: ["#2563eb", "#059669", "#ef4444"],
       },
     ],
   };
 
-  const salesChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      title: {
-        display: true,
-        text: "Sales vs Received vs Outstanding",
-        font: { size: 18, weight: "bold" },
-        color: "#111827",
-        padding: { top: 10, bottom: 20 },
-      },
-      tooltip: {
-        backgroundColor: "rgba(0,0,0,0.85)",
-        titleFont: { size: 14 },
-        bodyFont: { size: 13 },
-        callbacks: {
-          label: (context) => ` ₹${context.parsed.y.toLocaleString("en-IN")}`,
-        },
-      },
-    },
-    scales: {
-      x: { grid: { display: false } },
-      y: {
-        beginAtZero: true,
-        grid: { color: "#e5e7eb" },
-        ticks: {
-          callback: (value) => "₹" + value.toLocaleString("en-IN"),
-          font: { size: 12 },
-        },
-      },
-    },
-  };
-
   return (
     <div className={styles.container}>
-      <h3 className={styles.header}>Monthly Report</h3>
+      <div className={styles.headerSection}>
+        <h1 className={styles.mainTitle}>Monthly Business Insights</h1>
+        <p className={styles.subtitle}>
+          Track your sales, payments, and inventory performance
+        </p>
+      </div>
 
-      <div className={styles.filters}>
-        <div className={styles.filterGroup}>
-          <label>Year:</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-          >
-            {[2024, 2025, 2026, 2027, 2028].map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className={styles.filterGroup}>
-          <label>Month:</label>
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-          >
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-              <option key={m} value={m}>
-                {new Date(2000, m - 1).toLocaleString("default", {
-                  month: "long",
-                })}
-              </option>
-            ))}
-          </select>
+      <div className={styles.filtersCard}>
+        <div className={styles.filters}>
+          <div className={styles.filterGroup}>
+            <label>Year</label>
+            <select
+              className={styles.select}
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+            >
+              {[2024, 2025, 2026].map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.filterGroup}>
+            <label>Month</label>
+            <select
+              className={styles.select}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(0, i).toLocaleString("en", { month: "long" })}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.buttonGroup}>
+            <button
+              className={styles.fetchButton}
+              onClick={fetchData}
+              disabled={monthlyLoading}
+            >
+              {monthlyLoading ? (
+                <span className={styles.loadingSpinner}>🌀</span>
+              ) : (
+                "Generate Report"
+              )}
+            </button>
+            {monthly.summary && (
+              <button
+                className={styles.excelButton}
+                onClick={handleExportExcel}
+              >
+                📥 Download Excel
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <button
-        className={styles.button}
-        onClick={fetchData}
-        disabled={monthlyLoading}
-      >
-        {monthlyLoading ? "Loading..." : "Get Monthly Report"}
-      </button>
-
-      {error && <div className={styles.error}>Error: {error}</div>}
-
-      {/* Summary & Charts */}
-      <div className={styles.summaryCard}>
-        <h4 className={styles.summaryTitle}>
-          {new Date(selectedYear, selectedMonth - 1).toLocaleString("default", {
-            month: "long",
-            year: "numeric",
-          })}{" "}
-          Overview
-        </h4>
-
-        <div className={styles.statsGrid}>
-          <div className={styles.statItem}>
-            <div className={styles.statLabel}>Total Orders</div>
-            <div className={styles.statValue}>
-              {monthly?.summary?.TotalOrders || 0}
-            </div>
-          </div>
-
-          <div className={styles.statItem}>
-            <div className={styles.statLabel}>Total Sales</div>
-            <div className={styles.statValue}>
-              ₹
-              {Number(monthly?.summary?.TotalSales || 0).toLocaleString(
-                "en-IN",
-                {
-                  minimumFractionDigits: 2,
-                }
-              )}
-            </div>
-          </div>
-
-          <div className={`${styles.statItem} ${styles.outstandingCard}`}>
-            <div className={styles.statLabel}>Total Outstanding</div>
-            <div className={`${styles.statValue} ${styles.outstanding}`}>
-              ₹
-              {Number(monthly?.summary?.TotalOutstanding || 0).toLocaleString(
-                "en-IN",
-                {
-                  minimumFractionDigits: 2,
-                }
-              )}
-            </div>
-          </div>
+      {error && (
+        <div className={styles.error}>
+          <span className={styles.errorIcon}>⚠️</span> {error}
         </div>
+      )}
 
-        {/* Charts Section */}
-        {monthly?.summary?.TotalSales > 0 && (
-          <div className={styles.chartsSection}>
-            {/* Payment Methods Chart */}
-            {monthly?.payment?.length > 0 && (
-              <div className={styles.chartContainer}>
-                <div className={styles.chartWrapper}>
-                  <Bar data={paymentChartData} options={paymentChartOptions} />
-                </div>
+      {monthly.summary && (
+        <div className={styles.reportContent}>
+          {/* Top Metrics Grid */}
+          <div className={styles.metricsGrid}>
+            <div className={styles.metricCard}>
+              <div className={styles.metricIcon}>📦</div>
+              <div className={styles.metricContent}>
+                <span className={styles.metricLabel}>Total Orders</span>
+                <span className={styles.metricValue}>
+                  {monthly.summary.TotalOrders}
+                </span>
               </div>
-            )}
+            </div>
+            <div className={`${styles.metricCard} ${styles.blueBorder}`}>
+              <div className={styles.metricIcon}>💰</div>
+              <div className={styles.metricContent}>
+                <span className={styles.metricLabel}>Total Sales</span>
+                <span className={styles.metricValue}>
+                  {formatINR(monthly.summary.TotalSales)}
+                </span>
+              </div>
+            </div>
+            <div className={`${styles.metricCard} ${styles.greenBorder}`}>
+              <div className={styles.metricIcon}>✅</div>
+              <div className={styles.metricContent}>
+                <span className={styles.metricLabel}>Received</span>
+                <span className={styles.metricValue}>
+                  {formatINR(monthly.summary.TotalReceived)}
+                </span>
+              </div>
+            </div>
+            <div className={`${styles.metricCard} ${styles.outstandingMetric}`}>
+              <div className={styles.metricIcon}>⏳</div>
+              <div className={styles.metricContent}>
+                <span className={styles.metricLabel}>Outstanding</span>
+                <span className={styles.metricValue}>
+                  {formatINR(monthly.summary.TotalOutstanding)}
+                </span>
+              </div>
+            </div>
+          </div>
 
-            {/* Sales vs Outstanding Chart */}
-            <div className={styles.chartContainer}>
+          {/* Charts Grid */}
+          <div className={styles.chartsGrid}>
+            <div className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <h3>Revenue Collection</h3>
+              </div>
+              <div className={styles.chartWrapper}>
+                <Doughnut
+                  data={paymentChartData}
+                  options={{
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: "bottom" } },
+                  }}
+                />
+              </div>
+            </div>
+            <div className={styles.chartCard}>
+              <div className={styles.chartHeader}>
+                <h3>Sales Performance</h3>
+              </div>
               <div className={styles.chartWrapper}>
                 <Bar
                   data={salesVsOutstandingData}
-                  options={salesChartOptions}
+                  options={{
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                  }}
                 />
               </div>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Product Category Grid (Exact data for Excel) */}
+          <div className={styles.productSection}>
+            <h3 className={styles.sectionTitle}>Product Performance Table</h3>
+            <div className={styles.productGrid}>
+              {monthly.productTypeSummary.map((item, idx) => (
+                <div key={idx} className={styles.productCard}>
+                  <h4 className={styles.productName}>{item.ProductType}</h4>
+                  <div className={styles.productStats}>
+                    <div className={styles.productStat}>
+                      <span className={styles.statLabel}>Quantity</span>
+                      <span className={styles.statNumber}>{item.TotalQty}</span>
+                    </div>
+                    <div className={styles.productStat}>
+                      <span className={styles.statLabel}>Avg Rate</span>
+                      <span className={styles.statNumber}>
+                        ₹
+                        {item.AvgRate
+                          ? Number(item.AvgRate).toFixed(2)
+                          : "0.00"}
+                      </span>
+                    </div>
+                    <div className={styles.productStat}>
+                      <span className={styles.statLabel}>Revenue</span>
+                      <span className={styles.statNumber}>
+                        {formatINR(item.TotalAmount)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Specialty Categories */}
+          <div className={styles.specialSection}>
+            <div className={styles.specialGrid}>
+              <div className={`${styles.specialCard} ${styles.chickenBg}`}>
+                <div className={styles.specialIcon}>🍗</div>
+                <h4>Chicken Summary</h4>
+                <div className={styles.specialStats}>
+                  <div className={styles.specialStat}>
+                    <span>Total Weight</span>
+                    <strong>
+                      {monthly.chickenSummary?.TotalKG?.toFixed(2) || "0.00"} KG
+                    </strong>
+                  </div>
+                  <div className={styles.specialStat}>
+                    <span>Revenue</span>
+                    <strong>
+                      {formatINR(monthly.chickenSummary?.TotalAmount)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              <div className={`${styles.specialCard} ${styles.eggBg}`}>
+                <div className={styles.specialIcon}>🥚</div>
+                <h4>Egg Summary</h4>
+                <div className={styles.specialStats}>
+                  <div className={styles.specialStat}>
+                    <span>Total Count</span>
+                    <strong>{monthly.eggSummary?.TotalEggs || 0} Pcs</strong>
+                  </div>
+                  <div className={styles.specialStat}>
+                    <span>Revenue</span>
+                    <strong>
+                      {formatINR(monthly.eggSummary?.TotalAmount)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

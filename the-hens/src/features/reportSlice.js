@@ -95,7 +95,17 @@ const reportSlice = createSlice({
     monthly: {
       summary: null,
       payment: [],
+      productTypeSummary: [],
+      chickenSummary: {
+        TotalKG: 0,
+        TotalAmount: 0,
+      },
+      eggSummary: {
+        TotalEggs: 0,
+        TotalAmount: 0,
+      },
     },
+
     weekly: {
       week: null,
       from: null,
@@ -127,7 +137,14 @@ const reportSlice = createSlice({
 
   reducers: {
     clearReport: (state) => {
-      state.monthly = { summary: null, payment: [] };
+      state.monthly = {
+        summary: null,
+        payment: [],
+        productTypeSummary: [],
+        chickenSummary: { TotalKG: 0, TotalAmount: 0 },
+        eggSummary: { TotalEggs: 0, TotalAmount: 0 },
+      };
+
       state.weekly = { week: null, from: null, to: null, data: [] };
       state.daily = { summary: null, products: [], payments: [], date: null };
       state.customer = { data: [] };
@@ -145,9 +162,19 @@ const reportSlice = createSlice({
       })
       .addCase(fetchMonthlyReport.fulfilled, (state, action) => {
         state.monthlyLoading = false;
+
         state.monthly = {
           summary: action.payload?.summary || null,
           payment: action.payload?.payment || [],
+          productTypeSummary: action.payload?.productTypeSummary || [],
+          chickenSummary: action.payload?.chickenSummary || {
+            TotalKG: 0,
+            TotalAmount: 0,
+          },
+          eggSummary: action.payload?.eggSummary || {
+            TotalEggs: 0,
+            TotalAmount: 0,
+          },
         };
       })
       .addCase(fetchMonthlyReport.rejected, (state, action) => {

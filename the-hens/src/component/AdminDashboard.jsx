@@ -24,6 +24,7 @@ import InvoiceGenerator from "./OrderInvoice";
 import ChalanGenerator from "./Chalan";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
+import * as XLSX from "xlsx";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -485,6 +486,119 @@ const AdminDashboard = () => {
     </>
   );
 
+  const handleExportExcel = () => {
+    if (filteredData.length === 0) {
+      toast.error("No data available to export");
+      return;
+    }
+
+    const exportData = [];
+    let slNo = 1;
+
+    filteredData.forEach((order) => {
+      const productNames = (order.ProductNames || "").split(",");
+      const productTypes = (order.ProductTypes || "").split(",");
+      const weights = (order.Weights || "").split(",");
+      const quantities = (order.Quantities || "").split(",");
+      const rates = (order.Rates || "").split(",");
+      const deliveryCharge = Number(order.DeliveryCharge) || 0;
+
+      // Payment Summary parsing
+      const payments = {};
+      if (order.PaymentSummary) {
+        order.PaymentSummary.split("|").forEach((item) => {
+          const [mode, amt] = item.split(":");
+          if (mode && amt) {
+            payments[mode.trim().toUpperCase()] = parseFloat(amt.trim()) || 0;
+          }
+        });
+      }
+
+      // 1. Pehle pure order ka subtotal calculate karein (Final Total ke liye)
+      const orderSubtotal = quantities.reduce((acc, qty, idx) => {
+        return acc + Number(qty) * Number(rates[idx] || 0);
+      }, 0);
+
+      // 2. Har product row generate karein
+      productNames.forEach((name, index) => {
+        const qty = Number(quantities[index]) || 0;
+        const rate = Number(rates[index]) || 0;
+        const productTotal = qty * rate;
+
+        const row = {
+          "Sl No": index === 0 ? slNo : "",
+
+          "Product Name": name.trim(),
+          "Customer Name": order.CustomerName,
+          Address: order.Address,
+          Area: order.Area,
+          "Contact No": order.ContactNo,
+          "Product Type": productTypes[index]?.trim() || "-",
+          "Default Weight": weights[index]?.trim() || "-",
+          Qty: qty,
+          Rate: rate,
+          "Product Total": productTotal,
+          "Delivery Charge": index === 0 ? deliveryCharge : 0,
+          // --- Ye raha aapka maanga hua column ---
+          "Final Payable (Total + Delivery)":
+            index === 0 ? orderSubtotal + deliveryCharge : "",
+          "Order Date": order.OrderDate?.split("T")[0],
+          "Delivery Date": order.DeliveryDate?.split("T")[0],
+          "Delivery Man": order.DeliveryManName || "-",
+          "Order Status": order.OrderStatus || "Pending",
+          "Order Taken By": order.OrderTakenBy || "-",
+
+          // Payment Amounts
+          Cash: payments["CASH"] || 0,
+          GPay: payments["GPAY"] || 0,
+          Paytm: payments["PAYTM"] || 0,
+          FOC: payments["FOC"] || 0,
+          "Bank Transfer": payments["BANK TRANSFER"] || payments["BANK"] || 0,
+        };
+
+        exportData.push(row);
+      });
+      slNo++;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    // Professional Column Widths
+    const wscols = [
+      { wch: 6 },
+      { wch: 10 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 35 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 8 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 20 },
+      { wch: 12 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 12 },
+      { wch: 15 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 15 },
+    ];
+    worksheet["!cols"] = wscols;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Order_Report");
+
+    const fileName = `HensCo_Sales_${filters.fromDate}_to_${filters.toDate}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   return (
     <div className={styles.container}>
       {/* HEADER SECTION */}
@@ -694,6 +808,10 @@ const AdminDashboard = () => {
             >
               <FaPlus className={styles.btnIcon} />
               Add New Customer
+            </button>
+
+            <button className={styles.searchBtn} onClick={handleExportExcel}>
+              Download Excel
             </button>
           </div>
         </div>

@@ -3,39 +3,114 @@ const { sql, poolPromise } = require("../utils/db");
 /* =======================
    MONTHLY REPORT
 ======================= */
+// exports.getMonthlyReport = async (req, res) => {
+//   try {
+//     const { year, month } = req.query;
+
+//     const pool = await poolPromise;
+
+//     // 1. Summary: Total Orders + Total Sales (gross)
+//     const summaryResult = await pool
+//       .request()
+//       .input("year", sql.Int, year)
+//       .input("month", sql.Int, month).query(`
+//         SELECT
+//           COUNT(DISTINCT o.OrderID) AS TotalOrders,
+//           ISNULL(SUM(oi.Total), 0) AS TotalSales
+//         FROM OrdersTemp o
+//         JOIN OrderItems oi ON o.OrderID = oi.OrderID
+//         WHERE YEAR(o.OrderDate) = @year
+//           AND MONTH(o.OrderDate) = @month
+//       `);
+
+//     const summary = summaryResult.recordset[0] || {
+//       TotalOrders: 0,
+//       TotalSales: 0,
+//     };
+
+//     // 2. Total Received (actual payments jo aa gaye hain)
+//     const paymentsResult = await pool
+//       .request()
+//       .input("year", sql.Int, year)
+//       .input("month", sql.Int, month).query(`
+//         SELECT
+//           pm.ModeName,
+//           ISNULL(SUM(op.Amount), 0) AS Amount
+//         FROM OrderPayments op
+//         JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+//         JOIN OrdersTemp o ON o.OrderID = op.OrderID
+//         WHERE YEAR(o.OrderDate) = @year
+//           AND MONTH(o.OrderDate) = @month
+//         GROUP BY pm.ModeName
+//       `);
+
+//     const paymentBreakup = paymentsResult.recordset || [];
+
+//     // 3. Total Received ka grand total nikal lo
+//     const totalReceived = paymentBreakup.reduce(
+//       (sum, p) => sum + (p.Amount || 0),
+//       0,
+//     );
+
+//     // 4. Outstanding calculate karo
+//     const totalOutstanding = Math.max(0, summary.TotalSales - totalReceived);
+
+//     // Final response
+//     res.status(200).json({
+//       summary: {
+//         TotalOrders: summary.TotalOrders,
+//         TotalSales: summary.TotalSales,
+//         TotalReceived: totalReceived, // optional - agar dikhana ho
+//         TotalOutstanding: totalOutstanding, // ← yeh main cheez
+//       },
+//       payment: paymentBreakup,
+//     });
+//   } catch (err) {
+//     console.error("Monthly Report Error:", err);
+//     res.status(500).json({ message: err.message || "Internal server error" });
+//   }
+// };
+
 exports.getMonthlyReport = async (req, res) => {
   try {
     const { year, month } = req.query;
 
+    if (!year || !month) {
+      return res.status(400).json({
+        message: "Year and Month are required",
+      });
+    }
+
     const pool = await poolPromise;
 
-    // 1. Summary: Total Orders + Total Sales (gross)
+    // ===============================
+    // 1️⃣ SUMMARY
+    // ===============================
     const summaryResult = await pool
       .request()
       .input("year", sql.Int, year)
       .input("month", sql.Int, month).query(`
         SELECT 
           COUNT(DISTINCT o.OrderID) AS TotalOrders,
-          ISNULL(SUM(oi.Total), 0) AS TotalSales
+          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0) AS TotalSales
         FROM OrdersTemp o
         JOIN OrderItems oi ON o.OrderID = oi.OrderID
         WHERE YEAR(o.OrderDate) = @year
           AND MONTH(o.OrderDate) = @month
       `);
 
-    const summary = summaryResult.recordset[0] || {
-      TotalOrders: 0,
-      TotalSales: 0,
-    };
+    const summary = summaryResult.recordset[0] || {};
 
-    // 2. Total Received (actual payments jo aa gaye hain)
+    // ===============================
+    // 2️⃣ PAYMENT
+    // ===============================
     const paymentsResult = await pool
       .request()
       .input("year", sql.Int, year)
       .input("month", sql.Int, month).query(`
         SELECT 
           pm.ModeName, 
-          ISNULL(SUM(op.Amount), 0) AS Amount
+          ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))), 0) AS Amount
         FROM OrderPayments op
         JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
         JOIN OrdersTemp o ON o.OrderID = op.OrderID
@@ -46,30 +121,123 @@ exports.getMonthlyReport = async (req, res) => {
 
     const paymentBreakup = paymentsResult.recordset || [];
 
-    // 3. Total Received ka grand total nikal lo
     const totalReceived = paymentBreakup.reduce(
-      (sum, p) => sum + (p.Amount || 0),
+      (sum, p) => sum + Number(p.Amount || 0),
       0,
     );
 
-    // 4. Outstanding calculate karo
-    const totalOutstanding = Math.max(0, summary.TotalSales - totalReceived);
+    const totalOutstanding = Math.max(
+      0,
+      Number(summary.TotalSales || 0) - totalReceived,
+    );
 
-    // Final response
+    // ===============================
+    // 3️⃣ PRODUCT TYPE SUMMARY
+    // ===============================
+    const productTypeResult = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month).query(`
+        SELECT 
+          oi.ProductType,
+          ISNULL(SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))),0) AS TotalQty,
+          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount,
+          ISNULL(AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))),0) AS AvgRate
+        FROM OrderItems oi
+        JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+        WHERE YEAR(o.OrderDate) = @year
+          AND MONTH(o.OrderDate) = @month
+        GROUP BY oi.ProductType
+        ORDER BY oi.ProductType
+      `);
+
+    const productTypeSummary = productTypeResult.recordset || [];
+
+    // ===============================
+    // 4️⃣ CHICKEN
+    // ===============================
+    const chickenResult = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month).query(`
+       SELECT 
+  ISNULL(SUM(
+    CASE 
+      WHEN oi.Weight LIKE '%Gram%' 
+        THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL(18,2)) / 1000
+      WHEN oi.Weight LIKE '%Kg%' 
+        THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL(18,2))
+      ELSE 0
+    END
+  ),0) AS TotalKG,
+
+  ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+WHERE YEAR(o.OrderDate) = @year
+AND MONTH(o.OrderDate) = @month
+AND oi.ProductType NOT LIKE '%Egg%'
+      `);
+
+    const chickenSummary = chickenResult.recordset[0] || {};
+
+    // ===============================
+    // 5️⃣ EGG
+    // ===============================
+    const eggResult = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month).query(`
+       SELECT 
+  ISNULL(SUM(
+    CASE 
+      WHEN oi.ProductType = 'Tray' 
+        THEN TRY_CAST(oi.Quantity AS INT) * 30
+      WHEN oi.ProductType = 'Box' 
+        THEN TRY_CAST(oi.Quantity AS INT) * 6
+      WHEN oi.ProductType = 'Box (Kids)' 
+        THEN TRY_CAST(oi.Quantity AS INT) * 10
+      WHEN oi.ProductType = 'Box (Women)' 
+        THEN TRY_CAST(oi.Quantity AS INT) * 10
+      ELSE 0
+    END
+  ),0) AS TotalEggs,
+
+  ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+WHERE YEAR(o.OrderDate) = @year
+AND MONTH(o.OrderDate) = @month
+AND oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+      `);
+
+    const eggSummary = eggResult.recordset[0] || {};
+
+    // ===============================
+    // FINAL RESPONSE
+    // ===============================
     res.status(200).json({
       summary: {
-        TotalOrders: summary.TotalOrders,
-        TotalSales: summary.TotalSales,
-        TotalReceived: totalReceived, // optional - agar dikhana ho
-        TotalOutstanding: totalOutstanding, // ← yeh main cheez
+        TotalOrders: summary.TotalOrders || 0,
+        TotalSales: Number(summary.TotalSales || 0),
+        TotalReceived: totalReceived,
+        TotalOutstanding: totalOutstanding,
       },
       payment: paymentBreakup,
+      productTypeSummary,
+      chickenSummary,
+      eggSummary,
     });
   } catch (err) {
     console.error("Monthly Report Error:", err);
-    res.status(500).json({ message: err.message || "Internal server error" });
+    res.status(500).json({
+      message: err.message || "Internal server error",
+    });
   }
 };
+
 /* =======================
    WEEKLY REPORT
 ======================= */
