@@ -461,6 +461,7 @@ const ChalanGenerator = ({ orderData, onClose }) => {
                       <th>Weight</th>
                       <th className={styles.textCenter}>HSN</th>
                       <th className={styles.textCenter}>UPC</th>
+                      <th className={styles.textCenter}>Qty</th>
                       {/* <th className={styles.textRight}>Basic Cost (₹)</th>
                       <th className={styles.textRight}>CGST %</th>
                       <th className={styles.textRight}>SGST %</th>
@@ -482,11 +483,12 @@ const ChalanGenerator = ({ orderData, onClose }) => {
                         <td>{item.weight}</td>
                         <td className={styles.textCenter}>{item.hsn}</td>
                         <td className={styles.textCenter}>{item.ProductUPC}</td>
+                        <td className={styles.textCenter}>{item.qty}</td>
                         {/* <td className={styles.textRight}>{item.BasicCost}</td>
                         <td className={styles.textRight}>{item.cgst}</td>
                         <td className={styles.textRight}>{item.sgst}</td>
                         <td className={styles.textRight}>{item.landingRate}</td>
-                        <td className={styles.textCenter}>{item.qty}</td>
+                       
                         <td className={styles.textRight}>{item.MRP}</td>
                         <td className={styles.textRight}>{item.totalAmt}</td> */}
                       </tr>
