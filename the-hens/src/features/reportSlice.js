@@ -51,7 +51,7 @@ export const fetchDailyReport = createAsyncThunk(
 // Change this specific thunk in reportSlice.js
 export const fetchCustomerReport = createAsyncThunk(
   "customerReport/fetchCustomerReport",
-  async ({ from, to, customerName }, { rejectWithValue }) => {
+  async ({ from, to, customer }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/reports/customer-summary`,
@@ -59,7 +59,7 @@ export const fetchCustomerReport = createAsyncThunk(
           params: {
             from,
             to,
-            customer: customerName || "", // Send the single string name, not the array
+            customer,
           },
         },
       );

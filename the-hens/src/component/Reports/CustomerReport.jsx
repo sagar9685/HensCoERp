@@ -11,8 +11,11 @@ const CustomerReport = () => {
     (state) => state.report,
   );
   const { customerName } = useSelector((state) => state.customer);
+  const [searchText, setSearchText] = useState("");
+  const [selectedCustomers, setSelectedCustomers] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  const [selectedCustomer, setSelectedCustomer] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -39,6 +42,19 @@ const CustomerReport = () => {
     }
   }, [customer?.data, currentPage, rowsPerPage]);
 
+  useEffect(() => {
+    if (searchText.length < 2) {
+      setFilteredCustomers([]);
+      return;
+    }
+
+    const filtered = customerName.filter((cust) =>
+      cust.CustomerName.toLowerCase().includes(searchText.toLowerCase()),
+    );
+
+    setFilteredCustomers(filtered);
+  }, [searchText, customerName]);
+
   const handleSearch = () => {
     if (!from || !to) {
       alert("Please select From and To date");
@@ -48,9 +64,11 @@ const CustomerReport = () => {
       fetchCustomerReport({
         from,
         to,
-        customerName: selectedCustomer,
+        customer: selectedCustomers.join(","),
       }),
     );
+
+    setShowDropdown(false);
   };
 
   const totalOrderAmt =
@@ -68,6 +86,12 @@ const CustomerReport = () => {
   const handleRowsPerPageChange = (e) => {
     setRowsPerPage(parseInt(e.target.value, 10));
     setCurrentPage(1);
+  };
+
+  const handleCustomerSelect = (name) => {
+    setSelectedCustomers((prev) =>
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
+    );
   };
 
   // Calculate pagination details
@@ -133,24 +157,80 @@ const CustomerReport = () => {
               />
             </div>
             <div className={styles.inputBox}>
-              <label>Select Customer</label>
-              <select
-                value={selectedCustomer}
-                onChange={(e) => setSelectedCustomer(e.target.value)}
+              <label>Search Customer</label>
+
+              <input
+                type="text"
+                placeholder="Search customer..."
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
                 className={styles.selectInput}
-              >
-                <option value="">All Customers</option>
-                {customerName?.map((cust) => (
-                  <option key={cust.CustomerID} value={cust.CustomerName}>
-                    {cust.CustomerName}
-                  </option>
+              />
+
+              <div className={styles.selectedCustomers}>
+                {selectedCustomers.map((cust, index) => (
+                  <span key={index} className={styles.customerTag}>
+                    {cust}
+                    <span
+                      className={styles.removeTag}
+                      onClick={() => handleCustomerSelect(cust)}
+                    >
+                      ✕
+                    </span>
+                  </span>
                 ))}
-              </select>
+              </div>
+
+              {searchText.length < 2 && (
+                <div className={styles.searchHint}>
+                  Type at least 2 letters to search customer
+                </div>
+              )}
+
+              {showDropdown && searchText.length >= 2 && (
+                <div className={styles.customerDropdown}>
+                  {filteredCustomers.map((cust) => (
+                    <label
+                      key={cust.CustomerID}
+                      className={styles.checkboxItem}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCustomers.includes(cust.CustomerName)}
+                        onChange={() => handleCustomerSelect(cust.CustomerName)}
+                      />
+                      {cust.CustomerName}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
+
             <button onClick={handleSearch} className={styles.searchBtn}>
               <span className={styles.btnIcon}>📊</span>
               Generate Report
             </button>
+            {(from || to || selectedCustomers.length > 0) && (
+              <div className={styles.appliedFilters}>
+                <strong>Filters:</strong>
+
+                {from && to && (
+                  <span className={styles.filterTag}>
+                    📅 {from} → {to}
+                  </span>
+                )}
+
+                {selectedCustomers.map((c, i) => (
+                  <span key={i} className={styles.filterTag}>
+                    👤 {c}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

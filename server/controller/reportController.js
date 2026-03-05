@@ -534,9 +534,15 @@ exports.getCustomerWiseSummaryByDate = async (req, res) => {
     request.input("toDate", to);
 
     let customerFilter = "";
-    if (customer && customer !== "") {
-      request.input("customerName", customer);
-      customerFilter = "AND O.CustomerName = @customerName";
+    if (customer && customer.length > 0) {
+      const names = customer.split(",");
+      const params = names.map((_, i) => `@cust${i}`).join(",");
+
+      names.forEach((name, i) => {
+        request.input(`cust${i}`, name);
+      });
+
+      customerFilter = `AND O.CustomerName IN (${params})`;
     }
 
     const query = `
