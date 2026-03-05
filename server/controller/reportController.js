@@ -557,7 +557,7 @@ SELECT
     
     -- Product Details
     STRING_AGG(
-        CAST(CONCAT(OI.ProductName, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)),
+        CAST(CONCAT(OI.ProductType, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)),
         ' | '
     ) AS ItemDetails,
     
