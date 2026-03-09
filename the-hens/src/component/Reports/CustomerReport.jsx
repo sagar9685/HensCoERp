@@ -3,6 +3,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomerReport } from "../../features/reportSlice";
 import { fetchCustomerName } from "../../features/cutomerSlice";
 import styles from "./CustomerReport.module.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const CustomerReport = () => {
   const dispatch = useDispatch();
@@ -10,6 +12,8 @@ const CustomerReport = () => {
   const { customer, customerLoading, error } = useSelector(
     (state) => state.report,
   );
+
+  console.log(customer, "report ka customer");
   const { customerName } = useSelector((state) => state.customer);
   const [searchText, setSearchText] = useState("");
   const [selectedCustomers, setSelectedCustomers] = useState([]);
@@ -132,6 +136,43 @@ const CustomerReport = () => {
     return rangeWithDots;
   };
 
+  const downloadExcel = () => {
+    if (!customer?.data || customer.data.length === 0) {
+      alert("No data to export");
+      return;
+    }
+
+    const exportData = customer.data.map((item) => ({
+      Date: new Date(item.OrderDate).toLocaleDateString("en-GB"),
+      OrderID: item.OrderID,
+      Customer: item.CustomerName,
+      Contact: item.ContactNo,
+      Area: item.Area,
+      Items: item.ItemDetails,
+      DeliveryBoy: item.DeliveryBoyName || "N/A",
+      PaymentMode: item.PaymentModeDetails || "Pending",
+      OrderAmount: item.OrderAmount,
+      PaidAmount: item.PaidAmount,
+      OutstandingAmount: item.OutstandingAmount,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customer Report");
+
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const fileData = new Blob([excelBuffer], {
+      type: "application/octet-stream",
+    });
+
+    saveAs(fileData, "Customer_Report.xlsx");
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.reportCard}>
@@ -213,6 +254,9 @@ const CustomerReport = () => {
             <button onClick={handleSearch} className={styles.searchBtn}>
               <span className={styles.btnIcon}>📊</span>
               Generate Report
+            </button>
+            <button onClick={downloadExcel} className={styles.excelBtn}>
+              ⬇️ Download Excel
             </button>
             {(from || to || selectedCustomers.length > 0) && (
               <div className={styles.appliedFilters}>

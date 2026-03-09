@@ -1107,3 +1107,15 @@
   display: inline-flex;
   align-items: center;
 }
+.excelBtn {
+  background: #1d6f42;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.excelBtn:hover {
+  background: #155c35;
+}

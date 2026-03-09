@@ -387,7 +387,10 @@ const AdminDashboard = () => {
                   .includes(searchTerm);
 
               case "customer":
-                return item.CustomerName?.toLowerCase().includes(searchTerm);
+                return (
+                  item.CustomerName?.toLowerCase().includes(searchTerm) ||
+                  item.ContactNo?.toString().toLowerCase().includes(searchTerm)
+                );
 
               case "ProductName":
                 return item.ProductNames?.toLowerCase().includes(searchTerm);
