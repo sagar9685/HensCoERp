@@ -18,6 +18,8 @@ import {
   FaShieldAlt,
   FaLifeRing,
   FaTimes,
+  FaToggleOn,
+  FaToggleOff,
 } from "react-icons/fa";
 import {
   MdSupervisorAccount,
@@ -41,6 +43,7 @@ const Header = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [userFormToggle, setUserFormToggle] = useState(false);
 
   const user = useSelector((state) => state.auth.data);
   console.log(user, "user Data");
@@ -52,6 +55,16 @@ const Header = () => {
   const dropdownRef = useRef(null);
   // const notificationRef = useRef(null);
   const mobileMenuRef = useRef(null);
+
+  const handleUserFormToggle = () => {
+    setUserFormToggle(true);
+    navigate("/userForm");
+
+    // auto off after redirect
+    setTimeout(() => {
+      setUserFormToggle(false);
+    }, 500);
+  };
 
   useEffect(() => {
     const path = location.pathname.replace("/", "");
@@ -108,6 +121,7 @@ const Header = () => {
       label: "Reports",
       path: "/reports",
     },
+
     // {
     //   key: "Demo",
     //   icon: <FaBullhorn />,
@@ -227,6 +241,11 @@ const Header = () => {
           <span className={styles.themeTooltip}>
             {darkMode ? "Light Mode" : "Dark Mode"}
           </span>
+        </button>
+
+        <button className={styles.themeToggle} onClick={handleUserFormToggle}>
+          {userFormToggle ? <FaToggleOn /> : <FaToggleOff />}
+          <span className={styles.themeTooltip}>User Form</span>
         </button>
 
         {/* Notifications */}

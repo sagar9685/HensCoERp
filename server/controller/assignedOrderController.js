@@ -2,22 +2,27 @@ const { sql, poolPromise } = require("../utils/db");
 const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 
 // CREATE Assigned Order
-// Updated assignOrder Controller
 exports.assignOrder = async (req, res) => {
-  const { orderId, deliveryManId, otherDeliveryManName, deliveryDate, remark } =
-    req.body;
+  const {
+    orderId,
+    deliveryManId,
+    otherDeliveryManName,
+    deliveryDate,
+    remark,
+    username,
+  } = req.body;
+  console.log("ASSIGN ORDER BODY:", req.body);
 
   try {
     const pool = await poolPromise;
 
-    // 🔎 Check karo pehle se assignment exist karta hai ya nahi
     const check = await pool
       .request()
       .input("OrderID", sql.Int, orderId)
       .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
 
     if (check.recordset.length > 0) {
-      // ✅ Agar exist karta hai → UPDATE karo
+      // REASSIGN
       await pool
         .request()
         .input("OrderID", sql.Int, orderId)
@@ -28,19 +33,21 @@ exports.assignOrder = async (req, res) => {
           otherDeliveryManName || null,
         )
         .input("DeliveryDate", sql.Date, deliveryDate)
-        .input("Remark", sql.NVarChar, remark || null).query(`
+        .input("Remark", sql.NVarChar, remark || null)
+        .input("ReassignedBy", sql.NVarChar, username).query(`
           UPDATE AssignedOrders
           SET 
             DeliveryManID = @DeliveryManID,
             OtherDeliveryManName = @OtherDeliveryManName,
             DeliveryDate = @DeliveryDate,
-            Remark = @Remark
+            Remark = @Remark,
+            ReassignedBy = @ReassignedBy
           WHERE OrderID = @OrderID
         `);
 
       return res.json({ message: "Order reassigned successfully" });
     } else {
-      // ✅ Agar exist nahi karta → INSERT karo
+      // FIRST ASSIGN
       await pool
         .request()
         .input("OrderID", sql.Int, orderId)
@@ -51,11 +58,12 @@ exports.assignOrder = async (req, res) => {
           otherDeliveryManName || null,
         )
         .input("DeliveryDate", sql.Date, deliveryDate)
-        .input("Remark", sql.NVarChar, remark || null).query(`
+        .input("Remark", sql.NVarChar, remark || null)
+        .input("AssignedBy", sql.NVarChar, username).query(`
           INSERT INTO AssignedOrders 
-          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus)
+          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
           VALUES 
-          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending')
+          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
         `);
 
       return res.status(201).json({ message: "Order assigned successfully" });
@@ -160,40 +168,46 @@ ORDER BY O.OrderID DESC;
 
 exports.updateAssignedOrder = async (req, res) => {
   const { id } = req.params;
-  const { deliveryManId, otherDeliveryManName, deliveryDate, remark } =
-    req.body;
+  const {
+    deliveryManId,
+    otherDeliveryManName,
+    deliveryDate,
+    remark,
+    username,
+  } = req.body;
 
   console.log("BACKEND: Update Request Received for ID:", id);
   console.log("BACKEND: Payload:", req.body);
 
   try {
     const pool = await poolPromise;
-    // Inside your controller updateAssignedOrder function
+
     const result = await pool
       .request()
       .input("AssignID", sql.Int, id)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
       .input("DeliveryDate", sql.Date, deliveryDate || null)
-      .input("Remark", sql.NVarChar, remark || null).query(`
-      UPDATE AssignedOrders
-      SET
-          DeliveryManID = @DeliveryManID,
-          OtherDeliveryManName = @OtherDeliveryManName,
-          DeliveryDate = @DeliveryDate,
-          Remark = @Remark
-          -- Removed UpdatedAt line because the column doesn't exist
-      WHERE AssignID = @AssignID
-  `);
+      .input("Remark", sql.NVarChar, remark || null)
+      .input("ReassignedBy", sql.NVarChar, username || null).query(`
+        UPDATE AssignedOrders
+        SET
+            DeliveryManID = @DeliveryManID,
+            OtherDeliveryManName = @OtherDeliveryManName,
+            DeliveryDate = @DeliveryDate,
+            Remark = @Remark,
+            ReassignedBy = @ReassignedBy
+        WHERE AssignID = @AssignID
+      `);
 
     console.log("BACKEND: Rows Affected:", result.rowsAffected);
 
     if (result.rowsAffected[0] === 0) {
       return res.status(404).json({ message: "Assignment not found" });
     }
+
     res.json({ message: "Assignment updated successfully" });
   } catch (err) {
-    // THIS LOG IS CRUCIAL: It will show the exact SQL error in your terminal
     console.error("BACKEND ERROR [updateAssignedOrder]:", err.message);
     res
       .status(500)
@@ -202,9 +216,13 @@ exports.updateAssignedOrder = async (req, res) => {
 };
 
 exports.updateDeliveryStatus = async (req, res) => {
-  const { id } = req.params; // AssignID
-  const { status } = req.body; // Complete / In Progress / Cancelled
-
+  const { id } = req.params;
+  const { status, username } = req.body;
+  console.log("➡️ Status Update Request:", {
+    id,
+    status,
+    username,
+  });
   try {
     const pool = await poolPromise;
 
@@ -213,11 +231,17 @@ exports.updateDeliveryStatus = async (req, res) => {
       SET DeliveryStatus = @status
     `;
 
-    // If completed, set system dates
     if (status === "Complete") {
       query += `,
         ActualDeliveryDate = GETDATE(),
-        PaymentReceivedDate = GETDATE()
+        PaymentReceivedDate = GETDATE(),
+        CompletedBy = @username
+      `;
+    }
+
+    if (status === "Cancel") {
+      query += `,
+        CancelledBy = @username
       `;
     }
 
@@ -227,6 +251,7 @@ exports.updateDeliveryStatus = async (req, res) => {
       .request()
       .input("id", sql.Int, id)
       .input("status", sql.NVarChar, status)
+      .input("username", sql.NVarChar, username)
       .query(query);
 
     if (result.rowsAffected[0] === 0) {

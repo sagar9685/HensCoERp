@@ -33,6 +33,9 @@ const UserForm = () => {
   const [selectedOrderIdForUpdate, setSelectedOrderIdForUpdate] =
     useState(null);
 
+  const authData = JSON.parse(localStorage.getItem("authData"));
+  const username = authData?.name;
+
   // Use the custom hook for filtering and pagination
   const {
     searchTerm,
@@ -108,6 +111,7 @@ const UserForm = () => {
         updateDeliveryStatus({
           assignId: row.AssignID,
           status: newStatus,
+          username,
         }),
       ).unwrap();
 
@@ -127,6 +131,7 @@ const UserForm = () => {
         cancelAssignedOrder({
           assignId: cancelOrder.AssignID,
           reason,
+          username,
         }),
       ).unwrap();
 
@@ -205,11 +210,16 @@ const UserForm = () => {
           updateAssignedOrder({
             assignmentId: selectedOrder.AssignID,
             ...payload,
+            username,
           }),
         ).unwrap();
       } else {
-        // Naya assignment
-        await dispatch(assignOrder(payload)).unwrap();
+        await dispatch(
+          assignOrder({
+            ...payload,
+            username,
+          }),
+        ).unwrap();
       }
       dispatch(fetchAssignOrder());
       handleCloseModal();

@@ -234,8 +234,7 @@ exports.getOrderTakenByList = async (req, res) => {
 
 exports.cancelOrder = async (req, res) => {
   const { id } = req.params;
-  const { reason } = req.body;
-
+  const { reason, username } = req.body;
   console.log("➡️ Cancel request for AssignID:", id);
   console.log("➡️ Reason:", reason);
 
@@ -269,10 +268,12 @@ exports.cancelOrder = async (req, res) => {
     const updateRes = await transaction
       .request()
       .input("id", sql.Int, id)
-      .input("reason", sql.NVarChar, reason || "Cancelled").query(`
+      .input("reason", sql.NVarChar, reason || "Cancelled")
+      .input("username", sql.NVarChar, username).query(`
         UPDATE AssignedOrders
         SET DeliveryStatus = 'Cancel',
-            CompletionRemarks = @reason
+            CompletionRemarks = @reason,
+            CancelledBy = @username
         WHERE AssignID = @id
       `);
 

@@ -31,7 +31,9 @@ const UserNavbar = () => {
     }
   }, [reduxModalOpen, reduxSidebarOpen]);
 
-  const user = useSelector((state) => state.auth.user);
+  const authData = JSON.parse(localStorage.getItem("authData"));
+  const user = authData?.name;
+  console.log(user, "mahesh sir");
 
   const handleLogout = () => {
     dispatch(logout());
@@ -163,7 +165,7 @@ const UserNavbar = () => {
                 )}
               </div>
               <div className={styles.profileInfo}>
-                <h4>{user?.name || "User"}</h4>
+                <h4>{user || "User"}</h4>
                 <p>{user?.role || "Operator"}</p>
               </div>
 

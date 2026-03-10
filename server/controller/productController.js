@@ -6,7 +6,7 @@ exports.getAllProductTypes = async (req, res) => {
     const pool = await poolPromise;
     const result = await pool
       .request()
-      .query("SELECT ProductType FROM ProductTypes");
+      .query("SELECT ProductTypeId, ProductType, Category FROM ProductTypes");
     res.json(result.recordset);
   } catch (error) {
     console.error("❌ Error fetching product types:", error);

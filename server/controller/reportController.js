@@ -362,7 +362,7 @@ exports.getDailyReport = async (req, res) => {
         FROM OrdersTemp o
         JOIN OrderItems oi ON o.OrderID = oi.OrderID
         LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-        WHERE CAST(o.OrderDate AS DATE) = @targetDate
+        WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
         ${boyFilter}
       ) t
       GROUP BY t.ProductType, t.Weight, t.Rate
@@ -381,7 +381,7 @@ exports.getDailyReport = async (req, res) => {
       JOIN OrderPayments op ON o.OrderID = op.OrderID
       JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
       ${boyFilter}
       GROUP BY pm.ModeName, pm.IsRevenue
       ORDER BY 
@@ -407,7 +407,7 @@ exports.getDailyReport = async (req, res) => {
         FROM OrdersTemp o
         JOIN OrderItems oi ON o.OrderID = oi.OrderID
         LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-        WHERE CAST(o.OrderDate AS DATE) = @targetDate
+        WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
         ${boyFilter}
         AND NOT EXISTS (
             SELECT 1
@@ -429,8 +429,8 @@ exports.getDailyReport = async (req, res) => {
       JOIN OrderPayments op ON o.OrderID = op.OrderID
       JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
-      ${boyFilter}
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+      ${boyFilter} 
       AND op.PaymentModeID != 4
       AND pm.IsRevenue = 1
     `);
@@ -445,7 +445,7 @@ exports.getDailyReport = async (req, res) => {
       JOIN OrderPayments op ON o.OrderID = op.OrderID
       JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
       ${boyFilter}
       AND (op.PaymentModeID = 4 OR pm.IsRevenue = 0)
     `);
@@ -457,8 +457,8 @@ exports.getDailyReport = async (req, res) => {
       SELECT COUNT(DISTINCT o.OrderID) AS TotalOrders
       FROM OrdersTemp o
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
-      ${boyFilter}
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+      ${boyFilter} 
     `);
 
     // =====================================================
@@ -468,7 +468,7 @@ exports.getDailyReport = async (req, res) => {
       SELECT COUNT(DISTINCT o.OrderID) AS RevenueOrders
       FROM OrdersTemp o
       LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate
+      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
       ${boyFilter}
       AND NOT EXISTS (
           SELECT 1

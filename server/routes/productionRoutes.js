@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const productionController = require("../controller/productionConroller");
+const productionController = require("../controller/productionController");
 
-router.get("/", productionController.HeadDailySale);
+router.post("/", productionController.addProduction);
 
 module.exports = router;

@@ -1,6 +1,6 @@
-import React from 'react';
-import { FaTimes } from 'react-icons/fa';
-import styles from '../AddOrderModal.module.css';
+import React from "react";
+import { FaTimes } from "react-icons/fa";
+import styles from "../AddOrderModal.module.css";
 
 const OrderFormModal = ({
   isItemModalOpen,
@@ -11,7 +11,7 @@ const OrderFormModal = ({
   handleProductTypeChange,
   productTypes,
   errors,
-  saveItem
+  saveItem,
 }) => {
   if (!isItemModalOpen) return null;
 
@@ -20,12 +20,9 @@ const OrderFormModal = ({
       <div className={styles.itemModalContent}>
         <div className={styles.itemModalHeader}>
           <h3 className={styles.itemModalTitle}>
-            {editingIndex !== null ? 'Edit Item' : 'Add New Item'}
+            {editingIndex !== null ? "Edit Item" : "Add New Item"}
           </h3>
-          <button 
-            onClick={closeItemModal}
-            className={styles.closeItemButton}
-          >
+          <button onClick={closeItemModal} className={styles.closeItemButton}>
             <FaTimes />
           </button>
         </div>
@@ -34,23 +31,29 @@ const OrderFormModal = ({
           <div className={styles.itemForm}>
             {/* Product Name */}
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Product Name <span className={styles.required}>*</span></label>
+              <label className={styles.inputLabel}>
+                Product Name <span className={styles.required}>*</span>
+              </label>
               <select
                 name="productName"
                 value={currentItem.productName}
                 onChange={handleItemChange}
-                className={styles.inputField}
+                className={styles.selectField}
               >
                 <option value="">Select product</option>
                 <option value="Chicken">Chicken</option>
                 <option value="Egg">Egg</option>
               </select>
-              {errors.productName && <span className={styles.error}>{errors.productName}</span>}
+              {errors.productName && (
+                <span className={styles.error}>{errors.productName}</span>
+              )}
             </div>
 
             {/* Product Type */}
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Product Type <span className={styles.required}>*</span></label>
+              <label className={styles.inputLabel}>
+                Product Type <span className={styles.required}>*</span>
+              </label>
               <select
                 name="productType"
                 value={currentItem.productType}
@@ -58,18 +61,25 @@ const OrderFormModal = ({
                 className={styles.selectField}
               >
                 <option value="">Select product type</option>
-                {productTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
+
+                {productTypes
+                  .filter((type) => type.Category === currentItem.productName)
+                  .map((type) => (
+                    <option key={type.ProductTypeId} value={type.ProductType}>
+                      {type.ProductType}
+                    </option>
+                  ))}
               </select>
-              {errors.productType && <span className={styles.error}>{errors.productType}</span>}
+              {errors.productType && (
+                <span className={styles.error}>{errors.productType}</span>
+              )}
             </div>
 
             {/* Weight (Auto-filled) */}
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Weight (kg/pc) <span className={styles.required}>*</span></label>
+              <label className={styles.inputLabel}>
+                Weight (kg/pc) <span className={styles.required}>*</span>
+              </label>
               <input
                 type="text"
                 name="weight"
@@ -82,7 +92,9 @@ const OrderFormModal = ({
 
             {/* Quantity */}
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Quantity <span className={styles.required}>*</span></label>
+              <label className={styles.inputLabel}>
+                Quantity <span className={styles.required}>*</span>
+              </label>
               <input
                 type="number"
                 name="quantity"
@@ -92,12 +104,16 @@ const OrderFormModal = ({
                 min="1"
                 className={styles.inputField}
               />
-              {errors.quantity && <span className={styles.error}>{errors.quantity}</span>}
+              {errors.quantity && (
+                <span className={styles.error}>{errors.quantity}</span>
+              )}
             </div>
-            
+
             {/* Rate */}
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Rate (₹) <span className={styles.required}>*</span></label>
+              <label className={styles.inputLabel}>
+                Rate (₹) <span className={styles.required}>*</span>
+              </label>
               <input
                 type="number"
                 name="rate"
@@ -108,7 +124,9 @@ const OrderFormModal = ({
                 step="0.01"
                 className={styles.inputField}
               />
-              {errors.rate && <span className={styles.error}>{errors.rate}</span>}
+              {errors.rate && (
+                <span className={styles.error}>{errors.rate}</span>
+              )}
             </div>
 
             {/* Total Calculation */}
@@ -124,7 +142,11 @@ const OrderFormModal = ({
               <div className={styles.calculationRow}>
                 <span>Total Amount:</span>
                 <span className={styles.calculationTotal}>
-                  ₹{(Number(currentItem.quantity || 0) * Number(currentItem.rate || 0)).toFixed(2)}
+                  ₹
+                  {(
+                    Number(currentItem.quantity || 0) *
+                    Number(currentItem.rate || 0)
+                  ).toFixed(2)}
                 </span>
               </div>
             </div>
@@ -132,17 +154,11 @@ const OrderFormModal = ({
         </div>
 
         <div className={styles.itemModalFooter}>
-          <button 
-            onClick={closeItemModal}
-            className={styles.cancelButton}
-          >
+          <button onClick={closeItemModal} className={styles.cancelButton}>
             Cancel
           </button>
-          <button 
-            onClick={saveItem}
-            className={styles.saveItemButton}
-          >
-            {editingIndex !== null ? 'Update Item' : 'Add Item'}
+          <button onClick={saveItem} className={styles.saveItemButton}>
+            {editingIndex !== null ? "Update Item" : "Add Item"}
           </button>
         </div>
       </div>

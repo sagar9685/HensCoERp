@@ -14,7 +14,8 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   const { loading, success } = useSelector((state) => state.orderCompletion);
   const paymentModes = useSelector((state) => state.paymentMode?.list || []);
   console.log("ORDER RECEIVED IN MODAL ===>", order);
-
+  const authData = JSON.parse(localStorage.getItem("authData"));
+  const username = authData?.name;
   const totalAmount = order
     ? Number(order.GrandItemTotal || 0) + Number(order.DeliveryCharge || 0)
     : 0;
@@ -185,6 +186,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
       paymentReceivedDate: formData.deliveryDate,
       remarks: formData.remarks,
       paymentSettlement,
+      username,
     };
 
     try {

@@ -7,6 +7,10 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
   const dispatch = useDispatch();
 
   const { deliveryMen } = useSelector((state) => state.assignedOrders);
+  const authData = JSON.parse(localStorage.getItem("authData"));
+  const username = authData?.name;
+  console.log(username, "name on assign");
+  console.log(authData, "auth name onm");
 
   const [formData, setFormData] = useState({
     deliveryDate: "",
@@ -96,6 +100,7 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
           : null,
       deliveryDate: formData.deliveryDate,
       remark: formData.remark,
+      username: username,
     };
 
     try {

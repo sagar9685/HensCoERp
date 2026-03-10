@@ -8,6 +8,7 @@ exports.completeOrder = async (req, res) => {
     paymentReceivedDate,
     remarks,
     paymentSettlement,
+    username,
   } = req.body;
 
   console.log("BODY RECEIVED ===>", req.body);
@@ -28,13 +29,15 @@ exports.completeOrder = async (req, res) => {
 
       .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || null)
       .input("ActualDate", sql.Date, paymentReceivedDate || null)
+      .input("CompletedBy", sql.VarChar, username)
       .input("AssignedOrderID", sql.Int, assignedOrderId).query(`
         UPDATE AssignedOrders
         SET 
           DeliveryStatus = @Status,
           CompletionRemarks = @Remarks,
           PaymentReceivedDate = @PaymentReceivedDate,
-          ActualDeliveryDate = @ActualDate
+          ActualDeliveryDate = @ActualDate,
+            CompletedBy = @CompletedBy
         WHERE AssignID = @AssignedOrderID
       `);
 
@@ -373,11 +376,9 @@ exports.handoverCash = async (req, res) => {
 
     // Part Payment ke liye check: Amount balance se zyada nahi honi chahiye
     if (currentBalance < totalHandoverAmount) {
-      return res
-        .status(400)
-        .json({
-          message: `Insufficient balance. Available: ₹${currentBalance}`,
-        });
+      return res.status(400).json({
+        message: `Insufficient balance. Available: ₹${currentBalance}`,
+      });
     }
 
     // 2️⃣ Sabse pehle Balance Subtract karein (Part Payment logic)
@@ -425,12 +426,10 @@ exports.handoverCash = async (req, res) => {
       `);
 
     await transaction.commit();
-    res
-      .status(200)
-      .json({
-        message: "Handover Successful!",
-        updatedBalance: currentBalance - totalHandoverAmount,
-      });
+    res.status(200).json({
+      message: "Handover Successful!",
+      updatedBalance: currentBalance - totalHandoverAmount,
+    });
   } catch (err) {
     await transaction.rollback();
     res.status(500).json({ message: "Handover failed", error: err.message });

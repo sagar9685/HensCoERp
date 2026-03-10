@@ -1,0 +1,134 @@
+.container {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 25px 30px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: #444;
+}
+
+.field input,
+.field select {
+  padding: 9px 10px;
+  border-radius: 6px;
+  border: 1px solid #dcdcdc;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.field input:focus,
+.field select:focus {
+  border-color: #4a90e2;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+}
+
+/* TABLE */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: #fafafa;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.table thead {
+  background: #4a90e2;
+  color: white;
+}
+
+.table th {
+  padding: 10px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid #e6e6e6;
+  text-align: center;
+}
+
+.table input {
+  width: 80px;
+  padding: 5px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+}
+
+.table tbody tr:hover {
+  background: #f3f7ff;
+}
+
+/* SUMMARY */
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  padding: 12px;
+  background: #f7f9fc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.summary strong {
+  color: #333;
+}
+
+/* BUTTON */
+
+.submitBtn {
+  margin-top: 10px;
+  padding: 11px;
+  border: none;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #4a90e2, #357bd8);
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.submitBtn:hover {
+  background: linear-gradient(135deg, #357bd8, #2f6fc3);
+  transform: translateY(-1px);
+}
+
+.submitBtn:active {
+  transform: translateY(0);
+}
+.unit {
+  margin-left: 5px;
+  font-size: 12px;
+  color: #666;
+}

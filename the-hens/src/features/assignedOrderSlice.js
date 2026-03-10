@@ -35,10 +35,21 @@ export const fetchCashByDeliveryMen = createAsyncThunk(
 export const assignOrder = createAsyncThunk(
   "assignedOrders/assignOrder",
   async (formData) => {
+    const authData = JSON.parse(localStorage.getItem("authData"));
+    const username = authData?.name;
+
+    const payload = {
+      ...formData,
+      username,
+    };
+
+    console.log("SENDING PAYLOAD:", payload);
+
     const res = await axios.post(
       `${API_BASE_URL}/api/users/assign-order`,
-      formData,
+      payload,
     );
+
     return res.data;
   },
 );
@@ -46,10 +57,14 @@ export const assignOrder = createAsyncThunk(
 export const cancelAssignedOrder = createAsyncThunk(
   "assignedOrder/cancel",
   async ({ assignId, reason }) => {
+    const authData = JSON.parse(localStorage.getItem("authData"));
+    const username = authData?.name;
+
     const res = await axios.post(
       `${API_BASE_URL}/api/orders/cancel/${assignId}`,
-      { reason },
+      { reason, username }, // ✅ add
     );
+
     return res.data;
   },
 );
@@ -71,20 +86,23 @@ export const fetchAssignOrder = createAsyncThunk(
 export const updateAssignedOrder = createAsyncThunk(
   "assignedOrders/update",
   async ({ assignmentId, ...formData }, { rejectWithValue }) => {
-    console.log("FRONTEND: Attempting Reassign for ID:", assignmentId);
+    const authData = JSON.parse(localStorage.getItem("authData"));
+    const username = authData?.name;
 
     try {
       const payload = {
         ...formData,
-        // Match the logic with your backend expectations
+        username, // ✅ add
         deliveryManId:
           formData.deliveryManId === "other"
             ? null
             : Number(formData.deliveryManId),
+
         otherDeliveryManName:
           formData.deliveryManId === "other"
             ? formData.otherDeliveryManName
             : null,
+
         deliveryDate: formData.deliveryDate || null,
       };
 
@@ -93,14 +111,8 @@ export const updateAssignedOrder = createAsyncThunk(
         payload,
       );
 
-      console.log("FRONTEND: Reassign Success:", res.data);
       return res.data;
     } catch (err) {
-      console.error(
-        "FRONTEND ERROR: Reassign failed:",
-        err.response?.data || err.message,
-      );
-      // Return the error message to the component
       return rejectWithValue(err.response?.data || "Something went wrong");
     }
   },
@@ -110,13 +122,16 @@ export const updateAssignedOrder = createAsyncThunk(
 export const updateDeliveryStatus = createAsyncThunk(
   "assignedOrders/updateStatus",
   async ({ assignId, status }, { rejectWithValue }) => {
+    const authData = JSON.parse(localStorage.getItem("authData"));
+    const username = authData?.name;
+
     try {
       const res = await axios.put(
         `${API_BASE_URL}/api/users/assigned-orders/${assignId}/status`,
-        { status },
+        { status, username }, // ✅ add
       );
 
-      return res.data; // { assignId, status }
+      return res.data;
     } catch (err) {
       return rejectWithValue(err.response?.data || "Failed to update status");
     }

@@ -7,7 +7,7 @@ export const fetchProductTypes = createAsyncThunk(
   "product/fetchProductTypes",
   async () => {
     const res = await axios.get(`${API_BASE_URL}/api/products/types`);
-    return res.data.map((item) => item.ProductType);
+    return res.data;
   },
 );
 

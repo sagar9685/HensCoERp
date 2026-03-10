@@ -60,7 +60,19 @@ const ProductionHeader = () => {
           <div className={styles.quickStats}>
             <div className={styles.statItem}>
               <span className={styles.statIcon}>📊</span>
-              <span className={styles.statText}>Live Orders</span>
+              <span className={styles.statText}>Stock</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statIcon}>📊</span>
+              <span className={styles.statText}>
+                <button onClick={() => navigate("/daily")}>
+                  goods in transit{" "}
+                </button>
+              </span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statIcon}>📊</span>
+              <span className={styles.statText}>Daily Production</span>
             </div>
             <div className={styles.statDivider}></div>
             <div className={styles.statItem}>

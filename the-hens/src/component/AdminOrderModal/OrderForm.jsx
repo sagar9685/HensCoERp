@@ -66,6 +66,7 @@ const OrderForm = ({ onClose }) => {
 
   const takenByList = useSelector((state) => state.order.takenByList);
   console.log(takenByList, "taken order list name");
+  const [category, setCategory] = useState("Chicken");
 
   useEffect(() => {
     dispatch(fetchOrderTakenBy());
@@ -98,6 +99,18 @@ const OrderForm = ({ onClose }) => {
 
   const handleItemChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === "productName") {
+      setCurrentItem((prev) => ({
+        ...prev,
+        productName: value,
+        productType: "",
+        weight: "",
+        rate: "",
+      }));
+      return;
+    }
+
     setCurrentItem((prev) => ({ ...prev, [name]: value }));
   };
 

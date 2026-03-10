@@ -1,519 +1,393 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchHeadDailySale } from "../../features/headDailySaleSlice";
+import { fetchStock, fetchAvailableStock } from "../../features/stockSlice";
+
 import styles from "./HeadDailySale.module.css";
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
 import {
+  BarChart3,
+  Package,
   TrendingUp,
-  Download,
-  Printer,
-  Calendar,
-  PieChart,
-  ChevronRight,
   AlertCircle,
-  CheckCircle,
+  Filter,
+  RefreshCw,
+  Search,
+  Hash,
 } from "lucide-react";
 
-const HeadDailySale = () => {
+const Stock = () => {
   const dispatch = useDispatch();
-  const { loading, data, error } = useSelector((state) => state.headDailySale);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("actual");
-  const [printMode, setPrintMode] = useState(false);
-
-  // Date Logic
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const formatDate = (date) => {
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
+  const { available, loading } = useSelector((state) => state.stock);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all"); // Naya state
+  const [filteredStock, setFilteredStock] = useState([]);
+  const [stockStats, setStockStats] = useState({
+    totalItems: 0,
+    lowStockItems: 0,
+    outOfStock: 0,
+    totalQuantity: 0,
+  });
 
   useEffect(() => {
-    dispatch(fetchHeadDailySale("all"));
+    dispatch(fetchStock());
+    dispatch(fetchAvailableStock());
   }, [dispatch]);
 
-  const calculateTotal = (items) => {
-    return (
-      items?.reduce((acc, item) => acc + Number(item.TotalQty || 0), 0) || 0
-    );
+  useEffect(() => {
+    if (available.length > 0) {
+      const filtered = available.filter((item) =>
+        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+      setFilteredStock(filtered);
+
+      // Calculate stats
+      const stats = {
+        totalItems: available.length,
+        lowStockItems: available.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10,
+        ).length,
+        outOfStock: available.filter((item) => item.available_stock === 0)
+          .length,
+        totalQuantity: available.reduce(
+          (sum, item) => sum + (item.available_stock || 0),
+          0,
+        ),
+      };
+      setStockStats(stats);
+    }
+  }, [available, searchTerm]);
+
+  useEffect(() => {
+    if (available) {
+      let filtered = available.filter((item) =>
+        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
+
+      if (activeFilter == "low") {
+        filtered = filtered.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10,
+        );
+      } else if (activeFilter == "out") {
+        filtered = filtered.filter((item) => item.available_stock === 0);
+      } else if (activeFilter == "high") {
+        filtered = filtered.filter((item) => item.available_stock >= 30);
+      }
+
+      setFilteredStock(filtered);
+
+      const stats = {
+        totalItems: available.length,
+        lowStockItems: available.filter(
+          (item) => item.available_stock > 0 && item.available_stock < 10,
+        ).length,
+        outOfStock: available.filter((item) => item.available_stock === 0)
+          .length,
+        totalQuantity: available.reduce(
+          (sum, item) => sum + (item.available_stock || 0),
+          0,
+        ),
+      };
+      setStockStats(stats);
+    }
+  }, [available, searchTerm, activeFilter]);
+
+  const handleRefresh = () => {
+    dispatch(fetchAvailableStock());
   };
 
-  const getPredictedData = () => {
-    return (
-      data?.items?.map((item) => ({
-        ...item,
-        PredictedQty: Math.ceil(Number(item.TotalQty) * 1.1),
-        Growth: "+10%",
-      })) || []
-    );
+  const getStockStatus = (quantity) => {
+    if (quantity === 0) return "out-of-stock";
+    if (quantity < 10) return "low-stock";
+    if (quantity < 30) return "medium-stock";
+    return "high-stock";
   };
 
-  const predictedItems = getPredictedData();
-  const totalActual = calculateTotal(data?.items);
-  const totalPredicted = predictedItems.reduce(
-    (acc, item) => acc + item.PredictedQty,
-    0,
-  );
-  const growthPercentage = (
-    ((totalPredicted - totalActual) / totalActual) *
-    100
-  ).toFixed(1);
-
-  const downloadPDF = () => {
-    const doc = new jsPDF({
-      orientation: "landscape",
-      unit: "mm",
-      format: "a4",
-    });
-
-    const pageWidth = doc.internal.pageSize.width;
-
-    // --- Header & Design ---
-    doc.setFillColor(63, 81, 181);
-    doc.rect(0, 0, pageWidth, 40, "F");
-
-    doc.setFontSize(22);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.text("PRODUCTION PREDICTION REPORT", pageWidth / 2, 18, {
-      align: "center",
-    });
-
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Forecast For: ${formatDate(tomorrow)}`, pageWidth / 2, 28, {
-      align: "center",
-    });
-
-    // --- Table Section ---
-    const tableColumn = [
-      "Product Name",
-      "Weight",
-      "Current Sale",
-      "Next Day Prediction",
-      "Growth",
-    ];
-    const tableRows = predictedItems.map((item) => [
-      item.ProductType,
-      item.Weight,
-      item.TotalQty.toString(),
-      item.PredictedQty.toString(),
-      item.Growth,
-    ]);
-
-    // IMPORTANT: autoTable ko as a function call karein na ki doc.autoTable
-    autoTable(doc, {
-      startY: 50,
-      head: [tableColumn],
-      body: tableRows,
-      theme: "grid",
-      headStyles: { fillColor: [63, 81, 181], halign: "center" },
-      styles: { fontSize: 9 },
-      columnStyles: {
-        0: { cellWidth: 70 },
-        2: { halign: "center" },
-        3: { halign: "center" },
-        4: { halign: "center" },
-      },
-    });
-
-    doc.save(`Production_Report_${formatDate(tomorrow)}.pdf`);
+  const getStatusIcon = (quantity) => {
+    if (quantity === 0) return <AlertCircle size={20} />;
+    if (quantity < 10) return <AlertCircle size={20} />;
+    return <Package size={20} />;
   };
-
-  const handlePrint = () => {
-    setPrintMode(true);
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => setPrintMode(false), 500);
-    }, 100);
-  };
-
-  if (loading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <div className={styles.spinner}></div>
-        <p>Loading production data...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={styles.errorContainer}>
-        <AlertCircle size={48} />
-        <h3>Error Loading Data</h3>
-        <p>{error}</p>
-        <button
-          className={styles.retryBtn}
-          onClick={() => dispatch(fetchHeadDailySale("all"))}
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
 
   return (
     <>
-      <div
-        className={`${styles.container} ${printMode ? styles.printMode : ""}`}
-      >
-        {/* Print Header - Only visible when printing */}
-        <div className={styles.printHeader}>
-          <h1>Production Prediction Report</h1>
-          <div className={styles.printMeta}>
-            <span>Prediction Date: {formatDate(tomorrow)}</span>
-            <span>Generated: {new Date().toLocaleString()}</span>
-            <span>Confidential - Production Department</span>
+      <div className={styles.container}>
+        {/* Header Section */}
+        <div className={styles.header}>
+          <div className={styles.headerContent}>
+            <div className={styles.titleSection}>
+              <h1 className={styles.heading}>
+                <Package className={styles.headingIcon} />
+                Stock Inventory
+              </h1>
+              <p className={styles.subtitle}>
+                Real-time stock monitoring & analytics
+              </p>
+            </div>
+            <div className={styles.actions}>
+              <button className={styles.refreshBtn} onClick={handleRefresh}>
+                <RefreshCw size={18} />
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className={styles.headerSection}>
-          <div className={styles.headerLeft}>
-            <div className={styles.dateContainer}>
-              <Calendar size={20} />
-              <div>
-                <span className={styles.dateLabel}>YESTERDAY'S DATA</span>
-                <h2>{formatDate(yesterday)}</h2>
-              </div>
-            </div>
-            <h1 className={styles.mainTitle}>Daily Sale Analysis</h1>
-            <p className={styles.subtitle}>
-              Production insights based on previous day's closing stock
-            </p>
-          </div>
-
-          <div className={styles.headerRight}>
-            <div className={styles.statsCard}>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>Total Units</span>
-                <span className={styles.statValue}>{totalActual}</span>
-              </div>
-              <div className={styles.statDivider}></div>
-              <div className={styles.statItem}>
-                <span className={styles.statLabel}>Products</span>
-                <span className={styles.statValue}>
-                  {data?.items?.length || 0}
-                </span>
-              </div>
-            </div>
-
-            <button
-              className={styles.predictBtn}
-              onClick={() => setIsModalOpen(true)}
+        {/* Stats Overview */}
+        <div className={styles.statsGrid}>
+          <div className={styles.statCard}>
+            <div
+              className={styles.statIcon}
+              style={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              }}
             >
-              <TrendingUp size={20} />
-              Predict Tomorrow's Sale
-              <ChevronRight size={18} />
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className={styles.tabs}>
-          <button
-            className={`${styles.tab} ${activeTab === "actual" ? styles.activeTab : ""}`}
-            onClick={() => setActiveTab("actual")}
-          >
-            <PieChart size={16} />
-            Current Data
-          </button>
-          <button
-            className={`${styles.tab} ${activeTab === "prediction" ? styles.activeTab : ""}`}
-            onClick={() => setActiveTab("prediction")}
-          >
-            <TrendingUp size={16} />
-            Predictions
-          </button>
-        </div>
-
-        {/* Data Table */}
-        <div className={styles.tableContainer}>
-          <div className={styles.tableHeader}>
-            <h3>
-              {activeTab === "actual"
-                ? "Current Stock Levels"
-                : "Tomorrow's Predictions"}
-            </h3>
-            <div className={styles.tableActions}>
-              <button className={styles.actionBtn} onClick={handlePrint}>
-                <Printer size={16} />
-                Print
-              </button>
-              <button className={styles.actionBtn} onClick={downloadPDF}>
-                <Download size={16} />
-                PDF
-              </button>
+              <Package size={24} />
+            </div>
+            <div className={styles.statContent}>
+              <h3 className={styles.statValue}>{stockStats.totalItems}</h3>
+              <p className={styles.statLabel}>Total Items</p>
+              <div className={styles.statTrend}>
+                <TrendingUp size={16} />
+                <span>Active in inventory</span>
+              </div>
             </div>
           </div>
 
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th className={styles.productCol}>Product</th>
-                  <th className={styles.weightCol}>Weight</th>
-                  <th className={styles.qtyCol}>Current Qty</th>
-                  {activeTab === "prediction" && (
-                    <>
-                      <th className={styles.predictedCol}>Predicted Qty</th>
-                      <th className={styles.growthCol}>Growth</th>
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {activeTab === "actual"
-                  ? data?.items?.map((item, index) => (
-                      <tr key={index} className={styles.tableRow}>
-                        <td className={styles.productCell}>
-                          <div className={styles.productInfo}>
-                            <div className={styles.productIcon}>📦</div>
-                            <div>
-                              <div className={styles.productName}>
-                                {item.ProductType}
-                              </div>
-                              <div className={styles.productCode}>
-                                #{index + 1001}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.weightBadge}>
-                            {item.Weight}
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.qtyCell}>
-                            <span className={styles.qtyValue}>
-                              {item.TotalQty}
-                            </span>
-                            <span className={styles.qtyUnit}>units</span>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  : predictedItems.map((item, index) => (
-                      <tr key={index} className={styles.tableRow}>
-                        <td className={styles.productCell}>
-                          <div className={styles.productInfo}>
-                            <div className={styles.productIcon}>🚀</div>
-                            <div>
-                              <div className={styles.productName}>
-                                {item.ProductType}
-                              </div>
-                              <div className={styles.productCode}>
-                                #{index + 1001}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.weightBadge}>
-                            {item.Weight}
-                          </span>
-                        </td>
-                        <td>
-                          <div className={styles.qtyCell}>
-                            <span className={styles.qtyValue}>
-                              {item.TotalQty}
-                            </span>
-                            <span className={styles.qtyUnit}>units</span>
-                          </div>
-                        </td>
-                        <td>
-                          <div className={styles.predictedCell}>
-                            <span className={styles.predictedValue}>
-                              {item.PredictedQty}
-                            </span>
-                            <span className={styles.qtyUnit}>units</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className={styles.growthBadge}>
-                            <TrendingUp size={12} />
-                            {item.Growth}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-              </tbody>
-              <tfoot>
-                <tr className={styles.totalRow}>
-                  <td
-                    colSpan={activeTab === "actual" ? 2 : 3}
-                    className={styles.totalLabel}
-                  >
-                    <CheckCircle size={16} />
-                    GRAND TOTAL
-                  </td>
-                  <td className={styles.totalValue}>
-                    <span>{totalActual}</span>
-                    <span className={styles.totalUnit}>units</span>
-                  </td>
-                  {activeTab === "prediction" && (
-                    <>
-                      <td className={styles.totalValue}>
-                        <span>{totalPredicted}</span>
-                        <span className={styles.totalUnit}>units</span>
-                      </td>
-                      <td>
-                        <span className={styles.totalGrowth}>
-                          <TrendingUp size={14} />+{growthPercentage}%
-                        </span>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              </tfoot>
-            </table>
+          <div className={styles.statCard}>
+            <div
+              className={styles.statIcon}
+              style={{
+                background: "linear-gradient(135deg, #00b09b 0%, #96c93d 100%)",
+              }}
+            >
+              <Hash size={24} />
+            </div>
+            <div className={styles.statContent}>
+              <h3 className={styles.statValue}>{stockStats.totalQuantity}</h3>
+              <p className={styles.statLabel}>Total Quantity</p>
+              <div className={styles.statTrend}>
+                <TrendingUp size={16} />
+                <span>All items combined</span>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.statCard}>
+            <div
+              className={styles.statIcon}
+              style={{
+                background: "linear-gradient(135deg, #ff0844 0%, #ffb199 100%)",
+              }}
+            >
+              <AlertCircle size={24} />
+            </div>
+            <div className={styles.statContent}>
+              <h3 className={styles.statValue}>{stockStats.lowStockItems}</h3>
+              <p className={styles.statLabel}>Low Stock Items</p>
+              <span className={styles.warningBadge}>Need Attention</span>
+            </div>
+          </div>
+
+          <div className={styles.statCard}>
+            <div
+              className={styles.statIcon}
+              style={{
+                background: "linear-gradient(135deg, #f7971e 0%, #ffd200 100%)",
+              }}
+            >
+              <BarChart3 size={24} />
+            </div>
+            <div className={styles.statContent}>
+              <h3 className={styles.statValue}>{stockStats.outOfStock}</h3>
+              <p className={styles.statLabel}>Out of Stock</p>
+              <p className={styles.statNote}>Require restocking</p>
+            </div>
           </div>
         </div>
 
-        {/* Prediction Modal */}
-        {isModalOpen && (
-          <div className={styles.modalOverlay}>
-            <div className={styles.modal}>
-              <div className={styles.modalHeader}>
-                <div className={styles.modalTitle}>
-                  <TrendingUp size={24} />
-                  <div>
-                    <h2>Production Forecast</h2>
-                    <p className={styles.modalSubtitle}>
-                      Predictions for {formatDate(tomorrow)} • Based on 10%
-                      growth rate
-                    </p>
-                  </div>
-                </div>
-                <button
-                  className={styles.closeBtn}
-                  onClick={() => setIsModalOpen(false)}
-                >
-                  &times;
-                </button>
-              </div>
+        {/* Search and Filter */}
+        <div className={styles.controls}>
+          <div className={styles.searchBox}>
+            <Search className={styles.searchIcon} size={20} />
+            <input
+              type="text"
+              placeholder="Search items by name..."
+              className={styles.searchInput}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button
+                className={styles.clearSearch}
+                onClick={() => setSearchTerm("")}
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className={styles.filterTags}>
+            <span
+              className={`${styles.filterTag} ${styles.tagAll} ${
+                activeFilter === "all" ? styles.active : ""
+              }`}
+              onClick={() => setActiveFilter("all")}
+              style={{ cursor: "pointer" }}
+            >
+              All Items
+            </span>
+            <span
+              className={`${styles.filterTag} ${styles.tagLow} ${
+                activeFilter === "low" ? styles.active : ""
+              }`}
+              onClick={() => setActiveFilter("low")}
+              style={{ cursor: "pointer" }}
+            >
+              Low Stock
+            </span>
+            <span
+              className={`${styles.filterTag} ${styles.tagOut} ${
+                activeFilter === "out" ? styles.active : ""
+              }`}
+              onClick={() => setActiveFilter("out")}
+              style={{ cursor: "pointer" }}
+            >
+              Out of Stock
+            </span>
+            <span
+              className={`${styles.filterTag} ${styles.tagHigh} ${
+                activeFilter === "high" ? styles.active : ""
+              }`}
+              onClick={() => setActiveFilter("high")}
+              style={{ cursor: "pointer" }}
+            >
+              High Stock
+            </span>
+          </div>
+        </div>
 
-              <div className={styles.modalBody}>
-                <div className={styles.summaryCards}>
-                  <div className={styles.summaryCard}>
-                    <div className={styles.summaryIcon}>📊</div>
-                    <div>
-                      <div className={styles.summaryLabel}>Current Total</div>
-                      <div className={styles.summaryValue}>{totalActual}</div>
-                    </div>
-                  </div>
-                  <div className={styles.summaryCard}>
-                    <div className={styles.summaryIcon}>🚀</div>
-                    <div>
-                      <div className={styles.summaryLabel}>Predicted Total</div>
-                      <div className={styles.summaryValue}>
-                        {totalPredicted}
-                      </div>
-                    </div>
-                  </div>
-                  <div className={styles.summaryCard}>
-                    <div className={styles.summaryIcon}>📈</div>
-                    <div>
-                      <div className={styles.summaryLabel}>Expected Growth</div>
-                      <div className={styles.summaryValue}>
-                        +{growthPercentage}%
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={styles.predictionTable}>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th>Weight</th>
-                        <th>Current</th>
-                        <th>Predicted</th>
-                        <th>Increase</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {predictedItems.map((item, index) => (
-                        <tr key={index}>
-                          <td>
-                            <div className={styles.productCell}>
-                              <span className={styles.productIcon}>📦</span>
-                              {item.ProductType}
-                            </div>
-                          </td>
-                          <td>
-                            <span className={styles.weightTag}>
-                              {item.Weight}
-                            </span>
-                          </td>
-                          <td className={styles.currentCell}>
-                            {item.TotalQty}
-                          </td>
-                          <td className={styles.predictedCell}>
-                            <span className={styles.highlightValue}>
-                              {item.PredictedQty}
-                            </span>
-                          </td>
-                          <td>
-                            <span className={styles.increaseBadge}>
-                              <TrendingUp size={12} />
-                              {item.Growth}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              <div className={styles.modalFooter}>
-                <div className={styles.modalActions}>
-                  <button
-                    className={styles.secondaryBtn}
-                    onClick={() => setIsModalOpen(false)}
-                  >
-                    Close
-                  </button>
-                  <button className={styles.printBtn} onClick={handlePrint}>
-                    <Printer size={18} />
-                    Print Report
-                  </button>
-                  <button className={styles.pdfBtn} onClick={downloadPDF}>
-                    <Download size={18} />
-                    Download PDF
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* Loading State */}
+        {loading && (
+          <div className={styles.loadingContainer}>
+            <div className={styles.loadingSpinner}></div>
+            <p className={styles.loadingText}>Loading stock data...</p>
           </div>
         )}
-      </div>
 
-      {/* Print-specific footer */}
-      <div className={styles.printFooter}>
-        <div className={styles.printFooterContent}>
-          <div>Page 1 of 1</div>
-          <div>
-            Confidential - Production Department • Generated on{" "}
-            {new Date().toLocaleString()}
+        {/* Stock Items Grid */}
+        <div className={styles.section}>
+          <div className={styles.sectionHeader}>
+            <h2 className={styles.sectionTitle}>
+              Available Stock Items
+              <span className={styles.itemCount}>
+                {filteredStock.length} items
+              </span>
+            </h2>
+            <div className={styles.stockLegend}>
+              <div className={styles.legendItem}>
+                <span
+                  className={`${styles.legendDot} ${styles.highDot}`}
+                ></span>
+                High Stock
+              </div>
+              <div className={styles.legendItem}>
+                <span
+                  className={`${styles.legendDot} ${styles.mediumDot}`}
+                ></span>
+                Medium Stock
+              </div>
+              <div className={styles.legendItem}>
+                <span className={`${styles.legendDot} ${styles.lowDot}`}></span>
+                Low Stock
+              </div>
+              <div className={styles.legendItem}>
+                <span className={`${styles.legendDot} ${styles.outDot}`}></span>
+                Out of Stock
+              </div>
+            </div>
           </div>
-          <div>Prediction Report for {formatDate(tomorrow)}</div>
+
+          {filteredStock.length === 0 ? (
+            <div className={styles.emptyState}>
+              <Package size={64} className={styles.emptyIcon} />
+              <h3 className={styles.emptyTitle}>No stock items found</h3>
+              <p className={styles.emptyMessage}>
+                {searchTerm
+                  ? "Try a different search term"
+                  : "No stock data available"}
+              </p>
+            </div>
+          ) : (
+            <div className={styles.stockGrid}>
+              {filteredStock.map((item, index) => (
+                <div
+                  key={index}
+                  className={`${styles.stockCard} ${
+                    styles[getStockStatus(item.available_stock)]
+                  }`}
+                >
+                  <div className={styles.cardHeader}>
+                    <div className={styles.itemIcon}>
+                      {getStatusIcon(item.available_stock)}
+                    </div>
+                    <div className={styles.stockBadge}>
+                      <span className={styles.stockQuantity}>
+                        {item.available_stock}
+                      </span>
+                      <span className={styles.stockUnit}>units</span>
+                    </div>
+                  </div>
+
+                  <div className={styles.cardBody}>
+                    <h4 className={styles.itemName}>{item.item_name}</h4>
+                    <div className={styles.stockInfo}>
+                      <div className={styles.stockDetail}>
+                        <span className={styles.detailLabel}>
+                          Current Stock:
+                        </span>
+                        <span className={styles.detailValue}>
+                          {item.available_stock} units
+                        </span>
+                      </div>
+                      <div className={styles.stockDetail}>
+                        <span className={styles.detailLabel}>Status:</span>
+                        <span
+                          className={`${styles.statusBadge} ${
+                            styles[getStockStatus(item.available_stock)]
+                          }`}
+                        >
+                          {getStockStatus(item.available_stock).replace(
+                            "-",
+                            " ",
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={styles.cardFooter}>
+                    <div className={styles.stockIndicator}>
+                      <div className={styles.indicatorBar}>
+                        <div
+                          className={`${styles.indicatorFill} ${
+                            styles[getStockStatus(item.available_stock)]
+                          }`}
+                          style={{
+                            width: `${Math.min(
+                              item.available_stock * 2,
+                              100,
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
   );
 };
 
-export default HeadDailySale;
+export default Stock;

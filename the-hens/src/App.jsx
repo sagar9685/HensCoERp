@@ -25,6 +25,7 @@ import CustomerReport from "./component/Reports/CustomerReport";
 import CustomerLedger from "./component/Reports/CustomerLedger";
 import DemoInvoiceForm from "./component/DemoInvoiceForm";
 import StockMovementReport from "./component/user/StockMovement";
+import DailyProduction from "./component/ProductionDaily/DailyProduction";
 
 function App() {
   return (
@@ -147,6 +148,15 @@ function App() {
           element={
             <ProtectedRoute production={true}>
               <ProductionUnit />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/daily"
+          element={
+            <ProtectedRoute production={true}>
+              <DailyProduction />
             </ProtectedRoute>
           }
         />
