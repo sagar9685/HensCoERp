@@ -106,13 +106,6 @@ const UserNavbar = () => {
           {/* Right Section - User Info & Notifications */}
           <div className={styles.navbarRight}>
             {/* Add Stock Button */}
-            <button
-              className={styles.addStockBtn}
-              onClick={handleOpenStockModal}
-            >
-              <i className="mdi mdi-plus-circle"></i>
-              <span>Add Stock</span>
-            </button>
 
             {/* Notifications */}
             <div className={styles.notificationWrapper}>
