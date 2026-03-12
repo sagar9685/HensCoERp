@@ -85,6 +85,31 @@ export const fetchStockMovement = createAsyncThunk(
   },
 );
 
+export const fetchProductionCurrentStock = createAsyncThunk(
+  "currentStock/fetchAll",
+  async (_, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/stock/current`);
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response.data);
+    }
+  },
+);
+
+export const dispatchToHeadoffice = createAsyncThunk(
+  "currentStock/dispatch",
+  async (data, { rejectWithValue, dispatch }) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/stock/dispatch`, data);
+      dispatch(fetchProductionCurrentStock()); // Auto refresh
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response.data.message || "Dispatch failed");
+    }
+  },
+);
+
 const stockSlice = createSlice({
   name: "stock",
   initialState: {
@@ -92,9 +117,11 @@ const stockSlice = createSlice({
     loading: false,
     lastInwardNo: null,
     items: [],
+    currentStock: [],
     available: [],
     rejected: [],
     movementReport: [],
+    dispatchSuccess: false,
   },
   reducers: {
     openStockModal: (state) => {
@@ -102,6 +129,9 @@ const stockSlice = createSlice({
     },
     closeStockModal: (state) => {
       state.modalOpen = false;
+    },
+    resetDispatchStatus: (state) => {
+      state.dispatchSuccess = false;
     },
   },
   extraReducers: (builder) => {
@@ -167,10 +197,37 @@ const stockSlice = createSlice({
       })
       .addCase(fetchStockMovement.rejected, (state) => {
         state.loading = false;
+      })
+      .addCase(dispatchToHeadoffice.pending, (state) => {
+        state.loading = true;
+        state.dispatchSuccess = false;
+      })
+      .addCase(dispatchToHeadoffice.fulfilled, (state, action) => {
+        state.loading = false;
+        state.dispatchSuccess = true;
+        // Agar aap chahte hain ki dispatch ke baad modal band ho jaye
+        state.modalOpen = false;
+      })
+      .addCase(dispatchToHeadoffice.rejected, (state, action) => {
+        state.loading = false;
+        state.dispatchSuccess = false;
+        alert(action.payload); // Error message dikhane ke liye
+      })
+      .addCase(fetchProductionCurrentStock.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchProductionCurrentStock.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentStock = action.payload;
+      })
+      .addCase(fetchProductionCurrentStock.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
       });
   },
 });
 
-export const { openStockModal, closeStockModal } = stockSlice.actions;
+export const { openStockModal, closeStockModal, resetDispatchStatus } =
+  stockSlice.actions;
 
 export default stockSlice.reducer;

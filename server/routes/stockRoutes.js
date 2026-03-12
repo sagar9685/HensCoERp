@@ -4,6 +4,8 @@ const router = express.Router();
 const stockController = require("../controller/stockController");
 
 router.post("/add", stockController.addStock);
+router.post("/dispatch", stockController.dispatchStock);
+router.get("/current", stockController.getProductionCurrentStock);
 router.get("/", stockController.getStock);
 router.get("/avilable", stockController.getAvailableStock);
 router.post("/rejected-stock", stockController.rejectStock);

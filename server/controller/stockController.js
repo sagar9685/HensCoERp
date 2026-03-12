@@ -311,3 +311,103 @@ exports.getStockMovement = async (req, res) => {
     res.status(500).json({ message: "Error generating report" });
   }
 };
+
+exports.getProductionCurrentStock = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request().query(`
+      SELECT id, item_name, quantity, weight, updated_at
+      FROM ProductionCurrentStock
+      ORDER BY item_name ASC
+    `);
+
+    res.json(result.recordset);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching current stock" });
+  }
+};
+
+// 2. Dispatch to Headoffice (Good in Transit)
+exports.dispatchStock = async (req, res) => {
+  const { vehicle_no, driver_name, chalan_no, items } = req.body;
+
+  try {
+    const pool = await poolPromise;
+    const transaction = new sql.Transaction(pool);
+
+    await transaction.begin();
+
+    try {
+      const inwardNo = "DISP-" + Date.now();
+
+      for (let item of items) {
+        const { item_name, quantity } = item;
+
+        // Check Stock
+        const stockCheck = await transaction
+          .request()
+          .input("item_name", sql.VarChar, item_name)
+          .query(
+            "SELECT quantity FROM ProductionCurrentStock WHERE item_name=@item_name",
+          );
+
+        const currentQty = stockCheck.recordset[0]?.quantity || 0;
+
+        if (currentQty < quantity) {
+          throw new Error(`Insufficient stock for ${item_name}`);
+        }
+
+        // 1️⃣ Minus ProductionCurrentStock
+        await transaction
+          .request()
+          .input("item_name", sql.VarChar, item_name)
+          .input("qty", sql.Decimal(10, 2), quantity).query(`
+            UPDATE ProductionCurrentStock
+            SET quantity = quantity - @qty,
+                updated_at = GETDATE()
+            WHERE item_name = @item_name
+          `);
+
+        // 2️⃣ Insert into Stock
+        await transaction
+          .request()
+          .input("inward_no", sql.VarChar, inwardNo)
+          .input("item_name", sql.VarChar, item_name)
+          .input("quantity", sql.Decimal(10, 2), quantity)
+          .input("chalan_no", sql.VarChar, chalan_no)
+          .input("vehicle_no", sql.VarChar, vehicle_no)
+          .input("driver_name", sql.VarChar, driver_name).query(`
+            INSERT INTO Stock
+            (inward_no, item_name, quantity, chalan_no, vehicle_no, driver_name, status)
+            VALUES
+            (@inward_no, @item_name, @quantity, @chalan_no, @vehicle_no, @driver_name, 'TRANSIT')
+          `);
+
+        // 3️⃣ StockHistory OUT
+        await transaction
+          .request()
+          .input("item_name", sql.VarChar, item_name)
+          .input("qty", sql.Decimal(10, 2), quantity)
+          .input("ref_no", sql.VarChar, inwardNo).query(`
+            INSERT INTO StockHistory (item_name, quantity, type, ref_no, date)
+            VALUES (@item_name, @qty, 'OUT', @ref_no, GETDATE())
+          `);
+      }
+
+      await transaction.commit();
+
+      res.json({
+        message: "Dispatch successful",
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Dispatch failed",
+    });
+  }
+};

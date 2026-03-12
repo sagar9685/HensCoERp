@@ -1,11 +1,11 @@
-import HeadDailySale from "../component/ProductionDaily/HeadDailySale";
+import ProductionCurrentStock from "../component/ProductionDaily/ProductionCurrentStock";
 import ProductionHeader from "../component/ProductionDaily/ProductionHeader";
 
 function ProductionUnit() {
   return (
     <>
       <ProductionHeader />
-      <HeadDailySale />
+      <ProductionCurrentStock />
     </>
   );
 }

@@ -26,6 +26,8 @@ import CustomerLedger from "./component/Reports/CustomerLedger";
 import DemoInvoiceForm from "./component/DemoInvoiceForm";
 import StockMovementReport from "./component/user/StockMovement";
 import DailyProduction from "./component/ProductionDaily/DailyProduction";
+import DispatchStock from "./component/ProductionDaily/DispatchStock";
+import CurrentStockInventory from "./component/ProductionDaily/CurrentStockInventory";
 
 function App() {
   return (
@@ -157,6 +159,22 @@ function App() {
           element={
             <ProtectedRoute production={true}>
               <DailyProduction />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dispatch"
+          element={
+            <ProtectedRoute production={true}>
+              <DispatchStock />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/current"
+          element={
+            <ProtectedRoute production={true}>
+              <CurrentStockInventory />
             </ProtectedRoute>
           }
         />

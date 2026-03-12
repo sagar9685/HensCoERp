@@ -401,18 +401,22 @@ exports.updateOrderQuantity = async (req, res) => {
     const stockUpdateResult = await request
       .input("DiffQty", sql.Int, diffQty)
       .input("PType", sql.NVarChar, currentItem.ProductType.trim())
-      .input("PWeight", sql.NVarChar, (currentItem.Weight || "").trim()).query(`
-        UPDATE Stock 
-        SET Quantity = Quantity + @DiffQty 
-        WHERE ID = (
-            SELECT TOP 1 ID 
-            FROM Stock 
-            WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(@PType) 
-            AND LOWER(LTRIM(RTRIM(weight))) = LOWER(@PWeight)
-            ORDER BY created_at DESC
-        );
-        SELECT @@ROWCOUNT AS RowsAffected;
-      `);
+      .input("PWeight", sql.NVarChar, currentItem.Weight).query(`
+    UPDATE Stock 
+    SET Quantity = Quantity + @DiffQty 
+    WHERE ID = (
+        SELECT TOP 1 ID 
+        FROM Stock 
+        WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(@PType)
+        AND (
+            @PWeight IS NULL 
+            OR weight IS NULL 
+            OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
+        )
+        ORDER BY created_at DESC
+    );
+    SELECT @@ROWCOUNT AS RowsAffected;
+`);
 
     if (stockUpdateResult.recordset[0].RowsAffected === 0) {
       throw new Error(
