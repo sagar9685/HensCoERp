@@ -2,12 +2,7 @@ import React from "react";
 import { Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-const ProtectedRoute = ({
-  children,
-  adminOnly = false,
-  production = false,
-  userOnly = false, // Naya Prop
-}) => {
+const ProtectedRoute = ({ children, adminOnly, productionOnly, userOnly }) => {
   const { data } = useSelector((state) => state.auth);
 
   if (!data) {
@@ -16,23 +11,22 @@ const ProtectedRoute = ({
 
   const role = data.role;
 
-  // 1. Production user ko Customer/User pages se block karna
-  if (userOnly && role === "production") {
-    return <Navigate to="/head" replace />;
-  }
-
-  // 2. Admin only routes
+  // Admin pages
   if (adminOnly && role !== "admin") {
-    return role === "production" ? (
-      <Navigate to="/head" replace />
-    ) : (
-      <Navigate to="/user" replace />
-    );
+    if (role === "production") return <Navigate to="/head" replace />;
+    if (role === "customer") return <Navigate to="/user" replace />;
   }
 
-  // 3. Production routes (Admin can also access)
-  if (production && role !== "production" && role !== "admin") {
-    return <Navigate to="/user" replace />;
+  // Production pages
+  if (productionOnly && role !== "production") {
+    if (role === "admin") return <Navigate to="/dashboard" replace />;
+    if (role === "customer") return <Navigate to="/user" replace />;
+  }
+
+  // Customer pages
+  if (userOnly && role !== "customer") {
+    if (role === "admin") return <Navigate to="/dashboard" replace />;
+    if (role === "production") return <Navigate to="/head" replace />;
   }
 
   return children;

@@ -148,7 +148,7 @@ function App() {
         <Route
           path="/head"
           element={
-            <ProtectedRoute production={true}>
+            <ProtectedRoute productionOnly={true}>
               <ProductionUnit />
             </ProtectedRoute>
           }
@@ -157,7 +157,7 @@ function App() {
         <Route
           path="/daily"
           element={
-            <ProtectedRoute production={true}>
+            <ProtectedRoute productionOnly={true}>
               <DailyProduction />
             </ProtectedRoute>
           }
@@ -165,7 +165,7 @@ function App() {
         <Route
           path="/dispatch"
           element={
-            <ProtectedRoute production={true}>
+            <ProtectedRoute productionOnly={true}>
               <DispatchStock />
             </ProtectedRoute>
           }
@@ -173,7 +173,7 @@ function App() {
         <Route
           path="/current"
           element={
-            <ProtectedRoute production={true}>
+            <ProtectedRoute productionOnly={true}>
               <CurrentStockInventory />
             </ProtectedRoute>
           }
