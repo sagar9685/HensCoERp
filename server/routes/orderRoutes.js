@@ -9,4 +9,9 @@ router.post("/cancel/:id", orderController.cancelOrder);
 
 router.put("/update-quantity", orderController.updateOrderQuantity);
 
+router.post(
+  "/cancel-before-assign/:orderId",
+  orderController.cancelOrderBeforeAssign,
+);
+
 module.exports = router;

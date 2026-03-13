@@ -69,6 +69,28 @@ export const cancelAssignedOrder = createAsyncThunk(
   },
 );
 
+export const cancelOrderBeforeAssign = createAsyncThunk(
+  "orders/cancelBeforeAssign",
+  async ({ orderId, reason }, { rejectWithValue }) => {
+    try {
+      const authData = JSON.parse(localStorage.getItem("authData"));
+      const username = authData?.name;
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/orders/cancel-before-assign/${orderId}`,
+        {
+          reason: reason || "Cancelled by admin",
+          username,
+        },
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error?.response?.data?.message || "Cancel failed");
+    }
+  },
+);
+
 export const fetchAssignOrder = createAsyncThunk(
   "fetchAssignOrder",
   async () => {
@@ -277,6 +299,17 @@ const assignedOrderSlice = createSlice({
           const now = new Date().toISOString();
           state.data[index].ActualDeliveryDate = now;
           state.data[index].PaymentReceivedDate = now;
+        }
+      })
+      .addCase(cancelOrderBeforeAssign.fulfilled, (state, action) => {
+        const { orderId, reason } = action.meta.arg;
+
+        const index = state.data.findIndex((o) => o.OrderID == orderId);
+
+        if (index !== -1) {
+          state.data[index].OrderStatus = "Cancel";
+          state.data[index].DeliveryStatus = "Cancel";
+          state.data[index].Remark = reason;
         }
       });
   },

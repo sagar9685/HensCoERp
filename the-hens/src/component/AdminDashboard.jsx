@@ -25,6 +25,7 @@ import ChalanGenerator from "./Chalan";
 import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import * as XLSX from "xlsx";
+import EditOrderModal from "./AdminOrderModal/EditOrderModal";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -52,6 +53,9 @@ const AdminDashboard = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
   const [verificationRemarks, setVerificationRemarks] = useState("");
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [isFilterLoading, setIsFilterLoading] = useState(false);
 
@@ -152,6 +156,20 @@ const AdminDashboard = () => {
         return amount > 0;
       })
       .join(" | ");
+  };
+
+  const handleEditOrder = (order) => {
+    console.log("Opening modal", order);
+
+    const status = (order.OrderStatus || "").toLowerCase();
+
+    if (status === "complete" || status === "completed") {
+      toast.error("Completed order cannot be edited");
+      return;
+    }
+
+    setSelectedOrder(order);
+    setIsEditModalOpen(true);
   };
 
   useEffect(() => {
@@ -1065,7 +1083,10 @@ const AdminDashboard = () => {
                         <button
                           className={styles.actionBtn}
                           title="Edit Product"
-                          disabled={isFilterLoading}
+                          onClick={() => {
+                            console.log("Edit clicked", row);
+                            handleEditOrder(row);
+                          }}
                         >
                           <FaEdit />
                         </button>
@@ -1197,6 +1218,13 @@ const AdminDashboard = () => {
         <ChalanGenerator
           orderData={selectedOrderForChalan}
           onClose={() => setIsChalanModalOpen(false)}
+        />
+      )}
+
+      {isEditModalOpen && (
+        <EditOrderModal
+          order={selectedOrder}
+          onClose={() => setIsEditModalOpen(false)}
         />
       )}
     </div>
