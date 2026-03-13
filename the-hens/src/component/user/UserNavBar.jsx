@@ -38,12 +38,12 @@ const UserNavbar = () => {
 
   const handleRead = async (id) => {
     try {
-      // 1. Database se delete karein
+      // 1️⃣ Backend se delete
       await fetch(`http://localhost:5005/api/notifications/${id}`, {
         method: "DELETE",
       });
 
-      // 2. Redux state se remove karein (UI se turant gayab hoga)
+      // 2️⃣ Redux se remove
       dispatch(removeNotification(id));
 
       toast.success("Marked as read", { autoClose: 500 });
@@ -153,11 +153,28 @@ const UserNavbar = () => {
                   {notifications.length}
                 </span>
               </button>
+              {/* <div className={styles.notificationList}>
+                {notifications.map((n) => (
+                  <div
+                    key={n.NotificationID}
+                    className={styles.notificationItem}
+                  >
+                    <div className={styles.notificationContent}>
+                      <p>{n.Message}</p>
+                      <span className={styles.notificationTime}>
+                        {new Date(n.CreatedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div> */}
               <div className={styles.notificationList}>
                 {notifications.map((n) => (
                   <div
                     key={n.NotificationID}
                     className={styles.notificationItem}
+                    onClick={() => handleRead(n.NotificationID)} // 👈 click karte hi mark as read
+                    style={{ cursor: "pointer" }}
                   >
                     <div className={styles.notificationContent}>
                       <p>{n.Message}</p>

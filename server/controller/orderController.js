@@ -437,20 +437,25 @@ exports.cancelOrderBeforeAssign = async (req, res) => {
         `);
     }
 
-    const result = await new sql.Request(transaction)
-      .input("UserRole", sql.NVarChar, "admin")
-      .input("Message", sql.NVarChar, `Order ${orderId} cancelled`)
-      .input("OrderID", sql.Int, orderId).query(`
+    const notifMsg = `Order #${orderId} quantity updated to ${newQuantity} by ${changedBy || "Admin"}`;
+
+    const notifResult = await request
+      .input("UserRoleNotif", sql.NVarChar, "Operator") // Sabhi operators ko dikhane ke liye
+      .input("MsgNotif", sql.NVarChar, notifMsg)
+      .input("OIDNotif", sql.Int, orderId).query(`
     INSERT INTO Notifications (UserRole, Message, OrderID)
     OUTPUT INSERTED.*
-    VALUES (@UserRole, @Message, @OrderID)
-`);
+    VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif)
+  `);
 
-    // Emit to frontend
-    const io = req.app.get("io");
-    io.emit("newNotification", result.recordset[0]);
-
+    // Transaction commit hone ke baad hi emit karein
     await transaction.commit();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("newNotification", notifResult.recordset[0]);
+      console.log("Socket Emitted:", notifResult.recordset[0]); // Debugging ke liye
+    }
 
     res.json({
       message: "Order cancelled successfully",
