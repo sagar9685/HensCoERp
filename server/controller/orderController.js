@@ -318,6 +318,15 @@ exports.cancelOrder = async (req, res) => {
           SET Quantity = Quantity + @qty
           WHERE ID = @id
         `);
+
+      await transaction
+        .request()
+        .input("UserRole", sql.NVarChar, "admin")
+        .input("Message", sql.NVarChar, `Order ${orderId} cancelled`)
+        .input("OrderID", sql.Int, orderId).query(`
+INSERT INTO Notifications (UserRole, Message, OrderID)
+VALUES (@UserRole, @Message, @OrderID)
+`);
     }
 
     await transaction.commit();
@@ -332,145 +341,6 @@ exports.cancelOrder = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
-
-// exports.updateOrderQuantity = async (req, res) => {
-//   const { orderId, itemId, newQuantity, changedBy, reason } = req.body;
-
-//   const pool = await poolPromise;
-//   const transaction = new sql.Transaction(pool);
-
-//   try {
-//     await transaction.begin();
-//     const request = new sql.Request(transaction);
-
-//     // 1️⃣ CHECK ORDER STATUS
-//     const statusCheck = await request.input("OID", sql.Int, orderId).query(`
-//         SELECT DeliveryStatus
-//         FROM AssignedOrders
-//         WHERE OrderID = @OID
-//       `);
-
-//     if (
-//       statusCheck.recordset.length > 0 &&
-//       statusCheck.recordset[0].DeliveryStatus === "Completed"
-//     ) {
-//       throw new Error("Completed order cannot be changed!");
-//     }
-
-//     // 2️⃣ GET CURRENT ORDER ITEM
-//     const itemResult = await request.input("ItemID", sql.Int, itemId).query(`
-//         SELECT Quantity, ProductType, Rate, Weight
-//         FROM OrderItems
-//         WHERE ItemID = @ItemID
-//       `);
-
-//     if (itemResult.recordset.length === 0) {
-//       throw new Error("Item not found in OrderItems");
-//     }
-
-//     const currentItem = itemResult.recordset[0];
-
-//     const oldQty = currentItem.Quantity;
-//     const diffQty = oldQty - newQuantity;
-
-//     const productType = (currentItem.ProductType || "").trim();
-//     const weight = (currentItem.Weight || "").trim();
-
-//     // 3️⃣ CHECK STOCK (only if increasing quantity)
-//     if (diffQty < 0) {
-//       const absDiff = Math.abs(diffQty);
-
-//       const stockCheck = await request
-//         .input("PTypeCheck", sql.NVarChar, productType)
-//         .input("PWeightCheck", sql.NVarChar, weight).query(`
-//           SELECT SUM(quantity) AS AvailableStock
-//           FROM Stock
-//           WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PTypeCheck)))
-//           AND (
-//               @PWeightCheck IS NULL
-//               OR weight IS NULL
-//               OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeightCheck)))
-//           )
-//         `);
-
-//       const availableStock = stockCheck.recordset[0].AvailableStock || 0;
-
-//       if (availableStock < absDiff) {
-//         throw new Error("Insufficient stock! Available: " + availableStock);
-//       }
-//     }
-
-//     // 4️⃣ UPDATE STOCK
-//     const stockUpdate = await request
-//       .input("DiffQty", sql.Int, diffQty)
-//       .input("PType", sql.NVarChar, productType)
-//       .input("PWeight", sql.NVarChar, weight).query(`
-//         UPDATE Stock
-//         SET Quantity = Quantity + @DiffQty
-//         WHERE ID = (
-//             SELECT TOP 1 ID
-//             FROM Stock
-//             WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PType)))
-//             AND (
-//                 @PWeight IS NULL
-//                 OR weight IS NULL
-//                 OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
-//             )
-//             ORDER BY created_at DESC
-//         );
-
-//         SELECT @@ROWCOUNT AS RowsAffected;
-//       `);
-
-//     if (stockUpdate.recordset[0].RowsAffected === 0) {
-//       throw new Error(
-//         "Stock record not found for this product type and weight.",
-//       );
-//     }
-
-//     // 5️⃣ UPDATE ORDER ITEM
-//     const newTotal = newQuantity * currentItem.Rate;
-
-//     await request
-//       .input("NewQty", sql.Int, newQuantity)
-//       .input("NewTotal", sql.Decimal(10, 2), newTotal)
-//       .input("ITM_ID", sql.Int, itemId).query(`
-//         UPDATE OrderItems
-//         SET Quantity = @NewQty,
-//             Total = @NewTotal
-//         WHERE ItemID = @ITM_ID
-//       `);
-
-//     // 6️⃣ SAVE LOG
-//     await request
-//       .input("OrderIDLog", sql.Int, orderId)
-//       .input("ItemIDLog", sql.Int, itemId)
-//       .input("OldQtyLog", sql.Int, oldQty)
-//       .input("NewQtyLog", sql.Int, newQuantity)
-//       .input("ChangedByLog", sql.NVarChar, changedBy || "admin")
-//       .input("ReasonLog", sql.NVarChar, reason || "Admin Edit").query(`
-//         INSERT INTO OrderEditLogs
-//         (OrderID, ItemID, OldQuantity, NewQuantity, ChangedBy, ChangeReason, ChangedAt)
-//         VALUES
-//         (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @ChangedByLog, @ReasonLog, GETDATE())
-//       `);
-
-//     await transaction.commit();
-
-//     res.status(200).json({
-//       message: "Order and stock updated successfully!",
-//       updatedQuantity: newQuantity,
-//     });
-//   } catch (error) {
-//     await transaction.rollback();
-
-//     console.error("Update Order Error:", error.message);
-
-//     res.status(500).json({
-//       message: error.message,
-//     });
-//   }
-// };
 
 exports.cancelOrderBeforeAssign = async (req, res) => {
   const orderId = Number(req.params.orderId);
@@ -566,6 +436,19 @@ exports.cancelOrderBeforeAssign = async (req, res) => {
           WHERE id=@id
         `);
     }
+
+    const result = await new sql.Request(transaction)
+      .input("UserRole", sql.NVarChar, "admin")
+      .input("Message", sql.NVarChar, `Order ${orderId} cancelled`)
+      .input("OrderID", sql.Int, orderId).query(`
+    INSERT INTO Notifications (UserRole, Message, OrderID)
+    OUTPUT INSERTED.*
+    VALUES (@UserRole, @Message, @OrderID)
+`);
+
+    // Emit to frontend
+    const io = req.app.get("io");
+    io.emit("newNotification", result.recordset[0]);
 
     await transaction.commit();
 
@@ -791,7 +674,26 @@ exports.updateOrderQuantity = async (req, res) => {
         (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @OldRateLog, @NewRateLog, @ChangedByLog, @ReasonLog, GETDATE())
       `);
 
+    // Step 6 ke baad Notifications wala part aise update karein:
+    const notifMsg = `Order #${orderId} quantity updated to ${newQuantity} by ${changedBy || "Admin"}`;
+
+    const notifResult = await request
+      .input("UserRoleNotif", sql.NVarChar, "Operator") // Sabhi operators ko dikhane ke liye
+      .input("MsgNotif", sql.NVarChar, notifMsg)
+      .input("OIDNotif", sql.Int, orderId).query(`
+    INSERT INTO Notifications (UserRole, Message, OrderID)
+    OUTPUT INSERTED.*
+    VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif)
+  `);
+
+    // Transaction commit hone ke baad hi emit karein
     await transaction.commit();
+
+    const io = req.app.get("io");
+    if (io) {
+      io.emit("newNotification", notifResult.recordset[0]);
+      console.log("Socket Emitted:", notifResult.recordset[0]); // Debugging ke liye
+    }
 
     res.status(200).json({
       message: "Order updated successfully",

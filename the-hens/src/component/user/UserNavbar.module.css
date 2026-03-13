@@ -671,3 +671,84 @@
     gap: 10px;
   }
 }
+/* Notification Container */
+.notificationList {
+  position: absolute;
+  top: 60px;
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  z-index: 1000;
+  border: 1px solid #eee;
+}
+
+/* Individual Item */
+.notificationItem {
+  padding: 15px;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.3s;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.notificationItem:hover {
+  background: #f8f9fa;
+}
+
+.notificationItem p {
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.notificationTime {
+  font-size: 11px;
+  color: #888;
+  display: flex;
+  align-items: center;
+}
+.notificationItem {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f1f1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.notificationItem:hover {
+  background-color: #f8faff; /* Light blue highlight */
+  transform: scale(1.01);
+}
+
+.notificationFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.markReadAction {
+  font-size: 10px;
+  color: #007bff;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.notificationItem:hover .markReadAction {
+  opacity: 1; /* Sirf hover par dikhega */
+}
+
+.emptyNotification {
+  padding: 20px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}

@@ -1,39 +1,89 @@
-// components/UserNavbar/UserNavbar.jsx
 import { FaUserCircle, FaBars, FaSearch, FaBell } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
-import { useState, useEffect } from "react"; // useState import करें
+import { useState, useEffect } from "react";
 import { logout } from "../../features/authSlice";
 import { useNavigate } from "react-router";
 import { openStockModal } from "../../features/stockSlice";
 import { toggleSidebar } from "../../features/uiSlice";
 import AddStockModal from "./AddStockModal";
 import styles from "./UserNavbar.module.css";
+import { io } from "socket.io-client";
+import {
+  fetchNotifications,
+  addNotification,
+  removeNotification,
+} from "../../features/notificationSlice";
+import { toast } from "react-toastify";
 
 const UserNavbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Temporary useState solutions
   const [modalOpen, setModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Try to get from Redux
   const reduxModalOpen = useSelector((state) => state.stock?.modalOpen);
   const reduxSidebarOpen = useSelector((state) => state?.ui?.sidebarOpen);
+  const notifications = useSelector((state) => state.notifications.list);
 
-  // Sync with Redux when available
+  // Sync with Redux
   useEffect(() => {
-    if (reduxModalOpen !== undefined) {
-      setModalOpen(reduxModalOpen);
-    }
-    if (reduxSidebarOpen !== undefined) {
-      setSidebarOpen(reduxSidebarOpen);
-    }
+    if (reduxModalOpen !== undefined) setModalOpen(reduxModalOpen);
+    if (reduxSidebarOpen !== undefined) setSidebarOpen(reduxSidebarOpen);
   }, [reduxModalOpen, reduxSidebarOpen]);
 
-  const authData = JSON.parse(localStorage.getItem("authData"));
-  const user = authData?.name;
-  console.log(user, "mahesh sir");
+  const authData = JSON.parse(localStorage.getItem("authData")) || {};
+  const user = authData?.user || { name: "User", role: "Operator" };
+  const userRole = authData?.role || authData?.user?.role; // Check karein aapka structure kya hai
+
+  const handleRead = async (id) => {
+    try {
+      // 1. Database se delete karein
+      await fetch(`http://localhost:5005/api/notifications/${id}`, {
+        method: "DELETE",
+      });
+
+      // 2. Redux state se remove karein (UI se turant gayab hoga)
+      dispatch(removeNotification(id));
+
+      toast.success("Marked as read", { autoClose: 500 });
+    } catch (err) {
+      toast.error("Failed to clear notification");
+    }
+  };
+
+  useEffect(() => {
+    if (userRole) {
+      dispatch(fetchNotifications(userRole));
+    }
+  }, [dispatch, userRole]);
+
+  // Initial fetch notifications
+  useEffect(() => {
+    dispatch(fetchNotifications(user.role));
+  }, [dispatch, user.role]);
+
+  // Socket.io for realtime notifications
+  useEffect(() => {
+    const socket = io("http://localhost:5005", { transports: ["websocket"] });
+
+    socket.on("newNotification", (notification) => {
+      dispatch(addNotification(notification));
+
+      // Professional Toast Alert
+      toast.info(notification.Message, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        icon: "🔔",
+      });
+    });
+
+    return () => socket.disconnect();
+  }, [dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -43,40 +93,26 @@ const UserNavbar = () => {
   const handleToggleSidebar = () => {
     const newState = !sidebarOpen;
     setSidebarOpen(newState);
-
-    // Also dispatch to Redux if available
-    try {
-      dispatch(toggleSidebar());
-    } catch (error) {
-      console.log("Redux not available, using local state");
-    }
+    dispatch(toggleSidebar());
   };
 
   const handleOpenStockModal = () => {
     setModalOpen(true);
-
-    // Also dispatch to Redux if available
-    try {
-      dispatch(openStockModal());
-    } catch (error) {
-      console.log("Redux not available, using local state");
-    }
+    dispatch(openStockModal());
   };
 
   return (
     <>
       <nav className={styles.navbar}>
         <div className={styles.navbarContainer}>
-          {/* Left Section - Logo & Sidebar Toggle */}
+          {/* Left */}
           <div className={styles.navbarLeft}>
             <button
               className={styles.sidebarToggle}
               onClick={handleToggleSidebar}
-              title={sidebarOpen ? "Hide Sidebar" : "Show Sidebar"}
             >
               <FaBars />
             </button>
-
             <div className={styles.brand}>
               <div className={styles.logo}>
                 <i className="mdi mdi-package-variant"></i>
@@ -88,7 +124,7 @@ const UserNavbar = () => {
             </div>
           </div>
 
-          {/* Center Section - Search & Quick Actions */}
+          {/* Center */}
           <div className={styles.navbarCenter}>
             <div className={styles.searchContainer}>
               <FaSearch className={styles.searchIcon} />
@@ -97,113 +133,68 @@ const UserNavbar = () => {
                 className={styles.searchInput}
                 placeholder="Search products, orders, stocks..."
               />
-              <button className={styles.searchButton}>
-                <i className="mdi mdi-filter"></i>
-              </button>
             </div>
           </div>
 
-          {/* Right Section - User Info & Notifications */}
+          {/* Right */}
           <div className={styles.navbarRight}>
-            {/* Add Stock Button */}
+            <button
+              className={styles.addStockBtn}
+              onClick={handleOpenStockModal}
+            >
+              <i className="mdi mdi-plus-circle"></i>
+              <span>Add Stock</span>
+            </button>
 
-            {/* Notifications */}
             <div className={styles.notificationWrapper}>
               <button className={styles.notificationBtn}>
                 <FaBell />
-                <span className={styles.notificationBadge}>3</span>
+                <span className={styles.notificationBadge}>
+                  {notifications.length}
+                </span>
               </button>
-              <div className={styles.notificationDropdown}>
-                <div className={styles.notificationHeader}>
-                  <h4>Notifications</h4>
-                  <span className={styles.notificationCount}>3 New</span>
-                </div>
-                <div className={styles.notificationList}>
-                  <div className={styles.notificationItem}>
-                    <div className={styles.notificationIcon}>
-                      <i className="mdi mdi-package"></i>
-                    </div>
+              <div className={styles.notificationList}>
+                {notifications.map((n) => (
+                  <div
+                    key={n.NotificationID}
+                    className={styles.notificationItem}
+                  >
                     <div className={styles.notificationContent}>
-                      <p>Low stock alert for Product A</p>
+                      <p>{n.Message}</p>
                       <span className={styles.notificationTime}>
-                        10 mins ago
+                        {new Date(n.CreatedAt).toLocaleString()}
                       </span>
                     </div>
                   </div>
-                  <div className={styles.notificationItem}>
-                    <div className={styles.notificationIcon}>
-                      <i className="mdi mdi-cash"></i>
-                    </div>
-                    <div className={styles.notificationContent}>
-                      <p>New order received #ORD-2024-001</p>
-                      <span className={styles.notificationTime}>
-                        1 hour ago
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <button className={styles.viewAllBtn}>
-                  View All Notifications
-                </button>
+                ))}
               </div>
             </div>
 
             {/* User Profile */}
             <div className={styles.userProfile}>
               <div className={styles.profileAvatar}>
-                {user?.avatar ? (
+                {user.avatar ? (
                   <img src={user.avatar} alt={user.name} />
                 ) : (
                   <FaUserCircle />
                 )}
               </div>
               <div className={styles.profileInfo}>
-                <h4>{user || "User"}</h4>
-                <p>{user?.role || "Operator"}</p>
+                <h4>{user.name}</h4>
+                <p>{user.role}</p>
               </div>
 
-              {/* User Dropdown Menu */}
               <div className={styles.profileDropdown}>
                 <button className={styles.dropdownToggle}>
                   <i className="mdi mdi-chevron-down"></i>
                 </button>
-
                 <div className={styles.dropdownMenu}>
-                  <div className={styles.dropdownHeader}>
-                    <div className={styles.headerAvatar}>
-                      <FaUserCircle />
-                    </div>
-                    <div>
-                      <h4>{user?.name || "User"}</h4>
-                      <p>{user?.email || "user@example.com"}</p>
-                    </div>
-                  </div>
-
-                  <div className={styles.dropdownDivider}></div>
-
-                  <a href="#" className={styles.dropdownItem}>
-                    <i className="mdi mdi-account"></i>
-                    <span>My Profile</span>
-                  </a>
-
-                  <a href="#" className={styles.dropdownItem}>
-                    <i className="mdi mdi-cog"></i>
-                    <span>Settings</span>
-                  </a>
-
-                  <a href="#" className={styles.dropdownItem}>
-                    <i className="mdi mdi-help-circle"></i>
-                    <span>Help & Support</span>
-                  </a>
-
-                  <div className={styles.dropdownDivider}></div>
-
                   <button
-                    className={`${styles.dropdownItem} ${styles.logoutItem}`}
                     onClick={handleLogout}
+                    className={`${styles.dropdownItem} ${styles.logoutItem}`}
                   >
                     <i className="mdi mdi-logout"></i>
-                    <span>Logout</span>
+                    Logout
                   </button>
                 </div>
               </div>
@@ -212,7 +203,6 @@ const UserNavbar = () => {
         </div>
       </nav>
 
-      {/* Stock Modal */}
       {modalOpen && <AddStockModal onClose={() => setModalOpen(false)} />}
     </>
   );

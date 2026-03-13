@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const compression = require("compression");
+const http = require("http");
+const { Server } = require("socket.io");
 
 const customerRoutes = require("./routes/customerRoutes");
 const orderRoutes = require("./routes/orderRoutes");
@@ -21,9 +23,21 @@ const analyticsRoutes = require("./routes/analyticRoutes");
 const productionRoutes = require("./routes/productionRoutes");
 const demoInvoice = require("./routes/demoInvoiceRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 dotenv.config();
 const app = express();
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+  },
+});
+
+// Make io accessible in controllers
+app.set("io", io);
 
 /* 🔓 Allow ALL origins */
 app.use(cors());
@@ -53,6 +67,18 @@ app.use("/api/customer-analysis", customerAnalysisRoutes);
 app.use("/api/production", productionRoutes);
 
 app.use("/api", aiRoutes);
+app.use("/api", notificationRoutes);
 
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
+/* Server listen */
 const PORT = process.env.PORT || 5005;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

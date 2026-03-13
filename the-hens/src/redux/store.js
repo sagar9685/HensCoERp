@@ -21,6 +21,7 @@ import aiReducer from "../features/aiSlice";
 import headDailySaleReducer from "../features/headDailySaleSlice";
 import demoInvoiceReducer from "../features/demoInvoiceSlice";
 import productionReducer from "../features/productionSlice";
+import notificationReducer from "../features/notificationSlice";
 const store = configureStore({
   reducer: {
     customer: customerReducer,
@@ -43,6 +44,7 @@ const store = configureStore({
     headDailySale: headDailySaleReducer,
     demoInvoice: demoInvoiceReducer,
     production: productionReducer,
+    notifications: notificationReducer,
   },
 });
 
