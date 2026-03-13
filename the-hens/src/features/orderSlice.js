@@ -8,6 +8,7 @@ const initialState = {
   data: [],
   record: [],
   takenByList: [],
+  itemAddLoading: false,
   error: null,
 };
 
@@ -69,6 +70,21 @@ export const fetchOrderTakenBy = createAsyncThunk(
       return thunkAPI.rejectWithValue(
         err.response?.data || "Failed to load names",
       );
+    }
+  },
+);
+
+export const addItemToOrder = createAsyncThunk(
+  "orders/addItem",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/orders/add-item`, data);
+
+      return res.data;
+    } catch (err) {
+      console.log("API ERROR", err.response);
+
+      return rejectWithValue(err.response?.data || "Item add failed");
     }
   },
 );
@@ -145,6 +161,18 @@ export const orderSlice = createSlice({
 
         return order;
       });
+    });
+    builder.addCase(addItemToOrder.pending, (state) => {
+      state.itemAddLoading = true;
+    });
+
+    builder.addCase(addItemToOrder.fulfilled, (state, action) => {
+      state.itemAddLoading = false;
+    });
+
+    builder.addCase(addItemToOrder.rejected, (state, action) => {
+      state.itemAddLoading = false;
+      state.error = action.payload;
     });
   },
 });

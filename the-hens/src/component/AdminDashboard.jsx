@@ -159,12 +159,12 @@ const AdminDashboard = () => {
   };
 
   const handleEditOrder = (order) => {
-    console.log("Opening modal", order);
-
     const status = (order.OrderStatus || "").toLowerCase();
 
-    if (status === "complete" || status === "completed") {
-      toast.error("Completed order cannot be edited");
+    const blockedStatus = ["complete", "completed", "cancel", "cancelled"];
+
+    if (blockedStatus.includes(status)) {
+      toast.error(`Order is ${status}. Editing not allowed.`);
       return;
     }
 

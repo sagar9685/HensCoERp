@@ -333,233 +333,141 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
-exports.updateOrderQuantity = async (req, res) => {
-  const { orderId, itemId, newQuantity, changedBy, reason } = req.body;
-
-  const pool = await poolPromise;
-  const transaction = new sql.Transaction(pool);
-
-  try {
-    await transaction.begin();
-    const request = new sql.Request(transaction);
-
-    // 1️⃣ CHECK ORDER STATUS
-    const statusCheck = await request.input("OID", sql.Int, orderId).query(`
-        SELECT DeliveryStatus
-        FROM AssignedOrders
-        WHERE OrderID = @OID
-      `);
-
-    if (
-      statusCheck.recordset.length > 0 &&
-      statusCheck.recordset[0].DeliveryStatus === "Completed"
-    ) {
-      throw new Error("Completed order cannot be changed!");
-    }
-
-    // 2️⃣ GET CURRENT ORDER ITEM
-    const itemResult = await request.input("ItemID", sql.Int, itemId).query(`
-        SELECT Quantity, ProductType, Rate, Weight
-        FROM OrderItems
-        WHERE ItemID = @ItemID
-      `);
-
-    if (itemResult.recordset.length === 0) {
-      throw new Error("Item not found in OrderItems");
-    }
-
-    const currentItem = itemResult.recordset[0];
-
-    const oldQty = currentItem.Quantity;
-    const diffQty = oldQty - newQuantity;
-
-    const productType = (currentItem.ProductType || "").trim();
-    const weight = (currentItem.Weight || "").trim();
-
-    // 3️⃣ CHECK STOCK (only if increasing quantity)
-    if (diffQty < 0) {
-      const absDiff = Math.abs(diffQty);
-
-      const stockCheck = await request
-        .input("PTypeCheck", sql.NVarChar, productType)
-        .input("PWeightCheck", sql.NVarChar, weight).query(`
-          SELECT SUM(quantity) AS AvailableStock
-          FROM Stock
-          WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PTypeCheck)))
-          AND (
-              @PWeightCheck IS NULL
-              OR weight IS NULL
-              OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeightCheck)))
-          )
-        `);
-
-      const availableStock = stockCheck.recordset[0].AvailableStock || 0;
-
-      if (availableStock < absDiff) {
-        throw new Error("Insufficient stock! Available: " + availableStock);
-      }
-    }
-
-    // 4️⃣ UPDATE STOCK
-    const stockUpdate = await request
-      .input("DiffQty", sql.Int, diffQty)
-      .input("PType", sql.NVarChar, productType)
-      .input("PWeight", sql.NVarChar, weight).query(`
-        UPDATE Stock
-        SET Quantity = Quantity + @DiffQty
-        WHERE ID = (
-            SELECT TOP 1 ID
-            FROM Stock
-            WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PType)))
-            AND (
-                @PWeight IS NULL
-                OR weight IS NULL
-                OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
-            )
-            ORDER BY created_at DESC
-        );
-
-        SELECT @@ROWCOUNT AS RowsAffected;
-      `);
-
-    if (stockUpdate.recordset[0].RowsAffected === 0) {
-      throw new Error(
-        "Stock record not found for this product type and weight.",
-      );
-    }
-
-    // 5️⃣ UPDATE ORDER ITEM
-    const newTotal = newQuantity * currentItem.Rate;
-
-    await request
-      .input("NewQty", sql.Int, newQuantity)
-      .input("NewTotal", sql.Decimal(10, 2), newTotal)
-      .input("ITM_ID", sql.Int, itemId).query(`
-        UPDATE OrderItems
-        SET Quantity = @NewQty,
-            Total = @NewTotal
-        WHERE ItemID = @ITM_ID
-      `);
-
-    // 6️⃣ SAVE LOG
-    await request
-      .input("OrderIDLog", sql.Int, orderId)
-      .input("ItemIDLog", sql.Int, itemId)
-      .input("OldQtyLog", sql.Int, oldQty)
-      .input("NewQtyLog", sql.Int, newQuantity)
-      .input("ChangedByLog", sql.NVarChar, changedBy || "admin")
-      .input("ReasonLog", sql.NVarChar, reason || "Admin Edit").query(`
-        INSERT INTO OrderEditLogs
-        (OrderID, ItemID, OldQuantity, NewQuantity, ChangedBy, ChangeReason, ChangedAt)
-        VALUES
-        (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @ChangedByLog, @ReasonLog, GETDATE())
-      `);
-
-    await transaction.commit();
-
-    res.status(200).json({
-      message: "Order and stock updated successfully!",
-      updatedQuantity: newQuantity,
-    });
-  } catch (error) {
-    await transaction.rollback();
-
-    console.error("Update Order Error:", error.message);
-
-    res.status(500).json({
-      message: error.message,
-    });
-  }
-};
-
-// exports.cancelOrderBeforeAssign = async (req, res) => {
-//   const orderId = Number(req.params.orderId);
-//   const { reason, username } = req.body;
+// exports.updateOrderQuantity = async (req, res) => {
+//   const { orderId, itemId, newQuantity, changedBy, reason } = req.body;
 
 //   const pool = await poolPromise;
 //   const transaction = new sql.Transaction(pool);
 
 //   try {
 //     await transaction.begin();
+//     const request = new sql.Request(transaction);
 
-//     console.log("➡️ Cancel before assign OrderID:", orderId);
-
-//     if (!orderId) {
-//       throw new Error("Invalid OrderID");
-//     }
-
-//     // 1️⃣ Check Order
-//     const checkRequest = new sql.Request(transaction);
-//     const check = await checkRequest.input("orderId", sql.Int, orderId).query(`
-//         SELECT OrderID
-//         FROM OrdersTemp
-//         WHERE OrderID = @orderId
+//     // 1️⃣ CHECK ORDER STATUS
+//     const statusCheck = await request.input("OID", sql.Int, orderId).query(`
+//         SELECT DeliveryStatus
+//         FROM AssignedOrders
+//         WHERE OrderID = @OID
 //       `);
 
-//     if (check.recordset.length === 0) {
-//       throw new Error("Invalid OrderID");
+//     if (
+//       statusCheck.recordset.length > 0 &&
+//       statusCheck.recordset[0].DeliveryStatus === "Completed"
+//     ) {
+//       throw new Error("Completed order cannot be changed!");
 //     }
 
-//     // 2️⃣ Update OrdersTemp (cancel mark)
-//     const updateRequest = new sql.Request(transaction);
-//     await updateRequest.input("orderId", sql.Int, orderId).query(`
-//         UPDATE OrdersTemp
-//         SET InvoiceNo = 'CANCELLED'
-//         WHERE OrderID=@orderId
-//       `);
-
-//     // 3️⃣ Get Items
-//     const itemsRequest = new sql.Request(transaction);
-//     const itemsResult = await itemsRequest.input("orderId", sql.Int, orderId)
-//       .query(`
-//         SELECT ProductType, Quantity
+//     // 2️⃣ GET CURRENT ORDER ITEM
+//     const itemResult = await request.input("ItemID", sql.Int, itemId).query(`
+//         SELECT Quantity, ProductType, Rate, Weight
 //         FROM OrderItems
-//         WHERE OrderID = @orderId
+//         WHERE ItemID = @ItemID
 //       `);
 
-//     // 4️⃣ Revert Stock
-//     for (const item of itemsResult.recordset) {
-//       const stockReq = new sql.Request(transaction);
-
-//       const stockResult = await stockReq.input(
-//         "itemName",
-//         sql.NVarChar,
-//         item.ProductType,
-//       ).query(`
-//           SELECT TOP 1 id
-//           FROM Stock
-//           WHERE LOWER(item_name)=LOWER(@itemName)
-//           ORDER BY created_at DESC
-//         `);
-
-//       if (stockResult.recordset.length === 0) {
-//         throw new Error(`Stock not found for ${item.ProductType}`);
-//       }
-
-//       const stockId = stockResult.recordset[0].id;
-
-//       const updateStockReq = new sql.Request(transaction);
-//       await updateStockReq
-//         .input("qty", sql.Int, item.Quantity)
-//         .input("stockId", sql.Int, stockId).query(`
-//           UPDATE Stock
-//           SET quantity = quantity + @qty
-//           WHERE id=@stockId
-//         `);
+//     if (itemResult.recordset.length === 0) {
+//       throw new Error("Item not found in OrderItems");
 //     }
+
+//     const currentItem = itemResult.recordset[0];
+
+//     const oldQty = currentItem.Quantity;
+//     const diffQty = oldQty - newQuantity;
+
+//     const productType = (currentItem.ProductType || "").trim();
+//     const weight = (currentItem.Weight || "").trim();
+
+//     // 3️⃣ CHECK STOCK (only if increasing quantity)
+//     if (diffQty < 0) {
+//       const absDiff = Math.abs(diffQty);
+
+//       const stockCheck = await request
+//         .input("PTypeCheck", sql.NVarChar, productType)
+//         .input("PWeightCheck", sql.NVarChar, weight).query(`
+//           SELECT SUM(quantity) AS AvailableStock
+//           FROM Stock
+//           WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PTypeCheck)))
+//           AND (
+//               @PWeightCheck IS NULL
+//               OR weight IS NULL
+//               OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeightCheck)))
+//           )
+//         `);
+
+//       const availableStock = stockCheck.recordset[0].AvailableStock || 0;
+
+//       if (availableStock < absDiff) {
+//         throw new Error("Insufficient stock! Available: " + availableStock);
+//       }
+//     }
+
+//     // 4️⃣ UPDATE STOCK
+//     const stockUpdate = await request
+//       .input("DiffQty", sql.Int, diffQty)
+//       .input("PType", sql.NVarChar, productType)
+//       .input("PWeight", sql.NVarChar, weight).query(`
+//         UPDATE Stock
+//         SET Quantity = Quantity + @DiffQty
+//         WHERE ID = (
+//             SELECT TOP 1 ID
+//             FROM Stock
+//             WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PType)))
+//             AND (
+//                 @PWeight IS NULL
+//                 OR weight IS NULL
+//                 OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
+//             )
+//             ORDER BY created_at DESC
+//         );
+
+//         SELECT @@ROWCOUNT AS RowsAffected;
+//       `);
+
+//     if (stockUpdate.recordset[0].RowsAffected === 0) {
+//       throw new Error(
+//         "Stock record not found for this product type and weight.",
+//       );
+//     }
+
+//     // 5️⃣ UPDATE ORDER ITEM
+//     const newTotal = newQuantity * currentItem.Rate;
+
+//     await request
+//       .input("NewQty", sql.Int, newQuantity)
+//       .input("NewTotal", sql.Decimal(10, 2), newTotal)
+//       .input("ITM_ID", sql.Int, itemId).query(`
+//         UPDATE OrderItems
+//         SET Quantity = @NewQty,
+//             Total = @NewTotal
+//         WHERE ItemID = @ITM_ID
+//       `);
+
+//     // 6️⃣ SAVE LOG
+//     await request
+//       .input("OrderIDLog", sql.Int, orderId)
+//       .input("ItemIDLog", sql.Int, itemId)
+//       .input("OldQtyLog", sql.Int, oldQty)
+//       .input("NewQtyLog", sql.Int, newQuantity)
+//       .input("ChangedByLog", sql.NVarChar, changedBy || "admin")
+//       .input("ReasonLog", sql.NVarChar, reason || "Admin Edit").query(`
+//         INSERT INTO OrderEditLogs
+//         (OrderID, ItemID, OldQuantity, NewQuantity, ChangedBy, ChangeReason, ChangedAt)
+//         VALUES
+//         (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @ChangedByLog, @ReasonLog, GETDATE())
+//       `);
 
 //     await transaction.commit();
 
-//     res.json({
-//       message: "Order cancelled before assign & stock reverted",
+//     res.status(200).json({
+//       message: "Order and stock updated successfully!",
+//       updatedQuantity: newQuantity,
 //     });
-//   } catch (err) {
+//   } catch (error) {
 //     await transaction.rollback();
 
-//     console.error("❌ Cancel Before Assign Error:", err.message);
+//     console.error("Update Order Error:", error.message);
 
 //     res.status(500).json({
-//       message: err.message,
+//       message: error.message,
 //     });
 //   }
 // };
@@ -671,6 +579,230 @@ exports.cancelOrderBeforeAssign = async (req, res) => {
 
     res.status(500).json({
       message: err.message,
+    });
+  }
+};
+
+exports.updateOrder = async (req, res) => {
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    const { OrderID, ProductName, ProductType, Weight, Quantity, Rate } =
+      req.body;
+
+    await transaction.begin();
+
+    const request = new sql.Request(transaction);
+
+    const total = Number(Quantity) * Number(Rate);
+
+    // =========================
+    // 1️⃣ STOCK CHECK (FIFO)
+    // =========================
+
+    let qtyToDeduct = parseInt(Quantity);
+
+    const stockRes = await request.input("Target", sql.NVarChar, ProductType)
+      .query(`
+        SELECT id, quantity
+        FROM Stock
+        WHERE LTRIM(RTRIM(item_name)) = @Target
+        AND quantity > 0
+        ORDER BY id ASC
+      `);
+
+    for (let row of stockRes.recordset) {
+      if (qtyToDeduct <= 0) break;
+
+      const deduct = Math.min(row.quantity, qtyToDeduct);
+
+      await transaction
+        .request()
+        .input("D", sql.Int, deduct)
+        .input("ID", sql.Int, row.id).query(`
+          UPDATE Stock
+          SET quantity = quantity - @D
+          WHERE id = @ID
+        `);
+
+      qtyToDeduct -= deduct;
+    }
+
+    if (qtyToDeduct > 0) {
+      throw new Error(`Not enough stock for ${ProductType}`);
+    }
+
+    // =========================
+    // 2️⃣ INSERT ITEM
+    // =========================
+
+    await request
+      .input("OrderID", sql.Int, OrderID)
+      .input("ProductName", sql.NVarChar, ProductName || null)
+      .input("ProductType", sql.NVarChar, ProductType)
+      .input("Weight", sql.NVarChar, Weight)
+      .input("Quantity", sql.Int, Quantity)
+      .input("Rate", sql.Decimal(18, 2), Rate)
+      .input("Total", sql.Decimal(18, 2), total).query(`
+        INSERT INTO OrderItems
+        (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+        VALUES
+        (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+      `);
+
+    await transaction.commit();
+
+    res.status(200).json({
+      success: true,
+      message: "Item added to order successfully",
+    });
+  } catch (err) {
+    if (transaction._aborted !== true) {
+      await transaction.rollback();
+    }
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+exports.updateOrderQuantity = async (req, res) => {
+  const { orderId, itemId, newQuantity, newRate, changedBy, reason } = req.body;
+
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
+    // 1️⃣ CHECK ORDER STATUS
+    const statusCheck = await request.input("OID", sql.Int, orderId).query(`
+        SELECT DeliveryStatus
+        FROM AssignedOrders
+        WHERE OrderID = @OID
+      `);
+
+    if (
+      statusCheck.recordset.length > 0 &&
+      statusCheck.recordset[0].DeliveryStatus === "Completed"
+    ) {
+      throw new Error("Completed order cannot be changed!");
+    }
+
+    // 2️⃣ GET CURRENT ITEM
+    const itemResult = await request.input("ItemID", sql.Int, itemId).query(`
+        SELECT Quantity, ProductType, Rate, Weight
+        FROM OrderItems
+        WHERE ItemID = @ItemID
+      `);
+
+    if (itemResult.recordset.length === 0) {
+      throw new Error("Item not found");
+    }
+
+    const currentItem = itemResult.recordset[0];
+
+    const oldQty = currentItem.Quantity;
+    const oldRate = currentItem.Rate;
+
+    const finalRate = newRate || oldRate;
+
+    const diffQty = oldQty - newQuantity;
+
+    const productType = (currentItem.ProductType || "").trim();
+    const weight = (currentItem.Weight || "").trim();
+
+    // 3️⃣ CHECK STOCK (only if quantity increased)
+    if (diffQty < 0) {
+      const absDiff = Math.abs(diffQty);
+
+      const stockCheck = await request
+        .input("PTypeCheck", sql.NVarChar, productType)
+        .input("PWeightCheck", sql.NVarChar, weight).query(`
+          SELECT SUM(quantity) AS AvailableStock
+          FROM Stock
+          WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PTypeCheck)))
+          AND (
+              @PWeightCheck IS NULL
+              OR weight IS NULL
+              OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeightCheck)))
+          )
+        `);
+
+      const availableStock = stockCheck.recordset[0].AvailableStock || 0;
+
+      if (availableStock < absDiff) {
+        throw new Error("Insufficient stock! Available: " + availableStock);
+      }
+    }
+
+    // 4️⃣ UPDATE STOCK
+    const stockUpdate = await request
+      .input("DiffQty", sql.Int, diffQty)
+      .input("PType", sql.NVarChar, productType)
+      .input("PWeight", sql.NVarChar, weight).query(`
+        UPDATE Stock
+        SET Quantity = Quantity + @DiffQty
+        WHERE ID = (
+            SELECT TOP 1 ID
+            FROM Stock
+            WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PType)))
+            AND (
+                @PWeight IS NULL
+                OR weight IS NULL
+                OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
+            )
+            ORDER BY created_at DESC
+        );
+      `);
+
+    // 5️⃣ UPDATE ORDER ITEM
+    const newTotal = newQuantity * finalRate;
+
+    await request
+      .input("NewQty", sql.Int, newQuantity)
+      .input("NewRate", sql.Decimal(10, 2), finalRate)
+      .input("NewTotal", sql.Decimal(10, 2), newTotal)
+      .input("ITM_ID", sql.Int, itemId).query(`
+        UPDATE OrderItems
+        SET Quantity = @NewQty,
+            Rate = @NewRate,
+            Total = @NewTotal
+        WHERE ItemID = @ITM_ID
+      `);
+
+    // 6️⃣ SAVE LOG
+    await request
+      .input("OrderIDLog", sql.Int, orderId)
+      .input("ItemIDLog", sql.Int, itemId)
+      .input("OldQtyLog", sql.Int, oldQty)
+      .input("NewQtyLog", sql.Int, newQuantity)
+      .input("OldRateLog", sql.Decimal(10, 2), oldRate)
+      .input("NewRateLog", sql.Decimal(10, 2), finalRate)
+      .input("ChangedByLog", sql.NVarChar, changedBy || "admin")
+      .input("ReasonLog", sql.NVarChar, reason || "Admin Edit").query(`
+        INSERT INTO OrderEditLogs
+        (OrderID, ItemID, OldQuantity, NewQuantity, OldRate, NewRate, ChangedBy, ChangeReason, ChangedAt)
+        VALUES
+        (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @OldRateLog, @NewRateLog, @ChangedByLog, @ReasonLog, GETDATE())
+      `);
+
+    await transaction.commit();
+
+    res.status(200).json({
+      message: "Order updated successfully",
+    });
+  } catch (error) {
+    await transaction.rollback();
+
+    console.error("Update Order Error:", error.message);
+
+    res.status(500).json({
+      message: error.message,
     });
   }
 };

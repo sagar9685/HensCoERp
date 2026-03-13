@@ -14,4 +14,6 @@ router.post(
   orderController.cancelOrderBeforeAssign,
 );
 
+router.post("/add-item", orderController.updateOrder);
+
 module.exports = router;
