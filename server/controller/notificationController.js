@@ -29,8 +29,30 @@ exports.readNotification = async (req, res) => {
 };
 
 // CREATE Notification + Emit to frontend
+// exports.createNotification = async (req, res) => {
+//   const { UserRole, Message, OrderID, CustomerName } = req.body;
+
+//   const pool = await poolPromise;
+
+//   const result = await pool
+//     .request()
+//     .input("UserRole", sql.NVarChar, UserRole)
+//     .input("Message", sql.NVarChar, Message)
+//     .input("OrderID", sql.Int, OrderID)
+//     .input("CustomerName", sql.NVarChar, CustomerName) // new field
+//     .query(
+//       `INSERT INTO Notifications (UserRole, Message, OrderID,CustomerName) ) OUTPUT INSERTED.* VALUES (@UserRole,@Message,@OrderID)`,
+//     );
+
+//   // Emit to frontend via socket
+//   const io = req.app.get("io");
+//   io.emit("newNotification", result.recordset[0]);
+
+//   res.status(201).json(result.recordset[0]);
+// };
+
 exports.createNotification = async (req, res) => {
-  const { UserRole, Message, OrderID } = req.body;
+  const { UserRole, Message, OrderID, CustomerName } = req.body;
 
   const pool = await poolPromise;
 
@@ -39,9 +61,11 @@ exports.createNotification = async (req, res) => {
     .input("UserRole", sql.NVarChar, UserRole)
     .input("Message", sql.NVarChar, Message)
     .input("OrderID", sql.Int, OrderID)
-    .query(
-      `INSERT INTO Notifications (UserRole, Message, OrderID) OUTPUT INSERTED.* VALUES (@UserRole,@Message,@OrderID)`,
-    );
+    .input("CustomerName", sql.NVarChar, CustomerName).query(`
+      INSERT INTO Notifications (UserRole, Message, OrderID, CustomerName)
+      OUTPUT INSERTED.*
+      VALUES (@UserRole, @Message, @OrderID, @CustomerName)
+    `);
 
   // Emit to frontend via socket
   const io = req.app.get("io");

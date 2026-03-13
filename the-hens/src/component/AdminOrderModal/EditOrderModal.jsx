@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import {
   updateOrderQuantity,
   fetchOrder,
@@ -7,13 +7,11 @@ import {
 } from "../../features/orderSlice";
 import { cancelOrderBeforeAssign } from "../../features/assignedOrderSlice";
 import OrderFormModal from "./OrderFormModal";
-import { useSelector } from "react-redux";
 import {
   fetchProductTypes,
   fetchWeightByType,
   fetchRateByProductType,
 } from "../../features/productTypeSlice";
-
 import { toast } from "react-toastify";
 import styles from "./EditOrderModal.module.css";
 
@@ -27,7 +25,6 @@ export default function EditOrderModal({ order, onClose }) {
   const rates = order.Rates?.split(",") || [];
 
   const productTypes = useSelector((state) => state.product.types || []);
-  const Weights = useSelector((state) => state.product.w || []);
 
   const [items, setItems] = useState(
     types.map((t, i) => ({
@@ -41,33 +38,6 @@ export default function EditOrderModal({ order, onClose }) {
 
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
 
-  const handleProductTypeChange = async (e) => {
-    const value = e.target.value;
-
-    setCurrentItem((prev) => ({
-      ...prev,
-      productType: value,
-    }));
-
-    if (!value) return;
-
-    try {
-      const weight = await dispatch(fetchWeightByType(value)).unwrap();
-      const rate = await dispatch(fetchRateByProductType(value)).unwrap();
-
-      const fetchedWeight = Array.isArray(weight) ? weight[0] : weight;
-
-      setCurrentItem((prev) => ({
-        ...prev,
-        productType: value,
-        weight: fetchedWeight,
-        rate: rate,
-      }));
-    } catch (err) {
-      toast.error("Failed to fetch weight or rate", err);
-    }
-  };
-
   const [currentItem, setCurrentItem] = useState({
     productName: "",
     productType: "",
@@ -77,6 +47,7 @@ export default function EditOrderModal({ order, onClose }) {
   });
 
   const [editingIndex, setEditingIndex] = useState(null);
+  const [reason, setReason] = useState(""); // ✅ Reason state
 
   const authData = JSON.parse(localStorage.getItem("authData"));
   const username = authData?.name;
@@ -87,53 +58,60 @@ export default function EditOrderModal({ order, onClose }) {
     setItems(updated);
   };
 
-  //   const handleUpdate = async (item) => {
-  //     console.log({
-  //       orderId: order.OrderID,
-  //       itemId: item.itemId,
-  //       newQuantity: Number(item.quantity),
-  //       changedBy: username,
-  //     });
-  //     try {
-  //       await dispatch(
-  //         updateOrderQuantity({
-  //           orderId: order.OrderID,
-  //           itemId: item.itemId,
-  //           newQuantity: Number(item.quantity),
-  //           changedBy: username,
-  //           reason: "Admin Edit",
-  //         }),
-  //       ).unwrap();
+  const handleUpdate = async (item) => {
+    if (!reason) {
+      toast.error("Please enter a reason for edit");
+      return;
+    }
 
-  //       toast.success("Quantity updated");
-  //       dispatch(fetchOrder());
-  //     } catch (err) {
-  //       toast.error(err.message);
-  //     }
-  //   };
+    try {
+      await dispatch(
+        updateOrderQuantity({
+          orderId: order.OrderID,
+          itemId: item.itemId,
+          newQuantity: Number(item.quantity),
+          newRate: Number(item.rate),
+          changedBy: username,
+          reason: reason, // ✅ send reason
+        }),
+      ).unwrap();
+
+      toast.success("Quantity updated");
+      dispatch(fetchOrder());
+      setReason(""); // reset reason after update
+    } catch (err) {
+      toast.error(err.message);
+    }
+  };
 
   const cancelOrder = async () => {
+    if (!reason) {
+      toast.error("Please enter a reason for cancellation");
+      return;
+    }
+
     try {
       if (order.AssignID) {
         await dispatch(
           cancelAssignedOrder({
             assignId: order.AssignID,
-            reason: "Cancelled by admin",
-            username: username, // add this
+            reason: reason, // ✅ reason
+            username: username,
           }),
         ).unwrap();
       } else {
         await dispatch(
           cancelOrderBeforeAssign({
             orderId: order.OrderID,
-            reason: "Cancelled by admin",
-            username: username, // add this
+            reason: reason, // ✅ reason
+            username: username,
           }),
         ).unwrap();
       }
 
       toast.success("Order cancelled");
       dispatch(fetchOrder());
+      setReason("");
       onClose();
     } catch (err) {
       toast.error(err.message || "Cancel failed");
@@ -148,6 +126,18 @@ export default function EditOrderModal({ order, onClose }) {
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
         <h2 className={styles.title}>Edit Order #{order.OrderID}</h2>
+
+        {/* ✅ Reason Input */}
+        <div style={{ marginBottom: "10px" }}>
+          <label>Reason for Edit/Cancel:</label>
+          <input
+            type="text"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Enter reason"
+            style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+          />
+        </div>
 
         {items.map((item, i) => (
           <div key={i} className={styles.itemRow}>
@@ -199,6 +189,7 @@ export default function EditOrderModal({ order, onClose }) {
           Close
         </button>
       </div>
+
       <OrderFormModal
         isItemModalOpen={isItemModalOpen}
         closeItemModal={() => setIsItemModalOpen(false)}
@@ -207,7 +198,20 @@ export default function EditOrderModal({ order, onClose }) {
         handleItemChange={(e) =>
           setCurrentItem({ ...currentItem, [e.target.name]: e.target.value })
         }
-        handleProductTypeChange={handleProductTypeChange}
+        handleProductTypeChange={(e) => {
+          const value = e.target.value;
+          setCurrentItem((prev) => ({ ...prev, productType: value }));
+          if (!value) return;
+          dispatch(fetchWeightByType(value))
+            .unwrap()
+            .then((weight) => {
+              const fetchedWeight = Array.isArray(weight) ? weight[0] : weight;
+              setCurrentItem((prev) => ({ ...prev, weight: fetchedWeight }));
+            });
+          dispatch(fetchRateByProductType(value))
+            .unwrap()
+            .then((rate) => setCurrentItem((prev) => ({ ...prev, rate })));
+        }}
         productTypes={productTypes}
         errors={{}}
         saveItem={async () => {
@@ -234,9 +238,7 @@ export default function EditOrderModal({ order, onClose }) {
             ).unwrap();
 
             toast.success("Item added successfully");
-
             dispatch(fetchOrder());
-
             setIsItemModalOpen(false);
           } catch (err) {
             toast.error(err?.message || "Failed to add item");

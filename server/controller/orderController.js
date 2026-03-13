@@ -567,10 +567,11 @@ exports.updateOrderQuantity = async (req, res) => {
     const request = new sql.Request(transaction);
 
     // 1️⃣ CHECK ORDER STATUS
-    const statusCheck = await request.input("OID", sql.Int, orderId).query(`
+    const statusCheck = await request.input("OrderIDStatus", sql.Int, orderId)
+      .query(`
         SELECT DeliveryStatus
         FROM AssignedOrders
-        WHERE OrderID = @OID
+        WHERE OrderID = @OrderIDStatus
       `);
 
     if (
@@ -602,6 +603,18 @@ exports.updateOrderQuantity = async (req, res) => {
 
     const productType = (currentItem.ProductType || "").trim();
     const weight = (currentItem.Weight || "").trim();
+
+    // 2.1️⃣ GET CUSTOMER NAME
+    const customerResult = await request.input("OID", sql.Int, orderId).query(`
+    SELECT CustomerName
+    FROM orderstemp
+    WHERE OrderID = @OID
+  `);
+
+    const customerName =
+      customerResult.recordset.length > 0
+        ? customerResult.recordset[0].CustomerName
+        : "Customer";
 
     // 3️⃣ CHECK STOCK (only if quantity increased)
     if (diffQty < 0) {
@@ -679,15 +692,17 @@ exports.updateOrderQuantity = async (req, res) => {
       `);
 
     // Step 6 ke baad Notifications wala part aise update karein:
-    const notifMsg = `Order #${orderId} quantity updated to ${newQuantity} by ${changedBy || "Admin"}`;
+
+    const notifMsg = `Order #${orderId} for ${customerName} updated to ${newQuantity} by ${changedBy || "Admin"}`;
 
     const notifResult = await request
-      .input("UserRoleNotif", sql.NVarChar, "Operator") // Sabhi operators ko dikhane ke liye
+      .input("UserRoleNotif", sql.NVarChar, "Operator")
       .input("MsgNotif", sql.NVarChar, notifMsg)
-      .input("OIDNotif", sql.Int, orderId).query(`
-    INSERT INTO Notifications (UserRole, Message, OrderID)
+      .input("OIDNotif", sql.Int, orderId)
+      .input("CustomerName", sql.NVarChar, customerName).query(`
+    INSERT INTO Notifications (UserRole, Message, OrderID, CustomerName)
     OUTPUT INSERTED.*
-    VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif)
+    VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif, @CustomerName)
   `);
 
     // Transaction commit hone ke baad hi emit karein
