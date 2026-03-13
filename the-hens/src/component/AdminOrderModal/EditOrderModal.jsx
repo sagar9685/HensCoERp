@@ -112,27 +112,6 @@ export default function EditOrderModal({ order, onClose }) {
   //     }
   //   };
 
-  const handleUpdate = async (item) => {
-    try {
-      await dispatch(
-        updateOrderQuantity({
-          orderId: order.OrderID,
-          itemId: item.itemId,
-          newQuantity: Number(item.quantity),
-          newRate: Number(item.rate), // optional
-          changedBy: username,
-          reason: "Admin Edit",
-        }),
-      ).unwrap();
-
-      toast.success("Order updated");
-
-      dispatch(fetchOrder());
-    } catch (err) {
-      toast.error(err.message);
-    }
-  };
-
   const cancelOrder = async () => {
     try {
       if (order.AssignID) {
@@ -140,6 +119,7 @@ export default function EditOrderModal({ order, onClose }) {
           cancelAssignedOrder({
             assignId: order.AssignID,
             reason: "Cancelled by admin",
+            username: username, // add this
           }),
         ).unwrap();
       } else {
@@ -147,6 +127,7 @@ export default function EditOrderModal({ order, onClose }) {
           cancelOrderBeforeAssign({
             orderId: order.OrderID,
             reason: "Cancelled by admin",
+            username: username, // add this
           }),
         ).unwrap();
       }
@@ -155,7 +136,7 @@ export default function EditOrderModal({ order, onClose }) {
       dispatch(fetchOrder());
       onClose();
     } catch (err) {
-      toast.error("Cancel failed");
+      toast.error(err.message || "Cancel failed");
     }
   };
 

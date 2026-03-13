@@ -437,17 +437,16 @@ exports.cancelOrderBeforeAssign = async (req, res) => {
         `);
     }
 
-    const notifMsg = `Order #${orderId} quantity updated to ${newQuantity} by ${changedBy || "Admin"}`;
+    const notifMsg = `Order #${orderId} has been cancelled by ${username || "Admin"}`;
 
-    const notifResult = await request
-      .input("UserRoleNotif", sql.NVarChar, "Operator") // Sabhi operators ko dikhane ke liye
+    const notifResult = await new sql.Request(transaction)
+      .input("UserRoleNotif", sql.NVarChar, "Operator")
       .input("MsgNotif", sql.NVarChar, notifMsg)
       .input("OIDNotif", sql.Int, orderId).query(`
     INSERT INTO Notifications (UserRole, Message, OrderID)
     OUTPUT INSERTED.*
     VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif)
   `);
-
     // Transaction commit hone ke baad hi emit karein
     await transaction.commit();
 
