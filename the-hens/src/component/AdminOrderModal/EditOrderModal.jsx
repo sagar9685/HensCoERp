@@ -78,7 +78,7 @@ export default function EditOrderModal({ order, onClose }) {
 
       toast.success("Quantity updated");
       dispatch(fetchOrder());
-      setReason(""); // reset reason after update
+      onClose();
     } catch (err) {
       toast.error(err.message);
     }
@@ -125,69 +125,89 @@ export default function EditOrderModal({ order, onClose }) {
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
-        <h2 className={styles.title}>Edit Order #{order.OrderID}</h2>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.title}>Edit Order #{order.OrderID}</h2>
+          <button className={styles.closeIcon} onClick={onClose}>
+            &times;
+          </button>
+        </div>
 
         {/* ✅ Reason Input */}
-        <div style={{ marginBottom: "10px" }}>
-          <label>Reason for Edit/Cancel:</label>
+        <div className={styles.reasonSection}>
+          <label className={styles.label}>Reason for Edit/Cancel:</label>
           <input
             type="text"
+            className={styles.reasonInput}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder="Enter reason"
-            style={{ width: "100%", padding: "5px", marginTop: "5px" }}
+            placeholder="e.g., Customer requested change"
           />
         </div>
 
-        {items.map((item, i) => (
-          <div key={i} className={styles.itemRow}>
-            <b>{item.productType}</b>
+        <div className={styles.itemsList}>
+          {items.map((item, i) => (
+            <div key={i} className={styles.itemRow}>
+              <div className={styles.itemInfo}>
+                <span className={styles.productBadge}>{item.productType}</span>
+              </div>
 
-            <input
-              type="number"
-              value={item.quantity}
-              onChange={(e) => handleChange(i, "quantity", e.target.value)}
-            />
+              <div className={styles.inputGroup}>
+                <label>Qty</label>
+                <input
+                  type="number"
+                  value={item.quantity}
+                  onChange={(e) => handleChange(i, "quantity", e.target.value)}
+                />
+              </div>
 
-            <input
-              type="number"
-              value={item.rate}
-              onChange={(e) => handleChange(i, "rate", e.target.value)}
-            />
+              <div className={styles.inputGroup}>
+                <label>Rate</label>
+                <input
+                  type="number"
+                  value={item.rate}
+                  onChange={(e) => handleChange(i, "rate", e.target.value)}
+                />
+              </div>
 
-            <button
-              className={styles.updateBtn}
-              onClick={() => handleUpdate(item)}
-            >
-              Update
-            </button>
+              <button
+                className={styles.updateBtn}
+                onClick={() => handleUpdate(item)}
+              >
+                Update
+              </button>
+            </div>
+          ))}
+        </div>
 
-            <button
-              className={styles.addBtn}
-              onClick={() => {
-                setEditingIndex(null);
-                setCurrentItem({
-                  productName: "",
-                  productType: "",
-                  weight: "",
-                  quantity: "",
-                  rate: "",
-                });
-                setIsItemModalOpen(true);
-              }}
-            >
-              Add Item
-            </button>
-          </div>
-        ))}
-
-        <button className={styles.cancelBtn} onClick={cancelOrder}>
-          Cancel Order
+        {/* ✅ Add Item Button moved OUTSIDE the loop */}
+        <button
+          className={styles.addBtn}
+          onClick={() => {
+            setEditingIndex(null);
+            setCurrentItem({
+              productName: "",
+              productType: "",
+              weight: "",
+              quantity: "",
+              rate: "",
+            });
+            setIsItemModalOpen(true);
+          }}
+        >
+          + Add New Item
         </button>
 
-        <button className={styles.closeBtn} onClick={onClose}>
-          Close
-        </button>
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={cancelOrder}>
+            Cancel Entire Order
+          </button>
+        </div>
+
+        <div className={styles.modalFooter}>
+          <button className={styles.cancelBtn} onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
 
       <OrderFormModal
@@ -240,6 +260,7 @@ export default function EditOrderModal({ order, onClose }) {
             toast.success("Item added successfully");
             dispatch(fetchOrder());
             setIsItemModalOpen(false);
+            onClose();
           } catch (err) {
             toast.error(err?.message || "Failed to add item");
           }

@@ -3,238 +3,123 @@ const { sql, poolPromise } = require("../utils/db");
 /* =======================
    MONTHLY REPORT
 ======================= */
-// exports.getMonthlyReport = async (req, res) => {
-//   try {
-//     const { year, month } = req.query;
-
-//     const pool = await poolPromise;
-
-//     // 1. Summary: Total Orders + Total Sales (gross)
-//     const summaryResult = await pool
-//       .request()
-//       .input("year", sql.Int, year)
-//       .input("month", sql.Int, month).query(`
-//         SELECT
-//           COUNT(DISTINCT o.OrderID) AS TotalOrders,
-//           ISNULL(SUM(oi.Total), 0) AS TotalSales
-//         FROM OrdersTemp o
-//         JOIN OrderItems oi ON o.OrderID = oi.OrderID
-//         WHERE YEAR(o.OrderDate) = @year
-//           AND MONTH(o.OrderDate) = @month
-//       `);
-
-//     const summary = summaryResult.recordset[0] || {
-//       TotalOrders: 0,
-//       TotalSales: 0,
-//     };
-
-//     // 2. Total Received (actual payments jo aa gaye hain)
-//     const paymentsResult = await pool
-//       .request()
-//       .input("year", sql.Int, year)
-//       .input("month", sql.Int, month).query(`
-//         SELECT
-//           pm.ModeName,
-//           ISNULL(SUM(op.Amount), 0) AS Amount
-//         FROM OrderPayments op
-//         JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-//         JOIN OrdersTemp o ON o.OrderID = op.OrderID
-//         WHERE YEAR(o.OrderDate) = @year
-//           AND MONTH(o.OrderDate) = @month
-//         GROUP BY pm.ModeName
-//       `);
-
-//     const paymentBreakup = paymentsResult.recordset || [];
-
-//     // 3. Total Received ka grand total nikal lo
-//     const totalReceived = paymentBreakup.reduce(
-//       (sum, p) => sum + (p.Amount || 0),
-//       0,
-//     );
-
-//     // 4. Outstanding calculate karo
-//     const totalOutstanding = Math.max(0, summary.TotalSales - totalReceived);
-
-//     // Final response
-//     res.status(200).json({
-//       summary: {
-//         TotalOrders: summary.TotalOrders,
-//         TotalSales: summary.TotalSales,
-//         TotalReceived: totalReceived, // optional - agar dikhana ho
-//         TotalOutstanding: totalOutstanding, // ← yeh main cheez
-//       },
-//       payment: paymentBreakup,
-//     });
-//   } catch (err) {
-//     console.error("Monthly Report Error:", err);
-//     res.status(500).json({ message: err.message || "Internal server error" });
-//   }
-// };
 
 exports.getMonthlyReport = async (req, res) => {
   try {
     const { year, month } = req.query;
 
     if (!year || !month) {
-      return res.status(400).json({
-        message: "Year and Month are required",
-      });
+      return res.status(400).json({ message: "Year and Month are required" });
     }
 
     const pool = await poolPromise;
-
-    // ===============================
-    // 1️⃣ SUMMARY
-    // ===============================
-    const summaryResult = await pool
+    const request = pool
       .request()
       .input("year", sql.Int, year)
-      .input("month", sql.Int, month).query(`
-        SELECT 
-          COUNT(DISTINCT o.OrderID) AS TotalOrders,
-          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0) AS TotalSales
-        FROM OrdersTemp o
-        JOIN OrderItems oi ON o.OrderID = oi.OrderID
-        WHERE YEAR(o.OrderDate) = @year
-          AND MONTH(o.OrderDate) = @month
-      `);
+      .input("month", sql.Int, month);
 
-    const summary = summaryResult.recordset[0] || {};
+    // 1. Unified Summary & Delivery Charges
+    // We calculate item totals and delivery charges separately to avoid duplication
+    const summaryQuery = `
+      SELECT 
+        COUNT(DISTINCT o.OrderID) AS TotalOrders,
+        ISNULL(SUM(CASE WHEN ao.DeliveryStatus != 'cancel' THEN oi.ItemTotal ELSE 0 END), 0) AS TotalItemSales,
+        ISNULL(SUM(CASE WHEN ao.DeliveryStatus = 'cancel' THEN oi.ItemTotal ELSE 0 END), 0) AS CancelOrderAmount,
+        (SELECT ISNULL(SUM(TRY_CAST(DeliveryCharge AS DECIMAL(18,2))), 0) 
+         FROM OrdersTemp ot
+         JOIN AssignedOrders ao2 ON ot.OrderID = ao2.OrderID
+         WHERE YEAR(ot.OrderDate) = @year AND MONTH(ot.OrderDate) = @month 
+         AND ao2.DeliveryStatus != 'cancel') AS TotalDeliveryCharge
+      FROM OrdersTemp o
+      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderID
+      CROSS APPLY (
+        SELECT SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS ItemTotal 
+        FROM OrderItems 
+        WHERE OrderID = o.OrderID
+      ) oi
+      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month
+    `;
 
-    // ===============================
-    // 2️⃣ PAYMENT
-    // ===============================
-    const paymentsResult = await pool
-      .request()
-      .input("year", sql.Int, year)
-      .input("month", sql.Int, month).query(`
-        SELECT 
-          pm.ModeName, 
-          ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))), 0) AS Amount
-        FROM OrderPayments op
-        JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-        JOIN OrdersTemp o ON o.OrderID = op.OrderID
-        WHERE YEAR(o.OrderDate) = @year
-          AND MONTH(o.OrderDate) = @month
-        GROUP BY pm.ModeName
-      `);
+    const summaryRes = await request.query(summaryQuery);
+    const rawSummary = summaryRes.recordset[0] || {};
 
-    const paymentBreakup = paymentsResult.recordset || [];
+    const totalSales =
+      Number(rawSummary.TotalItemSales) +
+      Number(rawSummary.TotalDeliveryCharge);
 
+    // 2. Payments (Stays similar, but ensure unique calculation)
+    const paymentsRes = await request.query(`
+      SELECT pm.ModeName, ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))), 0) AS Amount
+      FROM OrderPayments op
+      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+      JOIN OrdersTemp o ON o.OrderID = op.OrderID
+      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month
+      GROUP BY pm.ModeName
+    `);
+
+    const paymentBreakup = paymentsRes.recordset || [];
     const totalReceived = paymentBreakup.reduce(
-      (sum, p) => sum + Number(p.Amount || 0),
+      (sum, p) => sum + Number(p.Amount),
       0,
     );
 
-    const totalOutstanding = Math.max(
-      0,
-      Number(summary.TotalSales || 0) - totalReceived,
-    );
+    // 3. Product Type Summary
+    const productTypeRes = await request.query(`
+      SELECT 
+        oi.ProductType,
+        SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))) AS TotalQty,
+        SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))) AS TotalAmount,
+        AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))) AS AvgRate
+      FROM OrderItems oi
+      JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+      JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month AND ao.DeliveryStatus != 'cancel'
+      GROUP BY oi.ProductType
+    `);
 
-    // ===============================
-    // 3️⃣ PRODUCT TYPE SUMMARY
-    // ===============================
-    const productTypeResult = await pool
-      .request()
-      .input("year", sql.Int, year)
-      .input("month", sql.Int, month).query(`
-        SELECT 
-          oi.ProductType,
-          ISNULL(SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))),0) AS TotalQty,
-          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount,
-          ISNULL(AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))),0) AS AvgRate
-        FROM OrderItems oi
-        JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-        WHERE YEAR(o.OrderDate) = @year
-          AND MONTH(o.OrderDate) = @month
-        GROUP BY oi.ProductType
-        ORDER BY oi.ProductType
-      `);
+    // 4. Chicken vs Egg (Categorized Logic)
+    // You can actually combine these into one query with CASE WHEN to reduce DB hits
+    const categoryRes = await request.query(`
+      SELECT 
+        SUM(CASE WHEN ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)') THEN 
+            (CASE WHEN Weight LIKE '%Gram%' THEN TRY_CAST(REPLACE(Weight,' Gram','') AS DECIMAL(18,2)) / 1000
+                  WHEN Weight LIKE '%Kg%' THEN TRY_CAST(REPLACE(Weight,' Kg','') AS DECIMAL(18,2)) ELSE 0 END) ELSE 0 END) AS ChickenKG,
+        SUM(CASE WHEN ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)') THEN TRY_CAST(Total AS DECIMAL(18,2)) ELSE 0 END) AS ChickenAmount,
+        SUM(CASE 
+            WHEN ProductType='Tray' THEN TRY_CAST(Quantity AS INT)*30
+            WHEN ProductType='Box' THEN TRY_CAST(Quantity AS INT)*6
+            WHEN ProductType IN ('Box (Kids)', 'Box (Women)') THEN TRY_CAST(Quantity AS INT)*10
+            ELSE 0 END) AS TotalEggs,
+        SUM(CASE WHEN ProductType IN ('Tray','Box','Box (Kids)','Box (Women)') THEN TRY_CAST(Total AS DECIMAL(18,2)) ELSE 0 END) AS EggAmount
+      FROM OrderItems oi
+      JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+      JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month AND ao.DeliveryStatus != 'cancel'
+    `);
 
-    const productTypeSummary = productTypeResult.recordset || [];
+    const cats = categoryRes.recordset[0] || {};
 
-    // ===============================
-    // 4️⃣ CHICKEN
-    // ===============================
-    const chickenResult = await pool
-      .request()
-      .input("year", sql.Int, year)
-      .input("month", sql.Int, month).query(`
-       SELECT 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.Weight LIKE '%Gram%' 
-        THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL(18,2)) / 1000
-      WHEN oi.Weight LIKE '%Kg%' 
-        THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL(18,2))
-      ELSE 0
-    END
-  ),0) AS TotalKG,
-
-  ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount
-
-FROM OrderItems oi
-JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-WHERE YEAR(o.OrderDate) = @year
-AND MONTH(o.OrderDate) = @month
-AND oi.ProductType NOT LIKE '%Egg%'
-      `);
-
-    const chickenSummary = chickenResult.recordset[0] || {};
-
-    // ===============================
-    // 5️⃣ EGG
-    // ===============================
-    const eggResult = await pool
-      .request()
-      .input("year", sql.Int, year)
-      .input("month", sql.Int, month).query(`
-       SELECT 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.ProductType = 'Tray' 
-        THEN TRY_CAST(oi.Quantity AS INT) * 30
-      WHEN oi.ProductType = 'Box' 
-        THEN TRY_CAST(oi.Quantity AS INT) * 6
-      WHEN oi.ProductType = 'Box (Kids)' 
-        THEN TRY_CAST(oi.Quantity AS INT) * 10
-      WHEN oi.ProductType = 'Box (Women)' 
-        THEN TRY_CAST(oi.Quantity AS INT) * 10
-      ELSE 0
-    END
-  ),0) AS TotalEggs,
-
-  ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))),0) AS TotalAmount
-
-FROM OrderItems oi
-JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-WHERE YEAR(o.OrderDate) = @year
-AND MONTH(o.OrderDate) = @month
-AND oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
-      `);
-
-    const eggSummary = eggResult.recordset[0] || {};
-
-    // ===============================
-    // FINAL RESPONSE
-    // ===============================
     res.status(200).json({
       summary: {
-        TotalOrders: summary.TotalOrders || 0,
-        TotalSales: Number(summary.TotalSales || 0),
+        TotalOrders: rawSummary.TotalOrders,
+        TotalSales: totalSales,
+        CancelOrderAmount: Number(rawSummary.CancelOrderAmount),
         TotalReceived: totalReceived,
-        TotalOutstanding: totalOutstanding,
+        TotalOutstanding: Math.round((totalSales - totalReceived) * 100) / 100,
       },
       payment: paymentBreakup,
-      productTypeSummary,
-      chickenSummary,
-      eggSummary,
+      productTypeSummary: productTypeRes.recordset,
+      chickenSummary: {
+        TotalKG: cats.ChickenKG,
+        TotalAmount: cats.ChickenAmount,
+      },
+      eggSummary: { TotalEggs: cats.TotalEggs, TotalAmount: cats.EggAmount },
+      deliveryChargeSummary: {
+        TotalDeliveryCharge: rawSummary.TotalDeliveryCharge,
+      },
     });
   } catch (err) {
-    console.error("Monthly Report Error:", err);
-    res.status(500).json({
-      message: err.message || "Internal server error",
-    });
+    res.status(500).json({ message: err.message });
   }
 };
 

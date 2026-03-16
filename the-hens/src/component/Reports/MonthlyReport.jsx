@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { connect, useDispatch, useSelector } from "react-redux";
 import { fetchMonthlyReport } from "../../features/reportSlice";
 import { Bar, Doughnut } from "react-chartjs-2";
 import * as XLSX from "xlsx";
@@ -31,6 +31,8 @@ const MonthlyReport = () => {
   const { monthly, monthlyLoading, error } = useSelector(
     (state) => state.report,
   );
+
+  console.log(monthly, "monthlyu report");
 
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
@@ -81,6 +83,7 @@ const MonthlyReport = () => {
       ["Total Sales (₹)", monthly.summary.TotalSales],
       ["Total Received (₹)", monthly.summary.TotalReceived],
       ["Outstanding (₹)", monthly.summary.TotalOutstanding],
+      ["Cancelled Orders Amount (₹)", monthly.summary.CancelOrderAmount],
       [],
       ["================ CHICKEN SUMMARY ================"],
       ["Total Weight (KG)", monthly.chickenSummary?.TotalKG || 0],
@@ -280,6 +283,16 @@ const MonthlyReport = () => {
                 </span>
               </div>
             </div>
+
+            <div className={`${styles.metricCard} ${styles.redBorder}`}>
+              <div className={styles.metricIcon}>❌</div>
+              <div className={styles.metricContent}>
+                <span className={styles.metricLabel}>Cancelled Amount</span>
+                <span className={styles.metricValue}>
+                  {formatINR(monthly.summary.CancelOrderAmount)}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Charts Grid */}
@@ -380,6 +393,31 @@ const MonthlyReport = () => {
                     <span>Revenue</span>
                     <strong>
                       {formatINR(monthly.eggSummary?.TotalAmount)}
+                    </strong>
+                  </div>
+                </div>
+              </div>
+              <div className={`${styles.specialCard} ${styles.deliveryBg}`}>
+                <div className={styles.specialIcon}>🚚</div>
+                <h4>Delivery Summary</h4>
+                <div className={styles.specialStats}>
+                  <div className={styles.specialStat}>
+                    <span>Delivery Charge</span>
+                    <strong>
+                      {formatINR(
+                        monthly.deliveryChargeSummary?.TotalDeliveryCharge || 0,
+                      )}
+                    </strong>
+                  </div>
+                  <div className={styles.specialStat}>
+                    <span>Avg per Order</span>
+                    <strong>
+                      {monthly.summary?.TotalOrders > 0
+                        ? formatINR(
+                            monthly.deliveryChargeSummary?.TotalDeliveryCharge /
+                              monthly.summary?.TotalOrders,
+                          )
+                        : "₹0"}
                     </strong>
                   </div>
                 </div>

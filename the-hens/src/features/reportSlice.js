@@ -104,6 +104,7 @@ const reportSlice = createSlice({
         TotalEggs: 0,
         TotalAmount: 0,
       },
+      deliveryChargeSummary: { TotalDeliveryCharge: 0 },
     },
 
     weekly: {
@@ -174,6 +175,9 @@ const reportSlice = createSlice({
           eggSummary: action.payload?.eggSummary || {
             TotalEggs: 0,
             TotalAmount: 0,
+          },
+          deliveryChargeSummary: action.payload?.deliveryChargeSummary || {
+            TotalDeliveryCharge: 0,
           },
         };
       })

@@ -26,6 +26,8 @@ import Skeleton from "react-loading-skeleton";
 import "react-loading-skeleton/dist/skeleton.css";
 import * as XLSX from "xlsx";
 import EditOrderModal from "./AdminOrderModal/EditOrderModal";
+import { fetchProductTypes } from "../features/productTypeSlice";
+import ViewOrderModal from "./ViewOrderModal";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -35,14 +37,15 @@ const AdminDashboard = () => {
     return savedFilters
       ? JSON.parse(savedFilters)
       : {
-          ProductId: "",
-          ProductName: "",
-          ProductType: "",
-          customer: "",
           fromDate: today,
           toDate: today,
           orderStatus: "",
-          paymentStatus: "", // 🔥 ADD THIS
+          paymentStatus: "",
+          ProductId: "",
+          customer: "",
+          deliveryMan: "",
+          ProductName: "",
+          ProductType: "",
         };
   });
 
@@ -68,6 +71,9 @@ const AdminDashboard = () => {
 
   const [selectedOrderForChalan, setSelectedOrderForChalan] = useState(null);
   const [isChalanModalOpen, setIsChalanModalOpen] = useState(false);
+
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [selectedViewOrder, setSelectedViewOrder] = useState(null);
 
   // Fix: Proper date comparison function
   const isDateInRange = (orderDate, fromDate, toDate) => {
@@ -127,6 +133,17 @@ const AdminDashboard = () => {
     indexOfFirstRecord,
     indexOfLastRecord,
   );
+
+  const productTypes = useSelector((state) => state.product.types);
+  console.log(productTypes, "console.log(productTypes);");
+
+  const filteredProductNames = productTypes.filter(
+    (p) => p.Category === filters.ProductType,
+  );
+
+  const uniqueCategories = [
+    ...new Set(productTypes?.map((item) => item.Category)),
+  ];
 
   const totalPages = Math.ceil(filteredData.length / recordsPerPage);
 
@@ -195,8 +212,26 @@ const AdminDashboard = () => {
     setFilteredData(filtered);
   }, [orders]);
 
+  useEffect(() => {
+    dispatch(fetchOrder());
+    dispatch(fetchProductTypes());
+  }, [dispatch]);
+
   const handleChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    if (name === "ProductType") {
+      setFilters({
+        ...filters,
+        ProductType: value,
+        ProductName: "", // reset product name
+      });
+    } else {
+      setFilters({
+        ...filters,
+        [name]: value,
+      });
+    }
   };
 
   const handleGenerateChalan = (orderRow) => {
@@ -236,12 +271,21 @@ const AdminDashboard = () => {
       );
   };
 
+  const deliveryMenList = [
+    ...new Set(
+      orders
+        ?.map((o) => o.DeliveryManName)
+        .filter((name) => name && name.trim() !== ""),
+    ),
+  ];
+
   const handleClear = () => {
     const resetFilters = {
       ProductId: "",
       ProductName: "",
       ProductType: "",
       customer: "",
+      deliveryMan: "",
       fromDate: today,
       toDate: today,
       orderStatus: "",
@@ -253,178 +297,75 @@ const AdminDashboard = () => {
     setCurrentPage(1);
   };
 
-  // const handleSearch = () => {
-  //   if (!orders || orders.length === 0) return;
-
-  //   setIsFilterLoading(true);
-
-  //   setTimeout(() => {
-  //     let filtered = [...orders];
-
-  //     // 1. Date Range Filter
-  //     if (filters.fromDate || filters.toDate) {
-  //       filtered = filtered.filter((item) =>
-  //         isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
-  //       );
-  //     }
-
-  //     // 2. Order Status Filter (FIXED LOGIC)
-  //     if (filters.orderStatus) {
-  //       const selectedStatus = filters.orderStatus.toLowerCase().trim();
-
-  //       filtered = filtered.filter((item) => {
-  //         // Item ka status safely extract karein
-  //         const itemStatus = (item.OrderStatus || "").toLowerCase().trim();
-
-  //         if (selectedStatus === "complete") {
-  //           // "complete" aur "completed" dono ko match karega
-  //           return itemStatus === "complete" || itemStatus === "completed";
-  //         }
-
-  //         if (selectedStatus === "pending") {
-  //           // N/A ya Empty status ko bhi Pending treat kar sakte hain
-  //           return (
-  //             itemStatus === "pending" ||
-  //             itemStatus === "n/a" ||
-  //             itemStatus === ""
-  //           );
-  //         }
-
-  //         if (filters.paymentStatus) {
-  //           filtered = filtered.filter(
-  //             (item) =>
-  //               (item.PaymentVerifyStatus || "Pending") ===
-  //               filters.paymentStatus,
-  //           );
-  //         }
-
-  //         return itemStatus === selectedStatus;
-  //       });
-  //     }
-
-  //     // 3. Payment Status Filter
-  //     if (filters.paymentStatus) {
-  //       filtered = filtered.filter(
-  //         (item) =>
-  //           (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
-  //       );
-  //     }
-
-  //     // 3. Text Filters (Customer Name, Product ID etc.)
-  //     Object.keys(filters).forEach((key) => {
-  //       // In keys ko skip karein kyunki inka logic upar likha ja chuka hai
-  //       if (["fromDate", "toDate", "orderStatus"].includes(key)) return;
-
-  //       const searchTerm = filters[key].trim().toLowerCase();
-  //       if (searchTerm) {
-  //         filtered = filtered.filter((item) => {
-  //           switch (key) {
-  //             case "ProductId":
-  //               // Dashboard mein OrderID display ho raha hai filter ProductId ke naam se hai
-  //               return item.OrderID?.toString()
-  //                 .toLowerCase()
-  //                 .includes(searchTerm);
-  //             case "customer":
-  //               return item.CustomerName?.toLowerCase().includes(searchTerm);
-  //             case "ProductName":
-  //               return item.ProductNames?.toLowerCase().includes(searchTerm);
-  //             default:
-  //               return item[key]?.toString().toLowerCase().includes(searchTerm);
-  //           }
-  //         });
-  //       }
-  //     });
-
-  //     setFilteredData(filtered);
-  //     setCurrentPage(1);
-  //     setIsFilterLoading(false);
-  //   }, 500);
-  // };
-
   const handleSearch = () => {
-    if (!orders || orders.length === 0) return;
+    let filtered = [...orders];
 
-    setIsFilterLoading(true);
+    if (filters.fromDate || filters.toDate) {
+      filtered = filtered.filter((item) =>
+        isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
+      );
+    }
 
-    setTimeout(() => {
-      let filtered = [...orders];
+    if (filters.orderStatus) {
+      filtered = filtered.filter(
+        (item) =>
+          (item.OrderStatus || "").toLowerCase() ===
+          filters.orderStatus.toLowerCase(),
+      );
+    }
 
-      // 1️⃣ Date Filter
-      if (filters.fromDate || filters.toDate) {
-        filtered = filtered.filter((item) =>
-          isDateInRange(item.OrderDate, filters.fromDate, filters.toDate),
-        );
-      }
+    if (filters.paymentStatus) {
+      filtered = filtered.filter(
+        (item) =>
+          (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
+      );
+    }
 
-      // 2️⃣ Order Status Filter
-      if (filters.orderStatus) {
-        const selectedStatus = filters.orderStatus.toLowerCase().trim();
+    if (filters.ProductId) {
+      filtered = filtered.filter((item) =>
+        item.OrderID?.toString().includes(filters.ProductId),
+      );
+    }
 
-        filtered = filtered.filter((item) => {
-          const itemStatus = (item.OrderStatus || "").toLowerCase().trim();
+    if (filters.customer) {
+      const search = filters.customer.toLowerCase().trim();
 
-          if (selectedStatus === "complete") {
-            return itemStatus === "complete" || itemStatus === "completed";
-          }
+      filtered = filtered.filter((item) => {
+        const name = item.CustomerName?.toLowerCase() || "";
+        const phone = item.ContactNo?.toString() || "";
 
-          if (selectedStatus === "pending") {
-            return (
-              itemStatus === "pending" ||
-              itemStatus === "n/a" ||
-              itemStatus === ""
-            );
-          }
-
-          return itemStatus === selectedStatus;
-        });
-      }
-
-      // 3️⃣ Payment Status Filter (ALWAYS separate)
-      if (filters.paymentStatus) {
-        filtered = filtered.filter(
-          (item) =>
-            (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
-        );
-      }
-
-      // 4️⃣ Text Filters
-      Object.keys(filters).forEach((key) => {
-        if (
-          ["fromDate", "toDate", "orderStatus", "paymentStatus"].includes(key)
-        )
-          return;
-
-        const searchTerm = filters[key].trim().toLowerCase();
-
-        if (searchTerm) {
-          filtered = filtered.filter((item) => {
-            switch (key) {
-              case "ProductId":
-                return item.OrderID?.toString()
-                  .toLowerCase()
-                  .includes(searchTerm);
-
-              case "customer":
-                return (
-                  item.CustomerName?.toLowerCase().includes(searchTerm) ||
-                  item.ContactNo?.toString().toLowerCase().includes(searchTerm)
-                );
-
-              case "ProductName":
-                return item.ProductNames?.toLowerCase().includes(searchTerm);
-
-              default:
-                return item[key]?.toString().toLowerCase().includes(searchTerm);
-            }
-          });
-        }
+        return name.includes(search) || phone.includes(search);
       });
+    }
 
-      setFilteredData(filtered);
-      setCurrentPage(1);
-      setIsFilterLoading(false);
-    }, 500);
+    if (filters.deliveryMan) {
+      filtered = filtered.filter((item) =>
+        item.DeliveryManName?.toLowerCase().includes(
+          filters.deliveryMan.toLowerCase(),
+        ),
+      );
+    }
+
+    if (filters.ProductType) {
+      filtered = filtered.filter((item) => {
+        const names = item.ProductNames?.split(",") || [];
+        return names.some((n) =>
+          n.trim().toLowerCase().includes(filters.ProductType.toLowerCase()),
+        );
+      });
+    }
+
+    if (filters.ProductName) {
+      filtered = filtered.filter((item) => {
+        const types = item.ProductTypes?.split(",") || [];
+        return types.some(
+          (t) => t.trim().toLowerCase() === filters.ProductName.toLowerCase(),
+        );
+      });
+    }
+    setFilteredData(filtered);
   };
+
   const handleAddOrder = (orderData) => {
     console.log("New order data:", orderData);
     alert("Order created successfully!");
@@ -676,190 +617,174 @@ const AdminDashboard = () => {
       {/* MAIN CONTENT CARD */}
       <div className={styles.contentCard}>
         {/* FILTERS SECTION */}
-        <div className={styles.filterSection}>
-          <div className={styles.filterHeader}>
-            <FaFilter className={styles.filterIcon} />
-            <h3>Filter Product</h3>
-            {isFilterLoading && (
-              <span className={styles.filterLoadingBadge}>
-                <FaSyncAlt className={styles.spinningIcon} /> Applying
-                filters...
-              </span>
-            )}
+        <div className={styles.filterGrid}>
+          {/* FROM DATE */}
+          <div className={styles.inputGroup}>
+            <label>FROM DATE</label>
+            <input
+              type="date"
+              name="fromDate"
+              value={filters.fromDate}
+              onChange={handleChange}
+            />
           </div>
 
-          <div className={styles.filterGrid}>
-            {/* Date Filters */}
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>FROM DATE</label>
-              <input
-                type="date"
-                name="fromDate"
-                value={filters.fromDate}
-                onChange={handleChange}
-                className={styles.input}
-                disabled={isFilterLoading}
-              />
-            </div>
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>TO DATE</label>
-              <input
-                type="date"
-                name="toDate"
-                value={filters.toDate}
-                onChange={handleChange}
-                className={styles.input}
-                disabled={isFilterLoading}
-              />
-            </div>
+          {/* TO DATE */}
+          <div className={styles.inputGroup}>
+            <label>TO DATE</label>
+            <input
+              type="date"
+              name="toDate"
+              value={filters.toDate}
+              onChange={handleChange}
+            />
+          </div>
 
-            {/* Order Status Filter */}
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>ORDER STATUS</label>
-              <select
-                name="orderStatus"
-                value={filters.orderStatus}
-                onChange={handleChange}
-                className={styles.select}
-                disabled={isFilterLoading}
-              >
-                <option value="">All Status</option>
-                <option value="pending">
-                  Pending ({getStatusCount("pending")})
-                </option>
-                <option value="processing">
-                  Processing ({getStatusCount("processing")})
-                </option>
-                <option value="complete">
-                  Complete ({getStatusCount("complete")})
-                </option>
-                <option value="cancel">
-                  Cancel ({getStatusCount("cancel")})
-                </option>
-              </select>
-            </div>
+          {/* ORDER STATUS */}
+          <div className={styles.inputGroup}>
+            <label>ORDER STATUS</label>
+            <select
+              name="orderStatus"
+              value={filters.orderStatus}
+              onChange={handleChange}
+            >
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="processing">Processing</option>
+              <option value="complete">Complete</option>
+              <option value="cancel">Cancel</option>
+            </select>
+          </div>
 
-            {/* Payment Status Filter */}
-            <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>PAYMENT STATUS</label>
-              <select
-                name="paymentStatus"
-                value={filters.paymentStatus}
-                onChange={handleChange}
-                className={styles.select}
-              >
-                <option value="">All</option>
-                <option value="Pending">Pending</option>
-                <option value="Verified">Verified</option>
-                <option value="Incomplete">Incomplete</option>
-              </select>
-            </div>
+          {/* PAYMENT STATUS */}
+          <div className={styles.inputGroup}>
+            <label>PAYMENT STATUS</label>
+            <select
+              name="paymentStatus"
+              value={filters.paymentStatus}
+              onChange={handleChange}
+            >
+              <option value="">All</option>
+              <option value="Pending">Pending</option>
+              <option value="Verified">Verified</option>
+              <option value="Incomplete">Incomplete</option>
+            </select>
+          </div>
 
-            {/* Other filters */}
-            {Object.keys(filters)
-              .filter(
-                (key) =>
-                  key !== "fromDate" &&
-                  key !== "toDate" &&
-                  key !== "orderStatus",
-              )
-              .map((key) => (
-                <div key={key} className={styles.inputGroup}>
-                  <label className={styles.inputLabel}>
-                    {key.replace(/([A-Z])/g, " $1").toUpperCase()}
-                  </label>
-                  <input
-                    type="text"
-                    placeholder={`Search ${key
-                      .replace(/([A-Z])/g, " $1")
-                      .toLowerCase()}`}
-                    name={key}
-                    value={filters[key]}
-                    onChange={handleChange}
-                    className={styles.input}
-                    disabled={isFilterLoading}
-                  />
-                </div>
+          {/* PRODUCT ID */}
+          <div className={styles.inputGroup}>
+            <label>PRODUCT ID</label>
+            <input
+              type="text"
+              name="ProductId"
+              value={filters.ProductId}
+              onChange={handleChange}
+              placeholder="Search Product ID"
+            />
+          </div>
+
+          {/* CUSTOMER */}
+          <div className={styles.inputGroup}>
+            <label>CUSTOMER</label>
+            <input
+              type="text"
+              name="customer"
+              value={filters.customer}
+              onChange={handleChange}
+              placeholder="Customer name or phone"
+            />
+          </div>
+
+          {/* DELIVERY MAN */}
+          <div className={styles.inputGroup}>
+            <label>DELIVERY MAN</label>
+            <select
+              name="deliveryMan"
+              value={filters.deliveryMan}
+              onChange={handleChange}
+            >
+              <option value="">All</option>
+
+              {deliveryMenList.map((man, index) => (
+                <option key={index} value={man}>
+                  {man}
+                </option>
               ))}
+            </select>
           </div>
 
-          {/* ACTION BUTTONS */}
-          <div className={styles.actionButtons}>
-            <button
-              className={styles.clearBtn}
-              onClick={handleClear}
-              disabled={isFilterLoading}
-            >
-              <FaSyncAlt className={styles.btnIcon} />
-              Clear Filters
-            </button>
-            <button
-              className={styles.searchBtn}
-              onClick={handleSearch}
-              disabled={isFilterLoading}
-            >
-              {isFilterLoading ? (
-                <>
-                  <FaSyncAlt
-                    className={`${styles.btnIcon} ${styles.spinningIcon}`}
-                  />
-                  Filtering...
-                </>
-              ) : (
-                <>
-                  <FaSearch className={styles.btnIcon} />
-                  Search Product
-                </>
-              )}
-            </button>
+          {/* PRODUCT TYPE */}
+          <div className={styles.inputGroup}>
+            <label>PRODUCT TYPE</label>
 
-            <button
-              className={styles.addOrder}
-              onClick={() => setIsModalOpen(true)}
-              disabled={isFilterLoading}
+            <select
+              name="ProductType"
+              value={filters.ProductType}
+              onChange={handleChange}
             >
-              <FaPlus className={styles.btnIcon} />
-              Add New Order
-            </button>
+              <option value="">All</option>
 
-            <button
-              className={styles.addBtn}
-              onClick={() => setIsCustomerModalOpen(true)}
-              disabled={isFilterLoading}
+              {uniqueCategories.map((cat, index) => (
+                <option key={index} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* PRODUCT NAME */}
+          <div className={styles.inputGroup}>
+            <label>PRODUCT NAME</label>
+
+            <select
+              name="ProductName"
+              value={filters.ProductName}
+              onChange={handleChange}
+              disabled={!filters.ProductType}
             >
-              <FaPlus className={styles.btnIcon} />
-              Add New Customer
-            </button>
+              <option value="">All</option>
 
-            <button className={styles.searchBtn} onClick={handleExportExcel}>
-              Download Excel
-            </button>
+              {filteredProductNames.map((p) => (
+                <option key={p.ProductTypeId} value={p.ProductType}>
+                  {p.ProductType}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
-        {/* Active Filters Display */}
+        {/* ACTION BUTTONS */}
+        <div className={styles.actionButtons}>
+          <button className={styles.searchBtn} onClick={handleSearch}>
+            Search
+          </button>
+
+          <button className={styles.clearBtn} onClick={handleClear}>
+            Clear Filters
+          </button>
+        </div>
+        {/* ACTIVE FILTERS DISPLAY */}
         {(filters.orderStatus ||
+          filters.ProductType ||
+          filters.ProductName ||
+          filters.deliveryMan ||
           filters.fromDate !== today ||
           filters.toDate !== today ||
           Object.keys(filters).some(
             (key) =>
-              key !== "fromDate" &&
-              key !== "toDate" &&
-              key !== "orderStatus" &&
-              filters[key],
+              ![
+                "fromDate",
+                "toDate",
+                "orderStatus",
+                "ProductType",
+                "ProductName",
+                "deliveryMan",
+                "paymentStatus",
+              ].includes(key) && filters[key],
           )) && (
           <div className={styles.activeFilters}>
             <span className={styles.activeFiltersLabel}>Active Filters:</span>
-            {filters.orderStatus && (
-              <span className={styles.filterTag}>
-                Status: {filters.orderStatus}
-                <button
-                  onClick={() => setFilters({ ...filters, orderStatus: "" })}
-                >
-                  ×
-                </button>
-              </span>
-            )}
+
+            {/* Show Date Tags only if they aren't 'today' */}
             {filters.fromDate !== today && (
               <span className={styles.filterTag}>
                 From: {filters.fromDate}
@@ -880,18 +805,29 @@ const AdminDashboard = () => {
                 </button>
               </span>
             )}
+
+            {/* Map through all other active dropdown/text filters */}
             {Object.keys(filters)
               .filter(
-                (key) =>
-                  key !== "fromDate" &&
-                  key !== "toDate" &&
-                  key !== "orderStatus" &&
-                  filters[key],
+                (key) => key !== "fromDate" && key !== "toDate" && filters[key],
               )
               .map((key) => (
                 <span key={key} className={styles.filterTag}>
-                  {key}: {filters[key]}
-                  <button onClick={() => setFilters({ ...filters, [key]: "" })}>
+                  {key.replace(/([A-Z])/g, " $1")}: {filters[key]}
+                  <button
+                    onClick={() => {
+                      // Special case: clearing ProductType should clear ProductName too
+                      if (key === "ProductType") {
+                        setFilters({
+                          ...filters,
+                          ProductType: "",
+                          ProductName: "",
+                        });
+                      } else {
+                        setFilters({ ...filters, [key]: "" });
+                      }
+                    }}
+                  >
                     ×
                   </button>
                 </span>
@@ -1076,7 +1012,10 @@ const AdminDashboard = () => {
                         <button
                           className={styles.actionBtn}
                           title="View Details"
-                          disabled={isFilterLoading}
+                          onClick={() => {
+                            setSelectedViewOrder(row);
+                            setIsViewModalOpen(true);
+                          }}
                         >
                           <FaEye />
                         </button>
@@ -1227,6 +1166,12 @@ const AdminDashboard = () => {
           onClose={() => setIsEditModalOpen(false)}
         />
       )}
+
+      <ViewOrderModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        order={selectedViewOrder}
+      />
     </div>
   );
 };

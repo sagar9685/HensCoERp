@@ -26,20 +26,23 @@ const UserNavbar = () => {
   const reduxSidebarOpen = useSelector((state) => state?.ui?.sidebarOpen);
   const notifications = useSelector((state) => state.notifications.list);
 
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
   // Sync with Redux
   useEffect(() => {
     if (reduxModalOpen !== undefined) setModalOpen(reduxModalOpen);
     if (reduxSidebarOpen !== undefined) setSidebarOpen(reduxSidebarOpen);
   }, [reduxModalOpen, reduxSidebarOpen]);
 
-  const authData = JSON.parse(localStorage.getItem("authData")) || {};
-  const user = authData?.user || { name: "User", role: "Operator" };
+  const authData = JSON.parse(localStorage.getItem("authData"));
+  const user = authData?.name;
+
   const userRole = authData?.role || authData?.user?.role; // Check karein aapka structure kya hai
 
   const handleRead = async (id) => {
     try {
       // 1️⃣ Backend se delete
-      await fetch(`http://localhost:5005/api/notifications/${id}`, {
+      await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
         method: "DELETE",
       });
 
@@ -65,7 +68,7 @@ const UserNavbar = () => {
 
   // Socket.io for realtime notifications
   useEffect(() => {
-    const socket = io("http://localhost:5005", { transports: ["websocket"] });
+    const socket = io(`${API_BASE_URL}`, { transports: ["websocket"] });
 
     socket.on("newNotification", (notification) => {
       dispatch(addNotification(notification));

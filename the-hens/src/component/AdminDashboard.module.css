@@ -1732,3 +1732,79 @@
   -webkit-box-orient: vertical;
   line-height: 1.4; /* Line height control karne ke liye */
 }
+.filterGrid {
+  display: grid;
+  /* Responsive grid: columns will wrap automatically if they are less than 200px */
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 2rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inputGroup label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #4b5563;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.inputGroup input,
+.inputGroup select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background-color: #f9fafb;
+  font-size: 0.95rem;
+  color: #1f2937;
+  transition: all 0.2s ease;
+  outline: none;
+  width: 100%;
+}
+
+/* Hover & Focus States */
+.inputGroup input:hover,
+.inputGroup select:hover {
+  border-color: #9ca3af;
+}
+
+.inputGroup input:focus,
+.inputGroup select:focus {
+  border-color: #3b82f6;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Disabled State for Product Name */
+.inputGroup select:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+  color: #9ca3af;
+}
+
+/* Specific styling for Date inputs to look cleaner */
+.inputGroup input[type="date"] {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* Mobile Adjustments */
+@media (max-width: 480px) {
+  .filterGrid {
+    grid-template-columns: 1fr; /* Single column on very small screens */
+    padding: 16px;
+    gap: 16px;
+  }
+}
