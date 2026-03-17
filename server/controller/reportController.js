@@ -336,6 +336,43 @@ exports.getDailyReport = async (req, res) => {
     `);
 
     // =====================================================
+    // 🥚 CHICKEN KG & EGG PCS SUMMARY
+    // =====================================================
+    const categorySummaryResult = await request.query(`
+  SELECT 
+    SUM(
+      CASE 
+        WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)') 
+        THEN 
+          CASE 
+           WHEN oi.Weight LIKE '%Gram%' 
+  THEN (TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL(18,2)) / 1000) * TRY_CAST(oi.Quantity AS DECIMAL(18,2))
+WHEN oi.Weight LIKE '%Kg%' 
+  THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL(18,2)) * TRY_CAST(oi.Quantity AS DECIMAL(18,2))
+            ELSE 0
+          END
+        ELSE 0
+      END
+    ) AS TotalChickenKG,
+
+    SUM(
+      CASE 
+        WHEN oi.ProductType = 'Tray' THEN TRY_CAST(oi.Quantity AS INT) * 30
+        WHEN oi.ProductType = 'Box' THEN TRY_CAST(oi.Quantity AS INT) * 6
+        WHEN oi.ProductType IN ('Box (Kids)','Box (Women)') THEN TRY_CAST(oi.Quantity AS INT) * 10
+        ELSE 0
+      END
+    ) AS TotalEggPCS
+
+  FROM OrderItems oi
+  JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+  WHERE CAST(o.OrderDate AS DATE) = @targetDate
+  AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+  ${boyFilter}
+`);
+
+    // =====================================================
     // 6️⃣ TOTAL ORDERS COUNT
     // =====================================================
     const ordersCountResult = await request.query(`
@@ -380,6 +417,11 @@ exports.getDailyReport = async (req, res) => {
     const revenueOrders =
       revenueOrdersCountResult.recordset[0]?.RevenueOrders || 0;
 
+    const categorySummary = categorySummaryResult.recordset[0] || {};
+
+    const totalChickenKG = categorySummary.TotalChickenKG || 0;
+    const totalEggPCS = categorySummary.TotalEggPCS || 0;
+
     // =====================================================
     // RESPONSE
     // =====================================================
@@ -393,6 +435,8 @@ exports.getDailyReport = async (req, res) => {
         paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
         focAmount: totalFOC,
+        totalChickenKG: totalChickenKG,
+        totalEggPCS: totalEggPCS,
       },
       products: productData,
       payments: paymentData,

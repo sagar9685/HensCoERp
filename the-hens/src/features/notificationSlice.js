@@ -1,13 +1,13 @@
 // features/notificationSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
 // Initial fetch of notifications
 export const fetchNotifications = createAsyncThunk(
   "notifications/fetch",
   async (role) => {
-    const res = await fetch(
-      `http://localhost:5005/api/notifications?role=${role}`,
-    );
+    const res = await fetch(`${API_BASE_URL}/api/notifications?role=${role}`);
     const data = await res.json();
     return data;
   },

@@ -1808,3 +1808,38 @@
     gap: 16px;
   }
 }
+.topActions {
+  display: flex;
+  gap: 10px;
+}
+
+.addBtn {
+  background: #27ae60;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.customerBtn {
+  background: #2980b9;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.exportBtn {
+  background: #16a085;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btnIcon {
+  margin-right: 6px;
+}

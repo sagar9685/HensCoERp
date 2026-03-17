@@ -1,0 +1,63 @@
+.footer {
+  width: 100%;
+  padding: 1.5rem 0;
+  background-color: #ffffff; /* Clean white or use #f9fafb for light gray */
+  border-top: 1px solid #e5e7eb; /* Subtle line */
+  margin-top: auto; /* Pushes footer to bottom if using flex-body */
+}
+
+.footerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap; /* Key for responsiveness */
+}
+
+.footerText {
+  font-size: 0.875rem;
+  color: #6b7280; /* Neutral gray */
+  font-weight: 500;
+}
+
+.footerDivider {
+  color: #d1d5db;
+  user-select: none;
+}
+
+.footerCredit {
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.footerCredit strong {
+  color: #111827; /* Darker for the name to pop */
+  font-weight: 600;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+/* Hover effect on your name */
+.footerCredit strong:hover {
+  color: #2563eb; /* Professional Blue */
+  cursor: pointer;
+}
+
+/* RESPONSIVE TWEAKS */
+@media (max-width: 640px) {
+  .footerContent {
+    flex-direction: column; /* Stack on mobile */
+    gap: 8px;
+    text-align: center;
+  }
+
+  .footerDivider {
+    display: none; /* Hide dot on mobile as items are stacked */
+  }
+}

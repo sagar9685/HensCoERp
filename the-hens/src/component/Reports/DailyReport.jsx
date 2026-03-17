@@ -4,6 +4,7 @@ import { fetchDailyReport } from "../../features/reportSlice";
 import { fetchDeliveryMen } from "../../features/assignedOrderSlice";
 import { Calendar, User, Printer, FileText } from "lucide-react";
 import styles from "./DailyReport.module.css";
+import Footer from "../Footer";
 
 const DailyReport = () => {
   const dispatch = useDispatch();
@@ -216,7 +217,23 @@ const DailyReport = () => {
                 )}
               </table>
             </div>
+            <div className={styles.productionSummary}>
+              <div className={styles.productionItem}>
+                <span>Total Chicken</span>
+                <strong>
+                  {Number(daily.summary?.totalChickenKG || 0).toFixed(2)} KG
+                </strong>
+              </div>
+
+              <div className={styles.productionItem}>
+                <span>Total Eggs</span>
+                <strong>
+                  {Number(daily.summary?.totalEggPCS || 0).toLocaleString()} PCS
+                </strong>
+              </div>
+            </div>
           </div>
+          <Footer />
         </>
       )}
     </div>

@@ -200,8 +200,8 @@ const UserNavbar = () => {
                 )}
               </div>
               <div className={styles.profileInfo}>
-                <h4>{user.name}</h4>
-                <p>{user.role}</p>
+                <h4>{user?.name}</h4>
+                <p>{user?.role}</p>
               </div>
 
               <div className={styles.profileDropdown}>

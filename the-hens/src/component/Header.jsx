@@ -206,30 +206,6 @@ const Header = () => {
       {/* Right Side - Controls */}
       <div className={styles.controls}>
         {/* Search */}
-        <div
-          className={`${styles.searchContainer} ${
-            searchFocused ? styles.searchFocused : ""
-          }`}
-        >
-          <FaSearch className={styles.searchIcon} />
-          <input
-            type="text"
-            placeholder="Search Products, users, reports..."
-            className={styles.searchInput}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-          {searchQuery && (
-            <button
-              className={styles.searchClear}
-              onClick={() => setSearchQuery("")}
-            >
-              <FaTimes />
-            </button>
-          )}
-        </div>
 
         {/* Theme Toggle */}
         <button
@@ -241,11 +217,6 @@ const Header = () => {
           <span className={styles.themeTooltip}>
             {darkMode ? "Light Mode" : "Dark Mode"}
           </span>
-        </button>
-
-        <button className={styles.themeToggle} onClick={handleUserFormToggle}>
-          {userFormToggle ? <FaToggleOn /> : <FaToggleOff />}
-          <span className={styles.themeTooltip}>User Form</span>
         </button>
 
         {/* Notifications */}
@@ -310,6 +281,9 @@ const Header = () => {
             <div className={styles.userInfo}>
               <span className={styles.userName}>{displayName}</span>
               <span className={styles.userRole}>{displayRole}</span>
+              <span className={styles.devCredit}>
+                Developed & Deployed by Sagar Gupta
+              </span>
             </div>
             <FaCaretDown
               className={`${styles.chevron} ${

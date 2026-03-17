@@ -107,9 +107,10 @@ const AddStockModal = () => {
               disabled={isSubmitting}
             >
               <option value="">Select a product type</option>
-              {productTypes.map((p) => (
-                <option key={p} value={p}>
-                  {p}
+
+              {productTypes?.map((p) => (
+                <option key={p.ProductTypeId} value={p.ProductType}>
+                  {p.ProductType}
                 </option>
               ))}
             </select>

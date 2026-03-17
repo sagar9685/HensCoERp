@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomerLedger } from "../../features/reportSlice";
 import * as XLSX from "xlsx";
 import styles from "./CustomerLedger.module.css";
+import Footer from "../Footer";
 
 const CustomerLedger = () => {
   const dispatch = useDispatch();
@@ -258,6 +259,7 @@ const CustomerLedger = () => {
           </>
         )}
       </div>
+      <Footer />
     </div>
   );
 };

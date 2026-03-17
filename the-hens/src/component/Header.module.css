@@ -47,7 +47,7 @@
   height: 3rem;
   border-radius: 0.75rem;
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  box-shadow: 
+  box-shadow:
     0 2px 8px rgba(10, 140, 210, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     0 0 0 1px rgba(255, 255, 255, 0.3);
@@ -80,11 +80,11 @@
 }
 
 @keyframes subtleGlow {
-  0% { 
+  0% {
     opacity: 0.08;
     transform: translate(-50%, -50%) scale(1);
   }
-  100% { 
+  100% {
     opacity: 0.15;
     transform: translate(-50%, -50%) scale(1.05);
   }
@@ -97,7 +97,7 @@
   transform: translate(-50%, -50%);
   width: 2rem;
   height: 2rem;
-  background: linear-gradient(135deg, #0A8CD2, #0a497b);
+  background: linear-gradient(135deg, #0a8cd2, #0a497b);
   border-radius: 0.5rem;
   display: none;
   align-items: center;
@@ -120,7 +120,7 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #0a497b 0%, #0A8CD2 100%);
+  background: linear-gradient(135deg, #0a497b 0%, #0a8cd2 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -138,7 +138,7 @@
 
 .brandSubtitle {
   font-size: 0.625rem;
-  color: #0A8CD2;
+  color: #0a8cd2;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -170,7 +170,7 @@
 }
 
 .mobileMenuButton:hover span {
-  background: #0A8CD2;
+  background: #0a8cd2;
 }
 
 /* Navigation */
@@ -210,14 +210,14 @@
 }
 
 .navItem:hover {
-  color: #0A8CD2;
+  color: #0a8cd2;
   background: rgba(10, 140, 210, 0.04);
   transform: translateY(-1px);
 }
 
 .navItemActive {
   color: white;
-  background: linear-gradient(135deg, #0A8CD2, #0a497b);
+  background: linear-gradient(135deg, #0a8cd2, #0a497b);
   box-shadow: 0 2px 8px rgba(10, 140, 210, 0.2);
 }
 
@@ -243,7 +243,7 @@
   transform: translateX(-50%);
   width: 0.25rem;
   height: 0.25rem;
-  background: #0A8CD2;
+  background: #0a8cd2;
   border-radius: 50%;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -300,7 +300,7 @@
 
 .searchInput:focus {
   outline: none;
-  border-color: #0A8CD2;
+  border-color: #0a8cd2;
   background: white;
   box-shadow: 0 0 0 3px rgba(10, 140, 210, 0.1);
 }
@@ -337,7 +337,7 @@
 
 .dark .searchInput:focus {
   background: #2d3748;
-  border-color: #0A8CD2;
+  border-color: #0a8cd2;
 }
 
 /* Theme Toggle */
@@ -359,7 +359,7 @@
 
 .themeToggle:hover {
   background: white;
-  color: #0A8CD2;
+  color: #0a8cd2;
   transform: scale(1.05) rotate(12deg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -417,7 +417,7 @@
 
 .notificationButton:hover {
   background: white;
-  color: #0A8CD2;
+  color: #0a8cd2;
   transform: scale(1.05);
 }
 
@@ -439,9 +439,15 @@
 }
 
 @keyframes pulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .dark .notificationCounter {
@@ -503,7 +509,7 @@
 
 .notificationStats {
   font-size: 0.75rem;
-  color: #0A8CD2;
+  color: #0a8cd2;
   font-weight: 600;
 }
 
@@ -553,7 +559,7 @@
 }
 
 .notificationStatus.info {
-  background: #0A8CD2;
+  background: #0a8cd2;
 }
 
 .notificationStatus.warning {
@@ -584,7 +590,7 @@
 .unreadDot {
   width: 6px;
   height: 6px;
-  background: #0A8CD2;
+  background: #0a8cd2;
   border-radius: 50%;
   margin-left: auto;
 }
@@ -602,7 +608,7 @@
 .notificationAction {
   background: none;
   border: none;
-  color: #0A8CD2;
+  color: #0a8cd2;
   font-weight: 600;
   cursor: pointer;
   font-size: 0.8125rem;
@@ -638,7 +644,7 @@
 
 .userTrigger:hover {
   background: white;
-  border-color: #0A8CD2;
+  border-color: #0a8cd2;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
@@ -652,7 +658,7 @@
   width: 2.5rem;
   height: 2.5rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0A8CD2, #0a497b);
+  background: linear-gradient(135deg, #0a8cd2, #0a497b);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -738,7 +744,7 @@
   width: 3rem;
   height: 3rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0A8CD2, #0a497b);
+  background: linear-gradient(135deg, #0a8cd2, #0a497b);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -772,7 +778,7 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 0.75rem;
-  color: #0A8CD2;
+  color: #0a8cd2;
   font-weight: 600;
   background: rgba(10, 140, 210, 0.1);
   padding: 0.25rem 0.5rem;
@@ -800,13 +806,13 @@
 
 .menuOption:hover {
   background: #f8fafc;
-  color: #0A8CD2;
+  color: #0a8cd2;
   padding-left: 1.75rem;
 }
 
 .dark .menuOption:hover {
   background: #4a5568;
-  color: #0A8CD2;
+  color: #0a8cd2;
 }
 
 .dropdownFooter {
@@ -883,11 +889,11 @@
   .header {
     padding: 0.75rem 1.5rem;
   }
-  
+
   .navigation {
     margin: 0 1rem;
   }
-  
+
   .searchContainer {
     flex: 0 1 14rem;
   }
@@ -897,18 +903,18 @@
   .brandArea {
     min-width: auto;
   }
-  
+
   .brandMeta {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
   }
-  
+
   .userTrigger {
     min-width: auto;
     padding: 0.5rem;
   }
-  
+
   .userInfo {
     display: none;
   }
@@ -920,16 +926,16 @@
     gap: 1rem;
     padding: 1rem;
   }
-  
+
   .brandArea {
     order: 1;
     flex: 1;
   }
-  
+
   .mobileMenuButton {
     display: flex;
   }
-  
+
   .navigation {
     order: 3;
     position: absolute;
@@ -948,32 +954,32 @@
     visibility: hidden;
     z-index: 999;
   }
-  
+
   .navigation.mobileMenuOpen {
     transform: translateY(0);
     opacity: 1;
     visibility: visible;
   }
-  
+
   .mobileMenuHeader {
     display: flex;
   }
-  
+
   .navItem {
     border-radius: 0;
     padding: 1rem 1.5rem;
     justify-content: flex-start;
   }
-  
+
   .controls {
     order: 2;
     min-width: auto;
   }
-  
+
   .searchContainer {
     display: none;
   }
-  
+
   .notificationPanel {
     width: 20rem;
     right: -2rem;
@@ -984,34 +990,34 @@
   .header {
     padding: 0.75rem;
   }
-  
+
   .brandArea {
     gap: 0.75rem;
   }
-  
+
   .logoWrapper {
     width: 2.5rem;
     height: 2.5rem;
   }
-  
+
   .logo {
     width: 1.5rem;
     height: 1.5rem;
   }
-  
+
   .brandName {
     font-size: 1.25rem;
   }
-  
+
   .brandSubtitle {
     font-size: 0.5625rem;
   }
-  
+
   .notificationPanel {
     width: 18rem;
     right: -4rem;
   }
-  
+
   .userDropdown {
     width: 16rem;
   }
@@ -1041,4 +1047,13 @@
 
 .dark .notificationList::-webkit-scrollbar-thumb {
   background: #718096;
+}
+
+.devCredit {
+  font-size: 0.75rem;
+  font-style: italic;
+  color: black;
+  border-top: 1px solid #eee; /* Optional: adds a small divider */
+  padding-top: 4px;
+  margin-top: 2px;
 }

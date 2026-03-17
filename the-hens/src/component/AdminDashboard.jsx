@@ -7,6 +7,8 @@ import {
   FaSearch,
   FaFilter,
   FaSyncAlt,
+  FaFileExcel,
+  FaUserPlus,
   FaShieldAlt,
   FaFileInvoiceDollar,
   FaTruck,
@@ -504,8 +506,10 @@ const AdminDashboard = () => {
           // --- Ye raha aapka maanga hua column ---
           "Final Payable (Total + Delivery)":
             index === 0 ? orderSubtotal + deliveryCharge : "",
-          "Order Date": order.OrderDate?.split("T")[0],
-          "Delivery Date": order.DeliveryDate?.split("T")[0],
+          "Order Date": order.OrderDate ? new Date(order.OrderDate) : "",
+          "Delivery Date": order.DeliveryDate
+            ? new Date(order.DeliveryDate)
+            : "",
           "Delivery Man": order.DeliveryManName || "-",
           "Order Status": order.OrderStatus || "Pending",
           "Order Taken By": order.OrderTakenBy || "-",
@@ -761,6 +765,28 @@ const AdminDashboard = () => {
           <button className={styles.clearBtn} onClick={handleClear}>
             Clear Filters
           </button>
+
+          <div className={styles.topActions}>
+            <button
+              className={styles.addOrder}
+              onClick={() => setIsModalOpen(true)}
+            >
+              <FaPlus /> Add Order
+            </button>
+
+            <button
+              className={styles.customerBtn}
+              onClick={() => setIsCustomerModalOpen(true)}
+            >
+              <FaUserPlus className={styles.btnIcon} />
+              Add New Customer
+            </button>
+
+            <button className={styles.exportBtn} onClick={handleExportExcel}>
+              <FaFileExcel className={styles.btnIcon} />
+              Export Excel
+            </button>
+          </div>
         </div>
         {/* ACTIVE FILTERS DISPLAY */}
         {(filters.orderStatus ||

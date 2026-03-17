@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import styles from "./AnalysisDashboard.module.css";
 import Header from "../Header";
+import Footer from "../Footer";
 
 ChartJS.register(
   CategoryScale,
@@ -51,7 +52,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 );
 
 Modal.setAppElement("#root");
@@ -220,16 +221,18 @@ const AnalysisDashboard = () => {
     };
   };
 
- // Add this helper inside your component to sort data for the modal
-const openModal = (config) => {
-  // Create a copy and sort by value (vKey) descending
-  const sortedData = config.data ? [...config.data].sort((a, b) => {
-    return (b[config.vKey] || 0) - (a[config.vKey] || 0);
-  }) : [];
+  // Add this helper inside your component to sort data for the modal
+  const openModal = (config) => {
+    // Create a copy and sort by value (vKey) descending
+    const sortedData = config.data
+      ? [...config.data].sort((a, b) => {
+          return (b[config.vKey] || 0) - (a[config.vKey] || 0);
+        })
+      : [];
 
-  setModalConfig({ ...config, data: sortedData });
-  setModalIsOpen(true);
-};
+    setModalConfig({ ...config, data: sortedData });
+    setModalIsOpen(true);
+  };
 
   if (loading)
     return (
@@ -280,10 +283,10 @@ const openModal = (config) => {
               chart.type === "line"
                 ? Line
                 : chart.type === "doughnut"
-                ? Doughnut
-                : chart.type === "pie"
-                ? Pie
-                : Bar;
+                  ? Doughnut
+                  : chart.type === "pie"
+                    ? Pie
+                    : Bar;
             return (
               <div key={chart.id} className={styles.chartCard}>
                 <div className={styles.chartHeader}>
@@ -373,7 +376,7 @@ const openModal = (config) => {
                                 .includes("revenue") ||
                               modalConfig.vKey.toLowerCase().includes("spent")
                                 ? `₹${parseFloat(
-                                    item[modalConfig.vKey] || 0
+                                    item[modalConfig.vKey] || 0,
                                   ).toLocaleString()}`
                                 : item[modalConfig.vKey]}
                             </td>
@@ -388,6 +391,7 @@ const openModal = (config) => {
           )}
         </Modal>
       </div>
+      <Footer />
     </>
   );
 };
