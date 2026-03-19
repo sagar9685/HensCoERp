@@ -30,6 +30,7 @@ import * as XLSX from "xlsx";
 import EditOrderModal from "./AdminOrderModal/EditOrderModal";
 import { fetchProductTypes } from "../features/productTypeSlice";
 import ViewOrderModal from "./ViewOrderModal";
+import { fetchPaymentModes } from "../features/paymentModeSlice";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -48,6 +49,8 @@ const AdminDashboard = () => {
           deliveryMan: "",
           ProductName: "",
           ProductType: "",
+          invoice: "", // ✅ add
+          paymentModes: [], // ✅ VERY IMPORTANT
         };
   });
 
@@ -58,11 +61,18 @@ const AdminDashboard = () => {
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [receivedAmount, setReceivedAmount] = useState("");
   const [verificationRemarks, setVerificationRemarks] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [isFilterLoading, setIsFilterLoading] = useState(false);
+
+  const paymentModesList = useSelector(
+    (state) => state.paymentMode?.list || [],
+  );
+
+  console.log(paymentModesList, "list of payment mode");
 
   const orders = useSelector((state) => state.order.record);
   const loading = useSelector((state) => state.order.loading);
@@ -219,6 +229,14 @@ const AdminDashboard = () => {
     dispatch(fetchProductTypes());
   }, [dispatch]);
 
+  useEffect(() => {
+    dispatch(fetchPaymentModes());
+  }, [dispatch]);
+
+  useEffect(() => {
+    console.log("Payment Modes Changed:", filters.paymentModes);
+  }, [filters.paymentModes]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -292,6 +310,8 @@ const AdminDashboard = () => {
       toDate: today,
       orderStatus: "",
       paymentStatus: "",
+      invoice: "", // ✅ add this
+      paymentModes: [], // ✅ next feature
     };
 
     setFilters(resetFilters);
@@ -300,6 +320,7 @@ const AdminDashboard = () => {
   };
 
   const handleSearch = () => {
+    setIsOpen(false); // ✅ Dropdown band karne ke liye line add karein
     let filtered = [...orders];
 
     if (filters.fromDate || filters.toDate) {
@@ -363,6 +384,52 @@ const AdminDashboard = () => {
         return types.some(
           (t) => t.trim().toLowerCase() === filters.ProductName.toLowerCase(),
         );
+      });
+    }
+
+    if (filters.invoice) {
+      filtered = filtered.filter((item) =>
+        item.InvoiceNo?.toString().includes(filters.invoice),
+      );
+    }
+
+    console.log(filters.paymentModes, "before if");
+
+    if (filters.paymentModes?.length > 0) {
+      console.log("🔵 Selected Filters:", filters.paymentModes);
+
+      filtered = filtered.filter((item, index) => {
+        console.log("--------------");
+        console.log("🟡 Order Index:", index);
+        console.log("🟡 PaymentSummary Raw:", item.PaymentSummary);
+
+        if (!item.PaymentSummary) {
+          console.log("❌ No PaymentSummary");
+          return false;
+        }
+
+        const modesInOrder = item.PaymentSummary.split("|").map((entry) => {
+          const parts = entry.split(":");
+
+          const mode = parts[0]?.trim().toLowerCase();
+          const amount = parseFloat(parts[1]) || 0;
+
+          return { mode, amount };
+        });
+
+        console.log("🟢 Modes In Order:", modesInOrder);
+
+        const match = filters.paymentModes.some((filterMode) => {
+          const formattedFilter = filterMode.trim().toLowerCase();
+
+          return modesInOrder.some(
+            (entry) => entry.mode === formattedFilter && entry.amount > 0,
+          );
+        });
+
+        console.log("🎯 Final Match:", match);
+
+        return match;
       });
     }
     setFilteredData(filtered);
@@ -632,7 +699,6 @@ const AdminDashboard = () => {
               onChange={handleChange}
             />
           </div>
-
           {/* TO DATE */}
           <div className={styles.inputGroup}>
             <label>TO DATE</label>
@@ -643,7 +709,6 @@ const AdminDashboard = () => {
               onChange={handleChange}
             />
           </div>
-
           {/* ORDER STATUS */}
           <div className={styles.inputGroup}>
             <label>ORDER STATUS</label>
@@ -659,7 +724,6 @@ const AdminDashboard = () => {
               <option value="cancel">Cancel</option>
             </select>
           </div>
-
           {/* PAYMENT STATUS */}
           <div className={styles.inputGroup}>
             <label>PAYMENT STATUS</label>
@@ -674,7 +738,6 @@ const AdminDashboard = () => {
               <option value="Incomplete">Incomplete</option>
             </select>
           </div>
-
           {/* PRODUCT ID */}
           <div className={styles.inputGroup}>
             <label>PRODUCT ID</label>
@@ -686,7 +749,6 @@ const AdminDashboard = () => {
               placeholder="Search Product ID"
             />
           </div>
-
           {/* CUSTOMER */}
           <div className={styles.inputGroup}>
             <label>CUSTOMER</label>
@@ -698,7 +760,6 @@ const AdminDashboard = () => {
               placeholder="Customer name or phone"
             />
           </div>
-
           {/* DELIVERY MAN */}
           <div className={styles.inputGroup}>
             <label>DELIVERY MAN</label>
@@ -716,7 +777,6 @@ const AdminDashboard = () => {
               ))}
             </select>
           </div>
-
           {/* PRODUCT TYPE */}
           <div className={styles.inputGroup}>
             <label>PRODUCT TYPE</label>
@@ -753,6 +813,82 @@ const AdminDashboard = () => {
                 </option>
               ))}
             </select>
+          </div>
+          {/* INVOICE */}
+          <div className={styles.inputGroup}>
+            <label>INVOICE</label>
+            <input
+              type="text"
+              name="invoice"
+              value={filters.invoice}
+              onChange={handleChange}
+              placeholder="Search Invoice No"
+            />
+          </div>
+          {/* PAYMENT MODE */}
+
+          {/* PAYMENT MODE */}
+          <div className={styles.inputGroup}>
+            <label className={styles.sectionTitle}>Payment Mode</label>
+
+            <div className={styles.dropdownWrapper}>
+              <div
+                className={styles.selectInput}
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                {filters.paymentModes?.length > 0
+                  ? `${filters.paymentModes.length} selected`
+                  : "Select Payment Modes"}
+              </div>
+
+              {/* ✅ Dropdown List with Overlay */}
+              {isOpen && (
+                <>
+                  {/* Ye overlay dropdown ke piche rahega aur bahar click karne par band kar dega */}
+                  <div
+                    className={styles.dropdownOverlay}
+                    onClick={() => setIsOpen(false)}
+                  />
+
+                  <div className={styles.dropdownMenu}>
+                    {paymentModesList?.map((mode) => {
+                      const isChecked = filters.paymentModes?.includes(
+                        mode.ModeName,
+                      );
+
+                      return (
+                        <label
+                          key={mode.PaymentModeID}
+                          className={styles.dropdownItem}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              let updatedModes = [
+                                ...(filters.paymentModes || []),
+                              ];
+                              if (isChecked) {
+                                updatedModes = updatedModes.filter(
+                                  (m) => m !== mode.ModeName,
+                                );
+                              } else {
+                                updatedModes.push(mode.ModeName);
+                              }
+                              setFilters({
+                                ...filters,
+                                paymentModes: updatedModes,
+                              });
+                            }}
+                          />
+                          {mode.ModeName}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
 

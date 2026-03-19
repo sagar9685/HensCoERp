@@ -20,6 +20,7 @@ import {
   FaTimes,
   FaToggleOn,
   FaToggleOff,
+  FaLock,
 } from "react-icons/fa";
 import {
   MdSupervisorAccount,
@@ -281,9 +282,6 @@ const Header = () => {
             <div className={styles.userInfo}>
               <span className={styles.userName}>{displayName}</span>
               <span className={styles.userRole}>{displayRole}</span>
-              <span className={styles.devCredit}>
-                Developed & Deployed by Sagar Gupta
-              </span>
             </div>
             <FaCaretDown
               className={`${styles.chevron} ${
@@ -326,6 +324,14 @@ const Header = () => {
                 >
                   <FaLifeRing />
                   <span>Support Center</span>
+                </button>
+
+                <button
+                  className={styles.menuOption}
+                  onClick={() => navigate("/password")}
+                >
+                  <FaLock />
+                  <span>Change password</span>
                 </button>
               </div>
 

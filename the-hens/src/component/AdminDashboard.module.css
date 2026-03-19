@@ -1843,3 +1843,117 @@
 .btnIcon {
   margin-right: 6px;
 }
+/* Container for the whole group */
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  gap: 5px;
+}
+
+.dropdownWrapper {
+  position: relative; /* Menu is absolute to this */
+}
+
+.selectInput {
+  background: white;
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  height: 38px; /* Fixed height is important */
+}
+
+.activeInput {
+  border-color: #2ecc71;
+  box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.1);
+}
+
+.truncateText {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 85%;
+}
+
+.dropdownArrow {
+  font-size: 10px;
+  color: #666;
+}
+
+/* The Floating Menu */
+.dropdownMenu {
+  position: absolute;
+  top: 42px;
+  left: 0;
+  width: 100%;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  z-index: 1000; /* Table ke upar aane ke liye */
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 13px;
+}
+
+.dropdownItem:hover {
+  background: #f8f9fa;
+}
+
+.dropdownItem input {
+  margin-right: 10px;
+  width: 16px;
+  height: 16px;
+}
+
+/* Background overlay to close when clicking outside */
+.dropdownOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* Badges styling */
+.selectedBadgeContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.badge {
+  background: #e8f5e9;
+  color: #2e7d32;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  border: 1px solid #c8e6c9;
+}
+
+.badge button {
+  background: none;
+  border: none;
+  margin-left: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #2e7d32;
+  font-size: 14px;
+}

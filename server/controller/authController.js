@@ -25,7 +25,7 @@ exports.signup = async (req, res) => {
     .input("Password", sql.NVarChar, hashedPassword)
     .input("Role", sql.NVarChar, role || "customer")
     .query(
-      "INSERT INTO Users (Username, Password, Role) VALUES (@Username, @Password, @Role)"
+      "INSERT INTO Users (Username, Password, Role) VALUES (@Username, @Password, @Role)",
     );
 
   res.status(201).json({ message: "User created successfully!" });
@@ -51,19 +51,68 @@ exports.login = async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
     const token = jwt.sign(
-      { userId: user.UserID, role: user.Role },
+      {
+        userId: user.UserID,
+        role: user.Role,
+        tokenVersion: user.tokenVersion || 0, // ✅ IMPORTANT
+      },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" },
     );
 
     res.json({
       token,
       role: user.Role,
       name: user.Username,
-      userId: user.userId,
+      userId: user.UserID, // ✅ FIX
     });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error, please try again later" });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user?.userId; // Token se aane wali ID
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!oldPassword || !newPassword)
+      return res.status(400).json({ message: "All fields are required" });
+
+    const pool = await poolPromise;
+    const result = await pool
+      .request()
+      .input("UserID", sql.Int, userId)
+      .query("SELECT * FROM Users WHERE UserID=@UserID");
+
+    if (result.recordset.length === 0)
+      return res.status(404).json({ message: "User not found" });
+
+    const user = result.recordset[0];
+
+    // Password match check
+    const isMatch = await bcrypt.compare(oldPassword, user.Password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Old password is incorrect" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password + tokenVersion (Security for multi-device logout)
+    await pool
+      .request()
+      .input("UserID", sql.Int, userId)
+      .input("Password", sql.NVarChar, hashedPassword).query(`
+        UPDATE Users 
+        SET Password = @Password, 
+            tokenVersion = ISNULL(tokenVersion, 0) + 1 
+        WHERE UserID = @UserID
+      `);
+
+    res.json({ message: "Password updated successfully. Logging out..." });
+  } catch (err) {
+    console.error("Change Password Error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

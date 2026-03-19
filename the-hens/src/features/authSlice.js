@@ -8,6 +8,7 @@ const initialState = {
   loading: false,
   data: storeData || null,
   error: null,
+  successMsg: null, // ✅ add this
 };
 
 export const userLogin = createAsyncThunk(
@@ -16,16 +17,41 @@ export const userLogin = createAsyncThunk(
     try {
       const result = await axios.post(
         `${API_BASE_URL}/api/users/login`,
-        formData
+        formData,
       );
 
       return result.data;
     } catch (err) {
       return thunkAPI.rejectWithValue(
-        err.response?.data || "something went wrong"
+        err.response?.data || "something went wrong",
       );
     }
-  }
+  },
+);
+
+export const changePassword = createAsyncThunk(
+  "user/changePassword",
+  async (passwordData, thunkAPI) => {
+    try {
+      const token = localStorage.getItem("token"); // 👈 get token
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/users/change-password`,
+        passwordData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`, // 👈 MUST ADD
+          },
+        },
+      );
+
+      return response.data.message;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to change password",
+      );
+    }
+  },
 );
 
 const authSlice = createSlice({
@@ -39,6 +65,11 @@ const authSlice = createSlice({
       localStorage.removeItem("authData");
       localStorage.removeItem("token");
       localStorage.removeItem("role");
+    },
+    clearStatus: (state) => {
+      // ✅ add this
+      state.error = null;
+      state.successMsg = null;
     },
   },
   extraReducers: (builder) => {
@@ -58,9 +89,22 @@ const authSlice = createSlice({
       state.loading = false;
       state.error = action.payload;
     });
+    builder.addCase(changePassword.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+      state.successMsg = null;
+    });
+    builder.addCase(changePassword.fulfilled, (state, action) => {
+      state.loading = false;
+      state.successMsg = action.payload;
+    });
+    builder.addCase(changePassword.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, clearStatus } = authSlice.actions;
 
 export default authSlice.reducer;

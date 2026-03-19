@@ -381,7 +381,7 @@ const Login = () => {
               <RiShieldKeyholeFill className={styles.shieldIcon} />
               <span>Enterprise Grade Security</span>
             </div>
-            <p>Designed By Sagar gupta</p>
+            <p>Crafted and Deployed by Sagar Gupta</p>
           </div>
         </div>
 

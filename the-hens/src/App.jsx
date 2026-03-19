@@ -28,6 +28,7 @@ import StockMovementReport from "./component/user/StockMovement";
 import DailyProduction from "./component/ProductionDaily/DailyProduction";
 import DispatchStock from "./component/ProductionDaily/DispatchStock";
 import CurrentStockInventory from "./component/ProductionDaily/CurrentStockInventory";
+import ChangePassword from "./component/ChangePassword";
 
 function App() {
   return (
@@ -139,6 +140,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <DemoInvoiceForm />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/password"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <ChangePassword />
             </ProtectedRoute>
           }
         />

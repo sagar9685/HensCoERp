@@ -49,19 +49,18 @@ exports.getMonthlyReport = async (req, res) => {
 
     // 2. Payments (Stays similar, but ensure unique calculation)
     const paymentsRes = await request.query(`
-      SELECT pm.ModeName, ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))), 0) AS Amount
-      FROM OrderPayments op
-      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-      JOIN OrdersTemp o ON o.OrderID = op.OrderID
-      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month
-      GROUP BY pm.ModeName
-    `);
+  SELECT pm.ModeName, ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))), 0) AS Amount
+  FROM OrderPayments op
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  JOIN OrdersTemp o ON o.OrderID = op.OrderID
+  JOIN AssignedOrders ao ON ao.OrderID = o.OrderID   -- ✅ ADD
+  WHERE YEAR(o.OrderDate) = @year 
+  AND MONTH(o.OrderDate) = @month
+  AND ao.DeliveryStatus != 'cancel'                  -- ✅ ADD
+  GROUP BY pm.ModeName
+`);
 
     const paymentBreakup = paymentsRes.recordset || [];
-    const totalReceived = paymentBreakup.reduce(
-      (sum, p) => sum + Number(p.Amount),
-      0,
-    );
 
     // 3. Product Type Summary
     const productTypeRes = await request.query(`
@@ -97,7 +96,58 @@ exports.getMonthlyReport = async (req, res) => {
       WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month AND ao.DeliveryStatus != 'cancel'
     `);
 
+    // 5 payment collection
+    // You can actually combine these into one query with CASE WHEN to reduce DB hits
+    const paymentCollectedRes = await request.query(`
+  SELECT 
+    ISNULL(SUM(
+      CASE 
+        WHEN op.PaymentVerifyStatus = 'Verified' 
+          THEN TRY_CAST(op.Amount AS DECIMAL(18,2))
+        WHEN op.PaymentVerifyStatus = 'Short' 
+          THEN TRY_CAST(op.Amount AS DECIMAL(18,2)) - ISNULL(op.ShortAmount, 0)
+        ELSE 0
+      END
+    ), 0) AS TotalReceived
+  FROM OrderPayments op
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  JOIN OrdersTemp o ON o.OrderID = op.OrderID
+  JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+  WHERE YEAR(o.OrderDate) = @year 
+  AND MONTH(o.OrderDate) = @month
+  AND ao.DeliveryStatus != 'cancel'
+  AND op.PaymentModeID != 4
+  AND pm.IsRevenue = 1
+`);
+
+    // 6 outstanding
+
+    const outstandingRes = await request.query(`
+  SELECT 
+    ISNULL(SUM(
+      CASE 
+        WHEN op.PaymentVerifyStatus = 'Verified' THEN 0
+        WHEN op.PaymentVerifyStatus = 'Short' THEN ISNULL(op.ShortAmount, 0)
+        WHEN op.PaymentVerifyStatus = 'Pending' THEN TRY_CAST(op.Amount AS DECIMAL(18,2))
+        ELSE 0
+      END
+    ), 0) AS TotalOutstanding
+  FROM OrderPayments op
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  JOIN OrdersTemp o ON o.OrderID = op.OrderID
+  JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+  WHERE YEAR(o.OrderDate) = @year 
+  AND MONTH(o.OrderDate) = @month
+  AND ao.DeliveryStatus != 'cancel'
+  AND op.PaymentModeID != 4
+  AND pm.IsRevenue = 1
+`);
+
     const cats = categoryRes.recordset[0] || {};
+
+    const totalReceived = paymentCollectedRes.recordset[0]?.TotalReceived || 0;
+
+    const totalOutstanding = outstandingRes.recordset[0]?.TotalOutstanding || 0;
 
     res.status(200).json({
       summary: {
@@ -105,7 +155,7 @@ exports.getMonthlyReport = async (req, res) => {
         TotalSales: totalSales,
         CancelOrderAmount: Number(rawSummary.CancelOrderAmount),
         TotalReceived: totalReceived,
-        TotalOutstanding: Math.round((totalSales - totalReceived) * 100) / 100,
+        TotalOutstanding: totalOutstanding,
       },
       payment: paymentBreakup,
       productTypeSummary: productTypeRes.recordset,
@@ -308,17 +358,26 @@ exports.getDailyReport = async (req, res) => {
     // 4️⃣ PAYMENT COLLECTED (Based on Order Date, matching Customer Report logic)
     // =====================================================
     const paymentCollectedResult = await request.query(`
-      SELECT 
-        ISNULL(SUM(op.Amount), 0) AS PaymentCollected
-      FROM OrdersTemp o
-      JOIN OrderPayments op ON o.OrderID = op.OrderID
-      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-      LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
-      WHERE CAST(o.OrderDate AS DATE) = @targetDate AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
-      ${boyFilter} 
-      AND op.PaymentModeID != 4
-      AND pm.IsRevenue = 1
-    `);
+  SELECT 
+    ISNULL(SUM(
+      CASE 
+        WHEN op.PaymentVerifyStatus = 'Verified' 
+          THEN op.Amount
+        WHEN op.PaymentVerifyStatus = 'Short' 
+          THEN (op.Amount - ISNULL(op.ShortAmount, 0))
+        ELSE 0
+      END
+    ), 0) AS PaymentCollected
+  FROM OrdersTemp o
+  JOIN OrderPayments op ON o.OrderID = op.OrderID
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+  WHERE CAST(o.OrderDate AS DATE) = @targetDate 
+  AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+  ${boyFilter} 
+  AND op.PaymentModeID != 4
+  AND pm.IsRevenue = 1
+`);
 
     // =====================================================
     // 5️⃣ FOC AMOUNT (Separately track FOC for transparency)
@@ -402,6 +461,31 @@ WHEN oi.Weight LIKE '%Kg%'
     `);
 
     // =====================================================
+    // 8 Outstanding (Excluding FOC)
+    // =====================================================
+
+    const outstandingResult = await request.query(`
+  SELECT 
+    ISNULL(SUM(
+      CASE 
+        WHEN op.PaymentVerifyStatus = 'Verified' THEN 0
+        WHEN op.PaymentVerifyStatus = 'Short' THEN ISNULL(op.ShortAmount, 0)
+        WHEN op.PaymentVerifyStatus = 'Pending' THEN ISNULL(op.Amount, 0)
+        ELSE 0
+      END
+    ), 0) AS OutstandingAmount
+  FROM OrdersTemp o
+  JOIN OrderPayments op ON o.OrderID = op.OrderID
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  LEFT JOIN AssignedOrders ao ON o.OrderID = ao.OrderId
+  WHERE CAST(o.OrderDate AS DATE) = @targetDate 
+  AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+  ${boyFilter}
+  AND op.PaymentModeID != 4
+  AND pm.IsRevenue = 1
+`);
+
+    // =====================================================
     // FINAL CALCULATIONS
     // =====================================================
     const productData = itemsResult.recordset || [];
@@ -411,8 +495,8 @@ WHEN oi.Weight LIKE '%Kg%'
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
-    const totalOutstanding = totalSaleAmount - totalReceived;
-
+    const totalOutstanding =
+      outstandingResult.recordset[0]?.OutstandingAmount || 0;
     const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
     const revenueOrders =
       revenueOrdersCountResult.recordset[0]?.RevenueOrders || 0;
