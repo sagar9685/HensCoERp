@@ -18,21 +18,31 @@ import styles from "./EditOrderModal.module.css";
 export default function EditOrderModal({ order, onClose }) {
   const dispatch = useDispatch();
 
-  const itemIds = order.ItemIDs?.split(",") || [];
-  const types = order.ProductTypes?.split(",") || [];
-  const qtys = order.Quantities?.split(",") || [];
-  const w = order.Weights?.split(",") || [];
-  const rates = order.Rates?.split(",") || [];
+  const itemIds = order.ItemIDs?.split(",").map((i) => i.trim()) || [];
+  const types = order.ProductTypes?.split(",").map((i) => i.trim()) || [];
+  const qtys = order.Quantities?.split(",").map((i) => i.trim()) || [];
+  const w = order.Weights?.split(",").map((i) => i.trim()) || [];
+  const rates = order.Rates?.split(",").map((i) => i.trim()) || [];
 
   const productTypes = useSelector((state) => state.product.types || []);
 
+  console.log(types, qtys, rates, "on eid");
+
+  const maxLength = Math.max(
+    itemIds.length,
+    types.length,
+    qtys.length,
+    w.length,
+    rates.length,
+  );
+
   const [items, setItems] = useState(
-    types.map((t, i) => ({
-      itemId: itemIds[i],
-      productType: t,
-      weight: w[i],
-      quantity: qtys[i],
-      rate: rates[i],
+    Array.from({ length: maxLength }, (_, i) => ({
+      itemId: itemIds[i] || "",
+      productType: types[i] || "",
+      weight: w[i] || "",
+      quantity: Number(qtys[i]) || 0,
+      rate: Number(rates[i]) || 0,
     })),
   );
 
@@ -148,7 +158,10 @@ export default function EditOrderModal({ order, onClose }) {
           {items.map((item, i) => (
             <div key={i} className={styles.itemRow}>
               <div className={styles.itemInfo}>
-                <span className={styles.productBadge}>{item.productType}</span>
+                <div className={styles.productRow}>
+                  <span>{item.productType}</span>
+                  <span>{item.weight}</span>
+                </div>
               </div>
 
               <div className={styles.inputGroup}>

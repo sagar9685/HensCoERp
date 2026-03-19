@@ -970,9 +970,18 @@ const AdminDashboard = () => {
 
             {/* Map through all other active dropdown/text filters */}
             {Object.keys(filters)
-              .filter(
-                (key) => key !== "fromDate" && key !== "toDate" && filters[key],
-              )
+              .filter((key) => {
+                if (key === "fromDate" || key === "toDate") return false;
+
+                // ❌ Empty string remove
+                if (filters[key] === "") return false;
+
+                // ❌ Empty array remove (important for paymentModes)
+                if (Array.isArray(filters[key]) && filters[key].length === 0)
+                  return false;
+
+                return true;
+              })
               .map((key) => (
                 <span key={key} className={styles.filterTag}>
                   {key.replace(/([A-Z])/g, " $1")}: {filters[key]}
