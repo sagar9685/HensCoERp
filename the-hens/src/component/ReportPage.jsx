@@ -6,6 +6,7 @@ import styles from "./ReportPage.module.css";
 import Header from "./Header";
 import CustomerReport from "./Reports/CustomerReport";
 import CustomerLedger from "./Reports/CustomerLedger";
+import MonthlyCompareReport from "./Reports/MonthlyCompareReport";
 
 const ReportPage = () => {
   const [activeTab, setActiveTab] = useState("monthly");
@@ -52,6 +53,13 @@ const ReportPage = () => {
           >
             Customer Ledger
           </button>
+
+          <button
+            className={activeTab === "monthlycompare" ? styles.active : ""}
+            onClick={() => setActiveTab("monthlycompare")}
+          >
+            Monthly Compare
+          </button>
         </div>
 
         {/* CONTENT */}
@@ -61,6 +69,7 @@ const ReportPage = () => {
           {activeTab == "daily" && <DailyReport />}
           {activeTab == "customer" && <CustomerReport />}
           {activeTab == "ledger" && <CustomerLedger />}
+          {activeTab == "monthlycompare" && <MonthlyCompareReport />}
         </div>
       </div>
     </>

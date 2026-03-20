@@ -89,6 +89,20 @@ export const fetchCustomerLedger = createAsyncThunk(
   },
 );
 
+export const fetchMonthlyCompare = createAsyncThunk(
+  "report/fetchMonthlyCompare",
+  async ({ year, month }, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/reports/monthlycompare?year=${year}&month=${month}`,
+      );
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -127,6 +141,8 @@ const reportSlice = createSlice({
     ledger: {
       data: [],
     },
+    monthlyCompare: null,
+    compareLoading: false,
 
     monthlyLoading: false,
     weeklyLoading: false,
@@ -244,6 +260,17 @@ const reportSlice = createSlice({
       })
       .addCase(fetchCustomerLedger.rejected, (state, action) => {
         state.ledgerLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchMonthlyCompare.pending, (state) => {
+        state.compareLoading = true;
+      })
+      .addCase(fetchMonthlyCompare.fulfilled, (state, action) => {
+        state.compareLoading = false;
+        state.monthlyCompare = action.payload;
+      })
+      .addCase(fetchMonthlyCompare.rejected, (state, action) => {
+        state.compareLoading = false;
         state.error = action.payload;
       });
   },

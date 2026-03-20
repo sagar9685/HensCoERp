@@ -736,3 +736,330 @@ ORDER BY NetBalance DESC;
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getMonthlyCompareReport = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+
+    if (!year || !month) {
+      return res.status(400).json({ message: "Year and Month are required" });
+    }
+
+    const prevMonth = month == 1 ? 12 : month - 1;
+    const prevYear = month == 1 ? year - 1 : year;
+
+    const pool = await poolPromise;
+
+    // ====================================================
+    // 1. EGG COMPARISON
+    // ====================================================
+    const eggRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month)
+      .input("prevYear", sql.Int, prevYear)
+      .input("prevMonth", sql.Int, prevMonth).query(`
+        SELECT 
+          oi.ProductType,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month 
+              THEN TRY_CAST(oi.Quantity AS INT) ELSE 0 END) AS CurrentQty,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth 
+              THEN TRY_CAST(oi.Quantity AS INT) ELSE 0 END) AS PreviousQty,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month 
+              THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS CurrentAmount,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth 
+              THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS PreviousAmount
+
+        FROM OrderItems oi
+        JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+        JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+        WHERE oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+        AND ao.DeliveryStatus != 'cancel'
+
+        GROUP BY oi.ProductType
+      `);
+
+    // ====================================================
+    // 2. CHICKEN COMPARISON
+    // ====================================================
+    const chickenRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month)
+      .input("prevYear", sql.Int, prevYear)
+      .input("prevMonth", sql.Int, prevMonth).query(`
+SELECT 
+  oi.ProductType,
+
+  -- CURRENT QTY
+  SUM(CASE 
+    WHEN YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month 
+    THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) 
+    ELSE 0 END) AS CurrentQty,
+
+  -- PREVIOUS QTY
+  SUM(CASE 
+    WHEN YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth 
+    THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) 
+    ELSE 0 END) AS PreviousQty,
+
+  -- CURRENT AMOUNT
+  SUM(CASE 
+    WHEN YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month 
+    THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) 
+    ELSE 0 END) AS CurrentAmount,
+
+  -- PREVIOUS AMOUNT
+  SUM(CASE 
+    WHEN YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth 
+    THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) 
+    ELSE 0 END) AS PreviousAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+WHERE oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+AND LOWER(ao.DeliveryStatus) NOT IN ('cancel','cancelled')
+
+GROUP BY oi.ProductType
+ORDER BY oi.ProductType
+      `);
+
+    // ====================================================
+    // 3. PRODUCT REVENUE
+    // ====================================================
+    const revenueRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month)
+      .input("prevYear", sql.Int, prevYear)
+      .input("prevMonth", sql.Int, prevMonth).query(`
+        SELECT 
+          oi.ProductType,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month 
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS CurrentRevenue,
+
+          SUM(CASE WHEN YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth 
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS PreviousRevenue
+
+        FROM OrderItems oi
+        JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+        JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+        WHERE ao.DeliveryStatus != 'cancel'
+        GROUP BY oi.ProductType
+      `);
+
+    // ====================================================
+    // 4. SALES COMPARISON (CURRENT VS PREVIOUS 2 MONTHS)
+    // ====================================================
+    const salesCompareRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month).query(`
+        -- ================= CURRENT =================
+SELECT 
+
+  -- ITEM SALES (CURRENT)
+  (SELECT SUM(TRY_CAST(oi.Total AS DECIMAL(18,2)))
+   FROM OrderItems oi
+   JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+   JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+   WHERE YEAR(o.OrderDate)=@year 
+     AND MONTH(o.OrderDate)=@month
+     AND LOWER(ao.DeliveryStatus) NOT IN ('cancel','cancelled')
+  ) AS CurrentItemSales,
+
+  -- DELIVERY (CURRENT)  ✅ NO DUPLICATION
+  (SELECT SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)))
+   FROM OrdersTemp o
+   JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+   WHERE YEAR(o.OrderDate)=@year 
+     AND MONTH(o.OrderDate)=@month
+     AND LOWER(ao.DeliveryStatus) NOT IN ('cancel','cancelled')
+  ) AS CurrentDelivery,
+
+  -- ================= PREVIOUS =================
+
+  -- ITEM SALES (PREV 2 MONTHS)
+  (SELECT SUM(TRY_CAST(oi.Total AS DECIMAL(18,2)))
+   FROM OrderItems oi
+   JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+   JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+   WHERE o.OrderDate >= DATEADD(MONTH, -2, DATEFROMPARTS(@year,@month,1))
+     AND o.OrderDate < DATEFROMPARTS(@year,@month,1)
+     AND LOWER(ao.DeliveryStatus) NOT IN ('cancel','cancelled')
+  ) AS PreviousItemSales,
+
+  -- DELIVERY (PREV 2 MONTHS)
+  (SELECT SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)))
+   FROM OrdersTemp o
+   JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+   WHERE o.OrderDate >= DATEADD(MONTH, -2, DATEFROMPARTS(@year,@month,1))
+     AND o.OrderDate < DATEFROMPARTS(@year,@month,1)
+     AND LOWER(ao.DeliveryStatus) NOT IN ('cancel','cancelled')
+  ) AS PreviousDelivery
+      `);
+
+    const salesData = salesCompareRes.recordset[0] || {};
+
+    const CurrentMonthSales =
+      (salesData.CurrentItemSales || 0) + (salesData.CurrentDelivery || 0);
+
+    const PreviousTwoMonthSales =
+      (salesData.PreviousItemSales || 0) + (salesData.PreviousDelivery || 0);
+
+    const growth =
+      PreviousTwoMonthSales > 0
+        ? ((CurrentMonthSales - PreviousTwoMonthSales) /
+            PreviousTwoMonthSales) *
+          100
+        : 0;
+
+    // ====================================================
+    // 5. EGG + CHICKEN SUMMARY (PCS/KG + AMOUNT + AVG)
+    // ====================================================
+    const summaryRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month)
+      .input("prevYear", sql.Int, prevYear)
+      .input("prevMonth", sql.Int, prevMonth).query(`
+        SELECT 
+
+        -- EGG PCS
+        SUM(CASE 
+            WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month
+            THEN 
+              CASE 
+                WHEN oi.ProductType='Tray' THEN TRY_CAST(oi.Quantity AS INT)*30
+                WHEN oi.ProductType='Box' THEN TRY_CAST(oi.Quantity AS INT)*6
+                WHEN oi.ProductType IN ('Box (Kids)','Box (Women)') THEN TRY_CAST(oi.Quantity AS INT)*10
+                ELSE 0 END
+        ELSE 0 END) AS CurrentEggPCS,
+
+        SUM(CASE 
+            WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth
+            THEN 
+              CASE 
+                WHEN oi.ProductType='Tray' THEN TRY_CAST(oi.Quantity AS INT)*30
+                WHEN oi.ProductType='Box' THEN TRY_CAST(oi.Quantity AS INT)*6
+                WHEN oi.ProductType IN ('Box (Kids)','Box (Women)') THEN TRY_CAST(oi.Quantity AS INT)*10
+                ELSE 0 END
+        ELSE 0 END) AS PreviousEggPCS,
+
+        -- EGG AMOUNT
+        SUM(CASE 
+            WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS CurrentEggAmount,
+
+        SUM(CASE 
+            WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS PreviousEggAmount,
+
+        -- CHICKEN KG
+        SUM(CASE 
+            WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month
+            THEN 
+              CASE 
+                WHEN oi.Weight LIKE '%Gram%' THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL)/1000
+                WHEN oi.Weight LIKE '%Kg%' THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL)
+                ELSE 0 END
+        ELSE 0 END) AS CurrentChickenKG,
+
+        SUM(CASE 
+            WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth
+            THEN 
+              CASE 
+                WHEN oi.Weight LIKE '%Gram%' THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL)/1000
+                WHEN oi.Weight LIKE '%Kg%' THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL)
+                ELSE 0 END
+        ELSE 0 END) AS PreviousChickenKG,
+
+        -- CHICKEN AMOUNT
+        SUM(CASE 
+            WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@year AND MONTH(o.OrderDate)=@month
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS CurrentChickenAmount,
+
+        SUM(CASE 
+            WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+            AND YEAR(o.OrderDate)=@prevYear AND MONTH(o.OrderDate)=@prevMonth
+            THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS PreviousChickenAmount
+
+        FROM OrderItems oi
+        JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+        JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+        WHERE ao.DeliveryStatus != 'cancel'
+      `);
+
+    const s = summaryRes.recordset[0] || {};
+
+    const summary = {
+      egg: {
+        current: {
+          pcs: s.CurrentEggPCS || 0,
+          amount: s.CurrentEggAmount || 0,
+          avg: s.CurrentEggPCS > 0 ? s.CurrentEggAmount / s.CurrentEggPCS : 0,
+        },
+        previous: {
+          pcs: s.PreviousEggPCS || 0,
+          amount: s.PreviousEggAmount || 0,
+          avg:
+            s.PreviousEggPCS > 0 ? s.PreviousEggAmount / s.PreviousEggPCS : 0,
+        },
+      },
+      chicken: {
+        current: {
+          kg: s.CurrentChickenKG || 0,
+          amount: s.CurrentChickenAmount || 0,
+          avg:
+            s.CurrentChickenKG > 0
+              ? s.CurrentChickenAmount / s.CurrentChickenKG
+              : 0,
+        },
+        previous: {
+          kg: s.PreviousChickenKG || 0,
+          amount: s.PreviousChickenAmount || 0,
+          avg:
+            s.PreviousChickenKG > 0
+              ? s.PreviousChickenAmount / s.PreviousChickenKG
+              : 0,
+        },
+      },
+    };
+
+    // ====================================================
+    // FINAL RESPONSE
+    // ====================================================
+    res.status(200).json({
+      eggComparison: eggRes.recordset,
+      chickenComparison: chickenRes.recordset,
+      productRevenue: revenueRes.recordset,
+
+      salesComparison: {
+        CurrentMonthSales,
+        PreviousTwoMonthSales,
+        GrowthPercent: Number(growth.toFixed(2)),
+      },
+
+      summary,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
