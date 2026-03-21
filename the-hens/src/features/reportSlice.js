@@ -103,6 +103,25 @@ export const fetchMonthlyCompare = createAsyncThunk(
   },
 );
 
+export const fetchWeeklyCompare = createAsyncThunk(
+  "report/fetchWeeklyCompare",
+  async ({ startDate, endDate }, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/reports/weeklycompare`, {
+        params: {
+          startDate,
+          endDate,
+        },
+      });
+
+      return res.data;
+    } catch (err) {
+      console.log("weekly compare error", err);
+      return rejectWithValue(err.response?.data || err.message);
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -143,6 +162,9 @@ const reportSlice = createSlice({
     },
     monthlyCompare: null,
     compareLoading: false,
+
+    weeklyCompare: null,
+    weeklyCompareLoading: false,
 
     monthlyLoading: false,
     weeklyLoading: false,
@@ -279,6 +301,27 @@ const reportSlice = createSlice({
       })
       .addCase(fetchMonthlyCompare.rejected, (state, action) => {
         state.compareLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchWeeklyCompare.pending, (state) => {
+        state.weeklyCompareLoading = true;
+      })
+
+      .addCase(fetchWeeklyCompare.fulfilled, (state, action) => {
+        state.weeklyCompareLoading = false;
+
+        state.weeklyCompare = {
+          weekRange: action.payload?.weekRange || {},
+          eggComparison: action.payload?.eggComparison || [],
+          chickenComparison: action.payload?.chickenComparison || [],
+          productRevenue: action.payload?.productRevenue || [],
+          bulkRetail: action.payload?.bulkRetail || [],
+          salesComparison: action.payload?.salesComparison || {},
+        };
+      })
+
+      .addCase(fetchWeeklyCompare.rejected, (state, action) => {
+        state.weeklyCompareLoading = false;
         state.error = action.payload;
       });
   },

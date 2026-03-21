@@ -1,4 +1,5 @@
 const { sql, poolPromise } = require("../utils/db");
+const moment = require("moment");
 
 /* =======================
    MONTHLY REPORT
@@ -1100,6 +1101,228 @@ ORDER BY CustomerType, oi.ProductType
       },
 
       summary,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getWeeklyCompareReport = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res
+        .status(400)
+        .json({ message: "startDate and endDate are required" });
+    }
+
+    const pool = await poolPromise;
+
+    // ===============================
+    // WEEK DATE RANGE
+    // ===============================
+    const currentStart = moment(startDate).format("DD MMM YYYY");
+    const currentEnd = moment(endDate).format("DD MMM YYYY");
+
+    const prevStartDate = moment(startDate).subtract(7, "days");
+    const prevEndDate = moment(endDate).subtract(7, "days");
+
+    const prevStart = prevStartDate.format("YYYY-MM-DD");
+    const prevEnd = prevEndDate.format("YYYY-MM-DD");
+
+    const prevStartLabel = prevStartDate.format("DD MMM YYYY");
+    const prevEndLabel = prevEndDate.format("DD MMM YYYY");
+
+    // ====================================================
+    // 1. EGG COMPARISON
+    // ====================================================
+    const eggRes = await pool.request().query(`
+SELECT 
+  oi.ProductType,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+THEN TRY_CAST(oi.Quantity AS INT) ELSE 0 END) AS CurrentQty,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+THEN TRY_CAST(oi.Quantity AS INT) ELSE 0 END) AS PreviousQty,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS CurrentAmount,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) AS PreviousAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+WHERE oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+
+GROUP BY oi.ProductType
+`);
+
+    // ====================================================
+    // 2. CHICKEN COMPARISON
+    // ====================================================
+    const chickenRes = await pool.request().query(`
+SELECT 
+oi.ProductType,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) ELSE 0 END) CurrentQty,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) ELSE 0 END) PreviousQty,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) CurrentAmount,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) PreviousAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+WHERE oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+
+GROUP BY oi.ProductType
+ORDER BY oi.ProductType
+`);
+
+    // ====================================================
+    // 3. PRODUCT REVENUE
+    // ====================================================
+    const revenueRes = await pool.request().query(`
+SELECT 
+oi.ProductType,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) CurrentRevenue,
+
+SUM(CASE 
+WHEN o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+THEN TRY_CAST(oi.Total AS DECIMAL(18,2)) ELSE 0 END) PreviousRevenue
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+WHERE LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+
+GROUP BY oi.ProductType
+`);
+
+    // ====================================================
+    // 4. SALES COMPARISON
+    // ====================================================
+    const salesRes = await pool.request().query(`
+SELECT 
+
+(SELECT SUM(TRY_CAST(oi.Total AS DECIMAL(18,2)))
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+) CurrentItemSales,
+
+(SELECT SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)))
+FROM OrdersTemp o
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+) CurrentDelivery,
+
+(SELECT SUM(TRY_CAST(oi.Total AS DECIMAL(18,2)))
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+) PreviousItemSales,
+
+(SELECT SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)))
+FROM OrdersTemp o
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE o.OrderDate BETWEEN '${prevStart}' AND '${prevEnd}'
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+) PreviousDelivery
+`);
+
+    const data = salesRes.recordset[0];
+
+    const CurrentWeekSales =
+      (data.CurrentItemSales || 0) + (data.CurrentDelivery || 0);
+
+    const PreviousWeekSales =
+      (data.PreviousItemSales || 0) + (data.PreviousDelivery || 0);
+
+    const growth =
+      PreviousWeekSales > 0
+        ? ((CurrentWeekSales - PreviousWeekSales) / PreviousWeekSales) * 100
+        : 0;
+
+    // ====================================================
+    // 5. BULK RETAIL
+    // ====================================================
+    const bulkRetailRes = await pool.request().query(`
+SELECT 
+CASE WHEN c.Bulk_Mode=1 THEN 'BULK' ELSE 'RETAIL' END CustomerType,
+oi.ProductType,
+SUM(TRY_CAST(oi.Quantity AS INT)) TotalQty
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+JOIN Customers c ON c.CustomerName = o.CustomerName
+
+WHERE o.OrderDate BETWEEN '${startDate}' AND '${endDate}'
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+AND oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+
+GROUP BY 
+CASE WHEN c.Bulk_Mode=1 THEN 'BULK' ELSE 'RETAIL' END,
+oi.ProductType
+`);
+
+    // ====================================================
+    // FINAL RESPONSE
+    // ====================================================
+    res.status(200).json({
+      weekRange: {
+        currentWeek: {
+          from: currentStart,
+          to: currentEnd,
+        },
+        previousWeek: {
+          from: prevStartLabel,
+          to: prevEndLabel,
+        },
+      },
+
+      eggComparison: eggRes.recordset,
+      chickenComparison: chickenRes.recordset,
+      productRevenue: revenueRes.recordset,
+      bulkRetail: bulkRetailRes.recordset,
+
+      salesComparison: {
+        CurrentWeekSales,
+        PreviousWeekSales,
+        GrowthPercent: Number(growth.toFixed(2)),
+      },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

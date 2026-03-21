@@ -1,0 +1,756 @@
+.container {
+  padding: 24px;
+  background: #f8f9fa;
+  min-height: 100vh;
+  font-family:
+    "Inter",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+/* Header */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 24px;
+  padding: 20px 24px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.headerLeft h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.subtitle {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* View Toggle */
+.viewToggle {
+  display: flex;
+  gap: 4px;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.viewToggle button {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.viewToggle button.active {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  color: #4318ff;
+}
+
+/* Filters Card */
+.filtersCard {
+  background: white;
+  padding: 20px 24px;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.filters {
+  display: flex;
+  gap: 20px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filterGroup label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.select {
+  padding: 10px 16px;
+  border: 1px solid #e0e5f2;
+  border-radius: 12px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  min-width: 150px;
+  transition: all 0.2s;
+}
+
+.select:hover {
+  border-color: #4318ff;
+}
+
+.fetchBtn,
+.downloadBtn,
+.retryBtn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.fetchBtn {
+  background: #4318ff;
+  color: white;
+}
+
+.fetchBtn:hover {
+  background: #2b0fcc;
+  transform: translateY(-1px);
+}
+
+.downloadBtn {
+  background: #05cd99;
+  color: white;
+}
+
+.downloadBtn:hover {
+  background: #04b386;
+  transform: translateY(-1px);
+}
+
+.retryBtn {
+  background: #4318ff;
+  color: white;
+  margin-top: 16px;
+}
+
+/* Loader */
+.loaderContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  background: white;
+  border-radius: 20px;
+  padding: 40px;
+}
+
+.loader {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #e0e5f2;
+  border-top-color: #4318ff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* No Data Card */
+.noDataCard {
+  text-align: center;
+  padding: 60px 40px;
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.noDataIcon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.noDataCard h3 {
+  margin: 0 0 8px;
+  color: #2b3674;
+  font-size: 20px;
+}
+
+.noDataCard p {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+/* Week Range Cards */
+.weekRangeContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.weekCard {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s;
+}
+
+.weekCard:hover {
+  transform: translateY(-2px);
+}
+
+.weekBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #f1f5f9;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4318ff;
+  margin-bottom: 12px;
+}
+
+.weekDates {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+/* KPI Cards */
+.kpiContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.kpiCard {
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s;
+}
+
+.kpiCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.kpiIcon {
+  font-size: 48px;
+}
+
+.kpiContent {
+  flex: 1;
+}
+
+.kpiLabel {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.kpiValue {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #2b3674;
+}
+
+.positive {
+  color: #05cd99;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 8px 0 0;
+}
+
+.negative {
+  color: #ee5d50;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 8px 0 0;
+}
+
+/* Section Cards */
+.sectionCard {
+  background: white;
+  border-radius: 20px;
+  margin-bottom: 24px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sectionHeader {
+  padding: 20px 24px;
+  background: #fafbfc;
+  border-bottom: 1px solid #e0e5f2;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sectionHeader h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.productCount {
+  font-size: 13px;
+  color: #6b7280;
+  background: #f1f5f9;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+/* Tables */
+.tableWrapper {
+  overflow-x: auto;
+  padding: 0;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.dataTable thead {
+  background: #f8f9fa;
+}
+
+.dataTable th {
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #2b3674;
+  font-size: 13px;
+  border-bottom: 2px solid #e0e5f2;
+}
+
+.dataTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.dataTable tr:hover {
+  background: #fafafa;
+}
+
+.productName {
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.revenue {
+  font-weight: 600;
+  color: #4318ff;
+}
+
+.positiveText {
+  color: #05cd99;
+  font-weight: 600;
+}
+
+.negativeText {
+  color: #ee5d50;
+  font-weight: 600;
+}
+
+/* Charts */
+.chartsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.chartCard {
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.chartCard h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.noteText {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Insights Card */
+.insightsCard {
+  background: white;
+  padding: 24px;
+  border-radius: 20px;
+  margin-top: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.insightsCard h3 {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.insightsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.insight {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 16px;
+  transition: transform 0.2s;
+}
+
+.insight:hover {
+  transform: translateY(-2px);
+}
+
+.insight strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #2b3674;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.insight p {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.insight span {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .container {
+    padding: 16px;
+  }
+
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filterGroup {
+    width: 100%;
+  }
+
+  .select {
+    width: 100%;
+  }
+
+  .fetchBtn,
+  .downloadBtn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .viewToggle {
+    width: 100%;
+  }
+
+  .viewToggle button {
+    flex: 1;
+  }
+
+  .kpiContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .weekRangeContainer {
+    grid-template-columns: 1fr;
+  }
+
+  .insightsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dataTable th,
+  .dataTable td {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+  }
+
+  .kpiValue,
+  .positive,
+  .negative {
+    font-size: 24px;
+  }
+
+  .kpiIcon {
+    font-size: 36px;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+/* Revenue Distribution */
+.revenueDistributionContainer {
+  overflow-x: auto;
+  width: 100%;
+}
+
+.revenueTableWrapper {
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+  border-radius: 12px;
+}
+
+.revenueTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.revenueTable thead {
+  background: #f8f9fa;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.revenueTable th {
+  padding: 14px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #2b3674;
+  font-size: 13px;
+  border-bottom: 2px solid #e0e5f2;
+}
+
+.revenueTable td {
+  padding: 12px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 13px;
+}
+
+.revenueTable tr:hover {
+  background: #fafafa;
+}
+
+.topRankRow {
+  background: linear-gradient(90deg, #fff9e6 0%, #ffffff 100%);
+}
+
+.rankCell {
+  font-weight: 600;
+  width: 60px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.productCell {
+  font-weight: 500;
+  color: #2b3674;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.eggBadge,
+.chickenBadge {
+  font-size: 16px;
+  display: inline-block;
+}
+
+.categoryCell {
+  width: 80px;
+}
+
+.eggTag,
+.chickenTag {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.eggTag {
+  background: #e8eaff;
+  color: #4318ff;
+}
+
+.chickenTag {
+  background: #e0f9f2;
+  color: #05cd99;
+}
+
+.revenueCell {
+  font-weight: 600;
+  color: #4318ff;
+  font-size: 14px;
+}
+
+.shareCell {
+  width: 200px;
+}
+
+.shareBarContainer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shareBarBg {
+  flex: 1;
+  background: #e0e5f2;
+  border-radius: 12px;
+  height: 28px;
+  overflow: hidden;
+  position: relative;
+}
+
+.shareBarFill {
+  height: 100%;
+  border-radius: 12px;
+  transition: width 0.3s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.sharePercentText {
+  min-width: 45px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #2b3674;
+}
+
+.noteText {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Optional: Add a summary card for top products */
+.topProductsSummary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+  border-radius: 16px;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.topProductsSummary h4 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.topProductsList {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.topProductItem {
+  flex: 1;
+  min-width: 150px;
+}
+
+.topProductName {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.topProductRevenue {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .revenueTable th,
+  .revenueTable td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+
+  .rankCell {
+    width: 40px;
+    font-size: 14px;
+  }
+
+  .shareCell {
+    width: 150px;
+  }
+
+  .shareBarBg {
+    height: 24px;
+  }
+
+  .sharePercentText {
+    font-size: 10px;
+  }
+
+  .eggTag,
+  .chickenTag {
+    padding: 2px 8px;
+    font-size: 10px;
+  }
+}

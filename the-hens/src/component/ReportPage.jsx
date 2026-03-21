@@ -7,6 +7,7 @@ import Header from "./Header";
 import CustomerReport from "./Reports/CustomerReport";
 import CustomerLedger from "./Reports/CustomerLedger";
 import MonthlyCompareReport from "./Reports/MonthlyCompareReport";
+import WeeklyCompare from "./Reports/WeeklyCompare";
 
 const ReportPage = () => {
   const [activeTab, setActiveTab] = useState("monthly");
@@ -60,6 +61,13 @@ const ReportPage = () => {
           >
             Monthly Compare
           </button>
+
+          <button
+            className={activeTab === "weeklycompare" ? styles.active : ""}
+            onClick={() => setActiveTab("weeklycompare")}
+          >
+            weekly Compare
+          </button>
         </div>
 
         {/* CONTENT */}
@@ -70,6 +78,7 @@ const ReportPage = () => {
           {activeTab == "customer" && <CustomerReport />}
           {activeTab == "ledger" && <CustomerLedger />}
           {activeTab == "monthlycompare" && <MonthlyCompareReport />}
+          {activeTab == "weeklycompare" && <WeeklyCompare />}
         </div>
       </div>
     </>
