@@ -321,6 +321,15 @@ exports.cancelOrder = async (req, res) => {
 
       await transaction
         .request()
+        .input("itemName", sql.NVarChar, item.ProductType)
+        .input("qty", sql.Int, item.Quantity)
+        .input("orderId", sql.Int, orderId).query(`
+      INSERT INTO StockHistory (item_name, weight, quantity, type, ref_no, date)
+      VALUES (@itemName, NULL, @qty, 'CANCEL', @orderId, GETDATE())
+    `);
+
+      await transaction
+        .request()
         .input("UserRole", sql.NVarChar, "admin")
         .input("Message", sql.NVarChar, `Order ${orderId} cancelled`)
         .input("OrderID", sql.Int, orderId).query(`

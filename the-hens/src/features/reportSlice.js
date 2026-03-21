@@ -267,7 +267,15 @@ const reportSlice = createSlice({
       })
       .addCase(fetchMonthlyCompare.fulfilled, (state, action) => {
         state.compareLoading = false;
-        state.monthlyCompare = action.payload;
+
+        state.monthlyCompare = {
+          eggComparison: action.payload?.eggComparison || [],
+          chickenComparison: action.payload?.chickenComparison || [],
+          productRevenue: action.payload?.productRevenue || [],
+          bulkRetail: action.payload?.bulkRetail || [], // ✅ IMPORTANT FIX
+          salesComparison: action.payload?.salesComparison || {},
+          summary: action.payload?.summary || {},
+        };
       })
       .addCase(fetchMonthlyCompare.rejected, (state, action) => {
         state.compareLoading = false;

@@ -1007,6 +1007,47 @@ SELECT
         WHERE ao.DeliveryStatus != 'cancel'
       `);
 
+    // ====================================================
+    // 6. BULK vs RETAIL (TRAY / BOX)
+    // ====================================================
+    const bulkRetailRes = await pool
+      .request()
+      .input("year", sql.Int, year)
+      .input("month", sql.Int, month).query(`
+SELECT 
+  CASE 
+    WHEN c.Bulk_Mode = 1 THEN 'BULK'
+    ELSE 'RETAIL'
+  END AS CustomerType,
+
+  oi.ProductType,
+
+  SUM(TRY_CAST(oi.Quantity AS INT)) AS TotalQty
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+JOIN Customers c ON c.CustomerName = o.CustomerName   -- ⚠️ as per your schema
+
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month
+
+-- cancel remove
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+
+-- sirf tray/box
+AND oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+
+GROUP BY 
+  CASE 
+    WHEN c.Bulk_Mode = 1 THEN 'BULK'
+    ELSE 'RETAIL'
+  END,
+  oi.ProductType
+
+ORDER BY CustomerType, oi.ProductType
+`);
+
     const s = summaryRes.recordset[0] || {};
 
     const summary = {
@@ -1050,6 +1091,7 @@ SELECT
       eggComparison: eggRes.recordset,
       chickenComparison: chickenRes.recordset,
       productRevenue: revenueRes.recordset,
+      bulkRetail: bulkRetailRes.recordset,
 
       salesComparison: {
         CurrentMonthSales,
