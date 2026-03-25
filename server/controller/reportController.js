@@ -1328,3 +1328,69 @@ oi.ProductType
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getCustomerWiseDateRangeReport = async (req, res) => {
+  try {
+    const { from, to, customer, status } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ message: "From & To required" });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    request.input("fromDate", sql.Date, from);
+    request.input("toDate", sql.Date, to);
+
+    let customerFilter = "";
+    if (customer && customer !== "all") {
+      request.input("customer", customer);
+      customerFilter = "AND o.CustomerName = @customer";
+    }
+
+    let statusFilter = "";
+    if (status === "cancel") {
+      statusFilter = `
+      AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
+      IN ('cancel','cancelled')
+      `;
+    } else {
+      statusFilter = `
+      AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
+      NOT IN ('cancel','cancelled')
+      `;
+    }
+
+    const result = await request.query(`
+SELECT 
+    CAST(o.OrderDate AS DATE) AS OrderDate,
+    o.CustomerName,
+    MAX(o.Area) AS Area,
+
+    COUNT(DISTINCT o.OrderID) AS TotalOrders,
+
+    SUM(ISNULL(oi.Total,0)) 
+    + SUM(ISNULL(o.DeliveryCharge,0)) AS TotalSales
+
+FROM OrdersTemp o
+LEFT JOIN OrderItems oi ON oi.OrderID = o.OrderID
+LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+WHERE 
+CAST(o.OrderDate AS DATE) BETWEEN @fromDate AND @toDate
+${customerFilter}
+${statusFilter}
+
+GROUP BY 
+CAST(o.OrderDate AS DATE),
+o.CustomerName
+
+ORDER BY OrderDate
+`);
+
+    res.json(result.recordset);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

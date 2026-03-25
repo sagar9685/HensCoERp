@@ -122,6 +122,29 @@ export const fetchWeeklyCompare = createAsyncThunk(
   },
 );
 
+export const fetchCustomerDateRangeReport = createAsyncThunk(
+  "report/fetchCustomerDateRangeReport",
+  async ({ from, to, customer, status }, { rejectWithValue }) => {
+    try {
+      const res = await axios.get(
+        `${API_BASE_URL}/api/reports/customer-report`,
+        {
+          params: {
+            from,
+            to,
+            customer,
+            status,
+          },
+        },
+      );
+
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Error");
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -160,6 +183,11 @@ const reportSlice = createSlice({
     ledger: {
       data: [],
     },
+    customerDateRange: {
+      data: [],
+    },
+
+    customerDateRangeLoading: false,
     monthlyCompare: null,
     compareLoading: false,
 
@@ -322,6 +350,20 @@ const reportSlice = createSlice({
 
       .addCase(fetchWeeklyCompare.rejected, (state, action) => {
         state.weeklyCompareLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchCustomerDateRangeReport.pending, (state) => {
+        state.customerDateRangeLoading = true;
+        state.error = null;
+      })
+
+      .addCase(fetchCustomerDateRangeReport.fulfilled, (state, action) => {
+        state.customerDateRangeLoading = false;
+        state.customerDateRange.data = action.payload || [];
+      })
+
+      .addCase(fetchCustomerDateRangeReport.rejected, (state, action) => {
+        state.customerDateRangeLoading = false;
         state.error = action.payload;
       });
   },

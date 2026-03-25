@@ -19,6 +19,7 @@ import ExcelExport from "../ExcelExport";
 import { useOrderFilter } from "./UserOrderFilter";
 import CancelOrderModal from "./CancelOrderModal";
 import UpdateQuantityModal from "./UpdateQuantityModal";
+import RTVModal from "./RTVModal";
 
 const UserForm = () => {
   const dispatch = useDispatch();
@@ -33,8 +34,16 @@ const UserForm = () => {
   const [selectedOrderIdForUpdate, setSelectedOrderIdForUpdate] =
     useState(null);
 
+  const [rtvOpen, setRtvOpen] = useState(false);
+  const [rtvRow, setRtvRow] = useState(null);
+
   const authData = JSON.parse(localStorage.getItem("authData"));
   const username = authData?.name;
+
+  const handleRTVClick = (row) => {
+    setRtvRow(row);
+    setRtvOpen(true);
+  };
 
   // Use the custom hook for filtering and pagination
   const {
@@ -501,6 +510,7 @@ const UserForm = () => {
                                 <th>Delivery Status</th>
                                 <th>Assign Status</th>
                                 <th>Payment Mode</th>
+                                <th>RTV</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -516,6 +526,7 @@ const UserForm = () => {
                                     }}
                                     onEditClick={handleEditClick}
                                     formatPaymentSummary={formatPaymentSummary}
+                                    onRTVClick={handleRTVClick}
                                   />
                                 ))
                               ) : (
@@ -589,6 +600,13 @@ const UserForm = () => {
         onClose={() => setIsUpdateModalOpen(false)}
         row={selectedItemForUpdate}
       />
+
+      <RTVModal
+        isOpen={rtvOpen}
+        onClose={() => setRtvOpen(false)}
+        row={rtvRow}
+        username={username}
+      />
     </>
   );
 };
@@ -600,6 +618,7 @@ const OrderTableRow = ({
   onAssignClick,
   onEditClick,
   formatPaymentSummary,
+  onRTVClick,
 }) => {
   const isLocked =
     row.OrderStatus === "Complete" ||
@@ -779,6 +798,17 @@ const OrderTableRow = ({
         <span className={styles.paymentMode}>
           {formatPaymentSummary(row.PaymentSummary)}
         </span>
+      </td>
+      <td>
+        <td>
+          <button
+            className="btn btn-outline-danger btn-sm"
+            onClick={() => onRTVClick(row)}
+            title="Return To Vendor"
+          >
+            <i className="mdi mdi-backup-restore"></i>
+          </button>
+        </td>
       </td>
     </tr>
   );

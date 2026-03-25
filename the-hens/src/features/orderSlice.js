@@ -89,6 +89,19 @@ export const addItemToOrder = createAsyncThunk(
   },
 );
 
+export const addRTV = createAsyncThunk(
+  "order/addRTV",
+  async (payload, thunkAPI) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/orders/rtv`, payload);
+
+      return res.data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.response?.data || "RTV failed");
+    }
+  },
+);
+
 export const orderSlice = createSlice({
   name: "order",
   initialState,
@@ -172,6 +185,18 @@ export const orderSlice = createSlice({
 
     builder.addCase(addItemToOrder.rejected, (state, action) => {
       state.itemAddLoading = false;
+      state.error = action.payload;
+    });
+    builder.addCase(addRTV.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(addRTV.fulfilled, (state, action) => {
+      state.loading = false;
+    });
+
+    builder.addCase(addRTV.rejected, (state, action) => {
+      state.loading = false;
       state.error = action.payload;
     });
   },

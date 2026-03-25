@@ -16,4 +16,6 @@ router.post(
 
 router.post("/add-item", orderController.updateOrder);
 
+router.post("/rtv", orderController.addRTV);
+
 module.exports = router;

@@ -736,3 +736,84 @@ exports.updateOrderQuantity = async (req, res) => {
     });
   }
 };
+
+exports.addRTV = async (req, res) => {
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    const {
+      OrderID,
+      ItemID,
+      ProductType,
+      Weight,
+      Quantity,
+      Rate,
+      RTVDate,
+      reason,
+      username,
+    } = req.body;
+
+    await transaction.begin();
+
+    const total = Quantity * Rate;
+
+    // 1️⃣ Insert RTV Entry
+    await new sql.Request(transaction)
+      .input("OrderID", sql.Int, OrderID)
+      .input("ItemID", sql.Int, ItemID)
+      .input("ProductType", sql.NVarChar, ProductType)
+      .input("Weight", sql.NVarChar, Weight || null)
+      .input("Quantity", sql.Int, Quantity)
+      .input("Rate", sql.Decimal(18, 2), Rate)
+      .input("Total", sql.Decimal(18, 2), total)
+      .input("RTVDate", sql.Date, RTVDate)
+      .input("reason", sql.NVarChar, reason || null)
+      .input("username", sql.NVarChar, username || "admin").query(`
+        INSERT INTO RTVEntries
+        (OrderID, ItemID, ProductType, Weight, Quantity, Rate, Total, RTVDate, Reason, CreatedBy)
+        VALUES
+        (@OrderID, @ItemID, @ProductType, @Weight, @Quantity, @Rate, @Total, @RTVDate, @reason, @username)
+      `);
+
+    // 2️⃣ Add Stock (RTV)
+    // 2️⃣ Add Stock (RTV)
+    await new sql.Request(transaction)
+      .input("inward", sql.NVarChar, `RTV-${OrderID}`)
+      .input("item", sql.NVarChar, ProductType)
+      .input("qty", sql.Int, Quantity)
+      .input("weight", sql.NVarChar, Weight || null)
+      .input("date", sql.Date, RTVDate).query(`
+    INSERT INTO Stock
+    (inward_no, item_name, quantity, weight, created_at, status)
+    VALUES
+    (@inward, @item, @qty, @weight, @date, 'RTV')
+  `);
+
+    // 3️⃣ Stock History
+    await new sql.Request(transaction)
+      .input("itemH", sql.NVarChar, ProductType)
+      .input("qtyH", sql.Int, Quantity)
+      .input("weightH", sql.NVarChar, Weight || null)
+      .input("ref", sql.Int, OrderID)
+      .input("dateH", sql.Date, RTVDate).query(`
+        INSERT INTO StockHistory
+        (item_name, weight, quantity, type, ref_no, date)
+        VALUES
+        (@itemH, @weightH, @qtyH, 'RTV', @ref, @dateH)
+      `);
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      message: "RTV added & stock updated",
+    });
+  } catch (err) {
+    await transaction.rollback();
+
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};

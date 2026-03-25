@@ -8,6 +8,7 @@ const {
   getCustomerLedger,
   getMonthlyCompareReport,
   getWeeklyCompareReport,
+  getCustomerWiseDateRangeReport,
 } = require("../controller/reportController");
 
 router.get("/monthly", getMonthlyReport);
@@ -17,5 +18,6 @@ router.get("/customer-summary", getCustomerWiseSummaryByDate);
 router.get("/customer-ledger", getCustomerLedger);
 router.get("/monthlycompare", getMonthlyCompareReport);
 router.get("/weeklycompare", getWeeklyCompareReport);
+router.get("/customer-report", getCustomerWiseDateRangeReport);
 
 module.exports = router;
