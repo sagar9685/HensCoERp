@@ -11,22 +11,32 @@ const RTVModal = ({ isOpen, onClose, row, username }) => {
   const [rtvDate, setRtvDate] = useState("");
   const [reason, setReason] = useState("");
   const [customReason, setCustomReason] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
     if (row) {
       setQty("");
       setReason("");
       setCustomReason("");
-      setRtvDate(new Date().toISOString().split("T")[0]); // today default
+      setSelectedIndex(0);
+      setRtvDate(new Date().toISOString().split("T")[0]);
     }
   }, [row]);
 
   if (!isOpen || !row) return null;
 
-  const item = row.ProductTypes?.split(",")[0];
-  const weight = row.Weights?.split(",")[0];
-  const rate = row.Rates?.split(",")[0];
-  const maxQty = row.Quantities?.split(",")[0];
+  // split multi items
+  const items = row.ProductTypes?.split(",") || [];
+  const weights = row.Weights?.split(",") || [];
+  const rates = row.Rates?.split(",") || [];
+  const qtys = row.Quantities?.split(",") || [];
+  const itemIds = row.ItemIDs?.split(",") || [];
+
+  const item = items[selectedIndex]?.trim();
+  const weight = weights[selectedIndex]?.trim();
+  const rate = rates[selectedIndex]?.trim();
+  const maxQty = qtys[selectedIndex]?.trim();
+  const itemId = itemIds[selectedIndex]?.trim();
 
   const handleSubmit = async () => {
     if (!qty || Number(qty) <= 0) {
@@ -54,7 +64,7 @@ const RTVModal = ({ isOpen, onClose, row, username }) => {
     try {
       const payload = {
         OrderID: row.OrderID,
-        ItemID: row.ItemIDs?.split(",")[0],
+        ItemID: itemId,
         ProductType: item,
         Weight: weight,
         Quantity: Number(qty),
@@ -82,24 +92,34 @@ const RTVModal = ({ isOpen, onClose, row, username }) => {
         </div>
 
         <div className={styles.body}>
+          {/* Item Dropdown */}
           <div className={styles.field}>
             <label>Item</label>
-            <input value={item} disabled />
+            <select
+              value={selectedIndex}
+              onChange={(e) => setSelectedIndex(Number(e.target.value))}
+            >
+              {items.map((it, i) => (
+                <option key={i} value={i}>
+                  {it.trim()} ({weights[i]}) - Qty: {qtys[i]}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className={styles.field}>
             <label>Weight</label>
-            <input value={weight} disabled />
+            <input value={weight || "-"} disabled />
           </div>
 
           <div className={styles.field}>
             <label>Rate</label>
-            <input value={rate} disabled />
+            <input value={rate || "-"} disabled />
           </div>
 
           <div className={styles.field}>
             <label>Order Qty</label>
-            <input value={maxQty} disabled />
+            <input value={maxQty || "-"} disabled />
           </div>
 
           <div className={styles.field}>

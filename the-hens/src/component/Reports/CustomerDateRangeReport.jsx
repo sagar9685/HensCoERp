@@ -15,6 +15,9 @@ import {
   ComposedChart,
   Bar,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import {
   Calendar,
@@ -23,12 +26,14 @@ import {
   Download,
   TrendingUp,
   ShoppingBag,
-  TrendingDown,
   Filter,
   RefreshCw,
-  ChevronDown,
+  Package,
+  Egg,
+  Drumstick,
 } from "lucide-react";
 import styles from "./CustomerDateRangeReport.module.css";
+import { fetchProductTypes } from "../../features/productTypeSlice";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -47,6 +52,14 @@ const sortByDate = (a, b) => {
   return new Date(a.OrderDate) - new Date(b.OrderDate);
 };
 
+// Product type icons mapping
+const getProductTypeIcon = (type) => {
+  const typeLower = type?.toLowerCase() || "";
+  if (typeLower.includes("egg")) return <Egg size={14} />;
+  if (typeLower.includes("chicken")) return <Drumstick size={14} />;
+  return <Package size={14} />;
+};
+
 const CustomerDateRangeReport = () => {
   const dispatch = useDispatch();
   const { data = [] } = useSelector(
@@ -60,14 +73,21 @@ const CustomerDateRangeReport = () => {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [status, setStatus] = useState("all");
+  const [productType, setProductType] = useState("all");
   const [chartType, setChartType] = useState("line");
+
+  const { types: availableProductTypes = [] } = useSelector(
+    (state) => state.product,
+  );
 
   useEffect(() => {
     axios
       .get(`${API_BASE_URL}/api/customers`)
       .then((res) => setCustomers(res.data))
       .catch((err) => console.error("Error fetching customers", err));
-  }, []);
+
+    dispatch(fetchProductTypes());
+  }, [dispatch]);
 
   const handleCustomer = (value) => {
     setCustomer(value);
@@ -77,7 +97,15 @@ const CustomerDateRangeReport = () => {
 
   const handleSearch = () => {
     if (from && to) {
-      dispatch(fetchCustomerDateRangeReport({ from, to, customer, status }));
+      dispatch(
+        fetchCustomerDateRangeReport({
+          from,
+          to,
+          customer,
+          status,
+          productType: productType !== "all" ? productType : undefined,
+        }),
+      );
     }
   };
 
@@ -87,14 +115,31 @@ const CustomerDateRangeReport = () => {
     setFrom("");
     setTo("");
     setStatus("all");
+    setProductType("all");
   };
+
+  // Filter data by product type on frontend
+  const filteredData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+
+    let filtered = [...data];
+
+    // Filter by product type if selected
+    if (productType !== "all") {
+      filtered = filtered.filter(
+        (item) => item.ProductType?.toLowerCase() === productType.toLowerCase(),
+      );
+    }
+
+    return filtered;
+  }, [data, productType]);
 
   // Format and sort the data for display
   const formattedData = useMemo(() => {
-    if (!data || data.length === 0) return [];
+    if (!filteredData || filteredData.length === 0) return [];
 
     // Sort by date first
-    const sortedData = [...data].sort(sortByDate);
+    const sortedData = [...filteredData].sort(sortByDate);
 
     // Format dates and ensure proper values
     return sortedData.map((item) => ({
@@ -104,7 +149,7 @@ const CustomerDateRangeReport = () => {
       TotalSales: Number(item.TotalSales || 0),
       TotalOrders: Number(item.TotalOrders || 0),
     }));
-  }, [data]);
+  }, [filteredData]);
 
   const totals = useMemo(() => {
     return formattedData.reduce(
@@ -122,48 +167,55 @@ const CustomerDateRangeReport = () => {
       return new Date(a.originalDate) - new Date(b.originalDate);
     });
 
-    return sortedData.map((item) => ({
-      date: item.OrderDate,
-      originalDate: item.originalDate,
-      sales: Number(item.TotalSales || 0),
-      orders: Number(item.TotalOrders || 0),
-      customerName: item.CustomerName,
-      area: item.Area,
-    }));
+    // Group by date to combine multiple product types if needed
+    const groupedByDate = sortedData.reduce((acc, item) => {
+      const dateKey = item.OrderDate;
+      if (!acc[dateKey]) {
+        acc[dateKey] = {
+          date: item.OrderDate,
+          originalDate: item.originalDate,
+          sales: 0,
+          orders: 0,
+          productTypes: [],
+        };
+      }
+      acc[dateKey].sales += item.TotalSales;
+      acc[dateKey].orders += item.TotalOrders;
+      acc[dateKey].productTypes.push(item.ProductType);
+      return acc;
+    }, {});
+
+    return Object.values(groupedByDate).sort((a, b) => {
+      return new Date(a.originalDate) - new Date(b.originalDate);
+    });
   }, [formattedData]);
 
-  const exportToCSV = () => {
-    if (formattedData.length === 0) return;
+  // Prepare product type breakdown for pie chart
+  const productTypeBreakdown = useMemo(() => {
+    const breakdown = {};
+    formattedData.forEach((item) => {
+      const type = item.ProductType || "Other";
+      if (!breakdown[type]) {
+        breakdown[type] = {
+          name: type,
+          value: 0,
+          sales: 0,
+        };
+      }
+      breakdown[type].value += item.TotalOrders;
+      breakdown[type].sales += item.TotalSales;
+    });
+    return Object.values(breakdown);
+  }, [formattedData]);
 
-    const headers = [
-      "Order Date",
-      "Customer Name",
-      "Area",
-      "Total Orders",
-      "Total Sales (₹)",
-    ];
-    const csvData = formattedData.map((row) => [
-      row.OrderDate,
-      row.CustomerName,
-      row.Area,
-      row.TotalOrders,
-      row.TotalSales,
-    ]);
-
-    const csvContent = [headers, ...csvData]
-      .map((row) => row.join(","))
-      .join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sales_report_${formatDate(from)}_to_${formatDate(to)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+  const COLORS = [
+    "#f97316",
+    "#facc15",
+    "#3b82f6",
+    "#10b981",
+    "#8b5cf6",
+    "#ef4444",
+  ];
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -294,50 +346,51 @@ const CustomerDateRangeReport = () => {
           </AreaChart>
         );
 
-      case "composed":
+      case "pie":
         return (
-          <ComposedChart data={chartData}>
-            <defs>
-              <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#f97316" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#f97316" stopOpacity={0.4} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis
-              dataKey="date"
-              tick={{ fill: "#64748b", fontSize: 11 }}
-              interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis yAxisId="left" tick={{ fill: "#64748b", fontSize: 11 }} />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              tick={{ fill: "#64748b", fontSize: 11 }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Legend />
-            <Bar
-              yAxisId="left"
-              dataKey="sales"
-              fill="url(#barGradient)"
-              name="Sales Amount (₹)"
-              barSize={40}
-              radius={[8, 8, 0, 0]}
-            />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="orders"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ fill: "#3b82f6", r: 4 }}
-              name="Orders Count"
-            />
-          </ComposedChart>
+          <div className={styles.pieChartContainer}>
+            <PieChart width={400} height={400}>
+              <Pie
+                data={productTypeBreakdown}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) =>
+                  `${name} (${(percent * 100).toFixed(0)}%)`
+                }
+                outerRadius={120}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {productTypeBreakdown.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value, name, props) => [
+                  `${value} orders`,
+                  props.payload.name,
+                ]}
+              />
+            </PieChart>
+            <div className={styles.pieLegend}>
+              {productTypeBreakdown.map((item, index) => (
+                <div key={index} className={styles.legendItem}>
+                  <span
+                    className={styles.legendColor}
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  ></span>
+                  <span className={styles.legendName}>{item.name}</span>
+                  <span className={styles.legendValue}>
+                    ₹ {item.sales.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         );
 
       default:
@@ -359,14 +412,6 @@ const CustomerDateRangeReport = () => {
               Real-time performance insights for The Hens Co.
             </p>
           </div>
-          <button
-            onClick={exportToCSV}
-            className={styles.exportBtn}
-            disabled={formattedData.length === 0}
-          >
-            <Download size={18} />
-            <span>Export CSV</span>
-          </button>
         </div>
       </div>
 
@@ -399,6 +444,22 @@ const CustomerDateRangeReport = () => {
                 value={area}
                 readOnly
               />
+            </div>
+
+            <div className={styles.inputWrapper}>
+              <Package className={styles.inputIcon} size={18} />
+              <select
+                className={styles.selectInput}
+                value={productType}
+                onChange={(e) => setProductType(e.target.value)}
+              >
+                <option value="all">All Products</option>
+                {availableProductTypes.map((type, i) => (
+                  <option key={i} value={type.ProductType}>
+                    {type.Category} - {type.ProductType}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className={styles.inputWrapper}>
@@ -443,7 +504,11 @@ const CustomerDateRangeReport = () => {
               <h3 className={styles.statValue}>
                 ₹ {totals.sales.toLocaleString()}
               </h3>
-              <p className={styles.statTrend}>+12.5% from last period</p>
+              <p className={styles.statTrend}>
+                {productType !== "all"
+                  ? `Filtered by: ${productType}`
+                  : "All products"}
+              </p>
             </div>
             <div className={styles.statIcon}>
               <TrendingUp size={32} />
@@ -456,7 +521,9 @@ const CustomerDateRangeReport = () => {
             <div>
               <p className={styles.statLabel}>Total Orders</p>
               <h3 className={styles.statValue}>{totals.orders}</h3>
-              <p className={styles.statTrend}>+8.2% from last period</p>
+              <p className={styles.statTrend}>
+                {productType !== "all" ? `${productType} orders` : "All orders"}
+              </p>
             </div>
             <div className={`${styles.statIcon} ${styles.statIconOrange}`}>
               <ShoppingBag size={32} />
@@ -490,7 +557,10 @@ const CustomerDateRangeReport = () => {
               Sales Performance Trend
             </h3>
             <p className={styles.chartSubtitle}>
-              Per date analysis - showing data points for each selected date
+              Per date analysis -{" "}
+              {productType !== "all"
+                ? `Showing ${productType} products only`
+                : "Showing all products"}
             </p>
           </div>
           <div className={styles.chartControls}>
@@ -507,10 +577,10 @@ const CustomerDateRangeReport = () => {
               Area
             </button>
             <button
-              className={`${styles.chartTypeBtn} ${chartType === "composed" ? styles.activeChartBtn : ""}`}
-              onClick={() => setChartType("composed")}
+              className={`${styles.chartTypeBtn} ${chartType === "pie" ? styles.activeChartBtn : ""}`}
+              onClick={() => setChartType("pie")}
             >
-              Composed
+              Pie
             </button>
           </div>
         </div>
@@ -527,6 +597,7 @@ const CustomerDateRangeReport = () => {
           <h3 className={styles.tableTitle}>Detailed Transaction Records</h3>
           <p className={styles.tableSubtitle}>
             Showing {formattedData.length} records
+            {productType !== "all" && ` for ${productType}`}
           </p>
         </div>
         <div className={styles.tableContainer}>
@@ -536,6 +607,8 @@ const CustomerDateRangeReport = () => {
                 <th className={styles.tableTh}>Date</th>
                 <th className={styles.tableTh}>Customer</th>
                 <th className={styles.tableTh}>Location</th>
+                <th className={styles.tableTh}>Product Name</th>
+                <th className={styles.tableTh}>Product Type</th>
                 <th className={`${styles.tableTh} text-center`}>Orders</th>
                 <th className={`${styles.tableTh} text-right`}>Amount (₹)</th>
               </tr>
@@ -543,14 +616,14 @@ const CustomerDateRangeReport = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="5" className={styles.loadingState}>
+                  <td colSpan="6" className={styles.loadingState}>
                     <div className={styles.spinner}></div>
                     <p>Fetching records...</p>
                   </td>
                 </tr>
               ) : formattedData.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className={styles.emptyState}>
+                  <td colSpan="6" className={styles.emptyState}>
                     <RefreshCw size={40} className="text-gray-300 mb-2" />
                     <p>No data found</p>
                     <p className="text-sm">
@@ -570,6 +643,18 @@ const CustomerDateRangeReport = () => {
                     <td className={styles.tableTd}>
                       <span className={styles.locationBadge}>
                         <MapPin size={12} /> {row.Area}
+                      </span>
+                    </td>
+                    <td className={styles.tableTd}>
+                      <span className={styles.productTypeBadge}>
+                        {getProductTypeIcon(row.ProductName)}
+                        <span>{row.ProductName || "N/A"}</span>
+                      </span>
+                    </td>
+                    <td className={styles.tableTd}>
+                      <span className={styles.productTypeBadge}>
+                        {getProductTypeIcon(row.ProductType)}
+                        <span>{row.ProductType || "N/A"}</span>
                       </span>
                     </td>
                     <td className={`${styles.tableTd} text-center`}>

@@ -1331,7 +1331,7 @@ oi.ProductType
 
 exports.getCustomerWiseDateRangeReport = async (req, res) => {
   try {
-    const { from, to, customer, status } = req.query;
+    const { from, to, customer, status, productType } = req.query;
 
     if (!from || !to) {
       return res.status(400).json({ message: "From & To required" });
@@ -1349,48 +1349,71 @@ exports.getCustomerWiseDateRangeReport = async (req, res) => {
       customerFilter = "AND o.CustomerName = @customer";
     }
 
+    let productTypeFilter = "";
+    if (productType && productType !== "all") {
+      request.input("productType", productType);
+      productTypeFilter = "AND pt.ProductType = @productType";
+    }
+
     let statusFilter = "";
     if (status === "cancel") {
       statusFilter = `
-      AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
-      IN ('cancel','cancelled')
+        AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
+        IN ('cancel','cancelled')
       `;
     } else {
       statusFilter = `
-      AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
-      NOT IN ('cancel','cancelled')
+        AND LOWER(ISNULL(ao.DeliveryStatus,'')) 
+        NOT IN ('cancel','cancelled')
       `;
     }
 
     const result = await request.query(`
 SELECT 
-    CAST(o.OrderDate AS DATE) AS OrderDate,
-    o.CustomerName,
-    MAX(o.Area) AS Area,
+CAST(o.OrderDate AS DATE) AS OrderDate,
+o.CustomerName,
+MAX(o.Area) AS Area,
 
-    COUNT(DISTINCT o.OrderID) AS TotalOrders,
+pt.Category AS ProductName,
+pt.ProductType,
 
-    SUM(ISNULL(oi.Total,0)) 
-    + SUM(ISNULL(o.DeliveryCharge,0)) AS TotalSales
+COUNT(*) AS TotalOrders,
+SUM(ISNULL(oi.Total,0)) AS TotalSales
 
 FROM OrdersTemp o
-LEFT JOIN OrderItems oi ON oi.OrderID = o.OrderID
-LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+INNER JOIN OrderItems oi 
+ON oi.OrderID = o.OrderID
+
+LEFT JOIN ProductTypes pt 
+ON pt.ProductType = oi.ProductType
+
+LEFT JOIN AssignedOrders ao 
+ON ao.OrderID = o.OrderID
 
 WHERE 
 CAST(o.OrderDate AS DATE) BETWEEN @fromDate AND @toDate
 ${customerFilter}
+${productTypeFilter}
 ${statusFilter}
 
 GROUP BY 
 CAST(o.OrderDate AS DATE),
-o.CustomerName
+o.CustomerName,
+pt.Category,
+pt.ProductType
 
 ORDER BY OrderDate
 `);
 
     res.json(result.recordset);
   } catch (err) {
+    console.log("===== CUSTOMER REPORT ERROR =====");
+    console.log("Query Params:", req.query);
+    console.log("SQL Error:", err);
+    console.log("Message:", err.message);
+    console.log("Stack:", err.stack);
+
     res.status(500).json({ message: err.message });
   }
 };
