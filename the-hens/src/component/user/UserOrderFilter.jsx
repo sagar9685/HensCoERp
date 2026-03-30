@@ -66,7 +66,7 @@ export const useOrderFilter = () => {
           // Agar dono dates empty hain toh saare dikhao
           if (!fromDate && !toDate) return true;
 
-          const orderDateRaw = order.DeliveryDate || order.OrderDate;
+          const orderDateRaw = order.OrderDate || order.DeliveryDate;
           if (!orderDateRaw) return false;
 
           // Convert order date to YYYY-MM-DD string

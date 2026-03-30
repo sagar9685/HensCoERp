@@ -123,6 +123,13 @@ const Header = () => {
       path: "/reports",
     },
 
+    {
+      key: "stock",
+      icon: <FaBullhorn />,
+      label: "stock",
+      path: "/stocks",
+    },
+
     // {
     //   key: "Demo",
     //   icon: <FaBullhorn />,

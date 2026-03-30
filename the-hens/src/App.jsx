@@ -29,6 +29,7 @@ import DailyProduction from "./component/ProductionDaily/DailyProduction";
 import DispatchStock from "./component/ProductionDaily/DispatchStock";
 import CurrentStockInventory from "./component/ProductionDaily/CurrentStockInventory";
 import ChangePassword from "./component/ChangePassword";
+import AdminViewStock from "./component/AdminOrderModal/AdminViewStock";
 
 function App() {
   return (
@@ -149,6 +150,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/stocks"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <AdminViewStock />
             </ProtectedRoute>
           }
         />
