@@ -120,6 +120,13 @@ const DailyReport = () => {
               <small className={styles.cardSubtext}>Free/Discount orders</small>
             </div>
             <div className={`${styles.statCard} ${styles.orange}`}>
+              <span className={styles.cardLabel}>RTV Amount</span>
+              <h3>₹{Number(daily.summary?.rtvAmount || 0).toLocaleString()}</h3>
+              <small className={styles.cardSubtext}>
+                Return items deducted
+              </small>
+            </div>
+            <div className={`${styles.statCard} ${styles.orange}`}>
               <span className={styles.cardLabel}>Total Orders</span>
               <h3>
                 {Number(daily.summary?.totalOrders || 0).toLocaleString()}

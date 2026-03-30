@@ -40,13 +40,29 @@ exports.getMonthlyReport = async (req, res) => {
       ) oi
       WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month
     `;
+    // 7 rtv
+    const rtvRes = await request.query(`
+SELECT 
+ISNULL(SUM(TRY_CAST(r.Quantity * r.Rate AS DECIMAL(18,2))),0) AS RTVAmount
+FROM RTVEntries r
+JOIN OrdersTemp o ON o.OrderID = r.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE YEAR(o.OrderDate) = @year
+AND MONTH(o.OrderDate) = @month
+AND ao.DeliveryStatus != 'cancel'
+`);
 
     const summaryRes = await request.query(summaryQuery);
     const rawSummary = summaryRes.recordset[0] || {};
 
-    const totalSales =
+    const rtvAmount = rtvRes.recordset[0]?.RTVAmount || 0;
+
+    const totalSales = Math.max(
+      0,
       Number(rawSummary.TotalItemSales) +
-      Number(rawSummary.TotalDeliveryCharge);
+        Number(rawSummary.TotalDeliveryCharge) -
+        rtvAmount,
+    );
 
     // 2. Payments (Stays similar, but ensure unique calculation)
     const paymentsRes = await request.query(`
@@ -65,37 +81,110 @@ exports.getMonthlyReport = async (req, res) => {
 
     // 3. Product Type Summary
     const productTypeRes = await request.query(`
-      SELECT 
-        oi.ProductType,
-        SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))) AS TotalQty,
-        SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))) AS TotalAmount,
-        AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))) AS AvgRate
-      FROM OrderItems oi
-      JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-      JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month AND ao.DeliveryStatus != 'cancel'
-      GROUP BY oi.ProductType
-    `);
+SELECT 
+  oi.ProductType,
+
+  SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2)) 
+      - ISNULL(rtv.RTVQty,0)) AS TotalQty,
+
+  SUM(TRY_CAST(oi.Total AS DECIMAL(18,2)) 
+      - ISNULL(rtv.RTVAmount,0)) AS TotalAmount,
+
+  AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))) AS AvgRate
+
+FROM OrderItems oi
+
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+OUTER APPLY (
+   SELECT 
+     SUM(Quantity) AS RTVQty,
+     SUM(Quantity * Rate) AS RTVAmount
+   FROM RTVEntries  r
+   WHERE r.OrderID = oi.OrderID 
+   AND r.ProductType = oi.ProductType
+) rtv
+
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month 
+AND ao.DeliveryStatus != 'cancel'
+
+GROUP BY oi.ProductType
+`);
 
     // 4. Chicken vs Egg (Categorized Logic)
     // You can actually combine these into one query with CASE WHEN to reduce DB hits
     const categoryRes = await request.query(`
-      SELECT 
-        SUM(CASE WHEN ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)') THEN 
-            (CASE WHEN Weight LIKE '%Gram%' THEN TRY_CAST(REPLACE(Weight,' Gram','') AS DECIMAL(18,2)) / 1000
-                  WHEN Weight LIKE '%Kg%' THEN TRY_CAST(REPLACE(Weight,' Kg','') AS DECIMAL(18,2)) ELSE 0 END) ELSE 0 END) AS ChickenKG,
-        SUM(CASE WHEN ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)') THEN TRY_CAST(Total AS DECIMAL(18,2)) ELSE 0 END) AS ChickenAmount,
-        SUM(CASE 
-            WHEN ProductType='Tray' THEN TRY_CAST(Quantity AS INT)*30
-            WHEN ProductType='Box' THEN TRY_CAST(Quantity AS INT)*6
-            WHEN ProductType IN ('Box (Kids)', 'Box (Women)') THEN TRY_CAST(Quantity AS INT)*10
-            ELSE 0 END) AS TotalEggs,
-        SUM(CASE WHEN ProductType IN ('Tray','Box','Box (Kids)','Box (Women)') THEN TRY_CAST(Total AS DECIMAL(18,2)) ELSE 0 END) AS EggAmount
-      FROM OrderItems oi
-      JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-      JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-      WHERE YEAR(o.OrderDate) = @year AND MONTH(o.OrderDate) = @month AND ao.DeliveryStatus != 'cancel'
-    `);
+SELECT 
+
+SUM(
+CASE 
+WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+THEN 
+(
+CASE 
+WHEN oi.Weight LIKE '%Gram%' 
+THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL(18,2)) / 1000
+
+WHEN oi.Weight LIKE '%Kg%' 
+THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL(18,2))
+
+ELSE 0 
+END
+) * (oi.Quantity - ISNULL(rtv.RTVQty,0))
+ELSE 0 
+END
+) AS ChickenKG,
+
+SUM(
+CASE 
+WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
+THEN (oi.Total - ISNULL(rtv.RTVAmount,0))
+ELSE 0 
+END
+) AS ChickenAmount,
+
+SUM(
+CASE 
+WHEN oi.ProductType='Tray' 
+THEN (oi.Quantity - ISNULL(rtv.RTVQty,0))*30
+
+WHEN oi.ProductType='Box' 
+THEN (oi.Quantity - ISNULL(rtv.RTVQty,0))*6
+
+WHEN oi.ProductType IN ('Box (Kids)','Box (Women)') 
+THEN (oi.Quantity - ISNULL(rtv.RTVQty,0))*10
+
+ELSE 0 
+END
+) AS TotalEggs,
+
+SUM(
+CASE 
+WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
+THEN (oi.Total - ISNULL(rtv.RTVAmount,0))
+ELSE 0 
+END
+) AS EggAmount
+
+FROM OrderItems oi
+JOIN OrdersTemp o ON o.OrderID = oi.OrderID
+JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+OUTER APPLY (
+  SELECT 
+    SUM(Quantity) AS RTVQty,
+    SUM(Quantity * Rate) AS RTVAmount
+  FROM RTVEntries  r
+  WHERE r.OrderID = oi.OrderID
+  AND r.ProductType = oi.ProductType
+) rtv
+
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month 
+AND ao.DeliveryStatus != 'cancel'
+`);
 
     // 5 payment collection
     // You can actually combine these into one query with CASE WHEN to reduce DB hits
@@ -154,6 +243,7 @@ exports.getMonthlyReport = async (req, res) => {
       summary: {
         TotalOrders: rawSummary.TotalOrders,
         TotalSales: totalSales,
+        RTVAmount: rtvAmount,
         CancelOrderAmount: Number(rawSummary.CancelOrderAmount),
         TotalReceived: totalReceived,
         TotalOutstanding: totalOutstanding,
@@ -433,6 +523,21 @@ WHEN oi.Weight LIKE '%Kg%'
 `);
 
     // =====================================================
+    // 7 TOTAL rtv
+    // =====================================================
+
+    const rtvAmountResult = await request.query(`
+SELECT 
+ISNULL(SUM(TRY_CAST(r.Quantity * r.Rate AS DECIMAL(18,2))),0) AS RTVAmount
+FROM RTVEntries r
+JOIN OrdersTemp o ON o.OrderID = r.OrderID
+LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE CAST(o.OrderDate AS DATE) = @targetDate
+AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+${boyFilter}
+`);
+
+    // =====================================================
     // 6️⃣ TOTAL ORDERS COUNT
     // =====================================================
     const ordersCountResult = await request.query(`
@@ -492,7 +597,10 @@ WHEN oi.Weight LIKE '%Kg%'
     const productData = itemsResult.recordset || [];
     const paymentData = paymentsResult.recordset || [];
 
-    const totalSaleAmount = grossSalesResult.recordset[0]?.GrossSales || 0;
+    const grossSales = grossSalesResult.recordset[0]?.GrossSales || 0;
+    const rtvAmount = rtvAmountResult.recordset[0]?.RTVAmount || 0;
+
+    const totalSaleAmount = Math.max(0, grossSales - rtvAmount);
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
@@ -517,6 +625,7 @@ WHEN oi.Weight LIKE '%Kg%'
         totalOrders: totalOrders,
         revenueOrders: revenueOrders,
         totalGrossSales: totalSaleAmount,
+        rtvAmount: rtvAmount, // ✅ add this
         paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
         focAmount: totalFOC,

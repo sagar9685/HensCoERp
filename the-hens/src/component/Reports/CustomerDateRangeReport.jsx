@@ -576,12 +576,12 @@ const CustomerDateRangeReport = () => {
             >
               Area
             </button>
-            <button
+            {/* <button
               className={`${styles.chartTypeBtn} ${chartType === "pie" ? styles.activeChartBtn : ""}`}
               onClick={() => setChartType("pie")}
             >
               Pie
-            </button>
+            </button> */}
           </div>
         </div>
         <div className={styles.chartContainer}>

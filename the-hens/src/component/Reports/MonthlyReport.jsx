@@ -297,6 +297,15 @@ const MonthlyReport = () => {
                   </span>
                 </div>
               </div>
+              <div className={`${styles.metricCard} ${styles.orangeBorder}`}>
+                <div className={styles.metricIcon}>↩️</div>
+                <div className={styles.metricContent}>
+                  <span className={styles.metricLabel}>RTV Amount</span>
+                  <span className={styles.metricValue}>
+                    {formatINR(monthly.summary.RTVAmount)}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Charts Grid */}
