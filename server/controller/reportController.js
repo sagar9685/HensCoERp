@@ -43,13 +43,12 @@ exports.getMonthlyReport = async (req, res) => {
     // 7 rtv
     const rtvRes = await request.query(`
 SELECT 
-ISNULL(SUM(TRY_CAST(r.Quantity * r.Rate AS DECIMAL(18,2))),0) AS RTVAmount
+ISNULL(SUM(r.Total),0) AS RTVAmount
 FROM RTVEntries r
-JOIN OrdersTemp o ON o.OrderID = r.OrderID
-JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-WHERE YEAR(o.OrderDate) = @year
-AND MONTH(o.OrderDate) = @month
-AND ao.DeliveryStatus != 'cancel'
+LEFT JOIN AssignedOrders ao ON ao.OrderID = r.OrderID
+WHERE CAST(r.RTVDate AS DATE) >= DATEFROMPARTS(@year,@month,1)
+AND CAST(r.RTVDate AS DATE) < DATEADD(MONTH,1,DATEFROMPARTS(@year,@month,1))
+AND ISNULL(ao.DeliveryStatus,'') != 'cancel'
 `);
 
     const summaryRes = await request.query(summaryQuery);
@@ -528,15 +527,13 @@ WHEN oi.Weight LIKE '%Kg%'
 
     const rtvAmountResult = await request.query(`
 SELECT 
-ISNULL(SUM(TRY_CAST(r.Quantity * r.Rate AS DECIMAL(18,2))),0) AS RTVAmount
+ISNULL(SUM(TRY_CAST(r.Total AS DECIMAL(18,2))),0) AS RTVAmount
 FROM RTVEntries r
-JOIN OrdersTemp o ON o.OrderID = r.OrderID
-LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-WHERE CAST(o.OrderDate AS DATE) = @targetDate
+LEFT JOIN AssignedOrders ao ON ao.OrderID = r.OrderID
+WHERE CAST(r.RTVDate AS DATE) = @targetDate
 AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
 ${boyFilter}
 `);
-
     // =====================================================
     // 6️⃣ TOTAL ORDERS COUNT
     // =====================================================
