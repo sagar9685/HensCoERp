@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { sql, poolPromise } = require("../utils/db"); // 👈 ADD THIS
+const { sql, poolPromise } = require("../utils/db");
 
 exports.protect = async (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -16,23 +16,23 @@ exports.protect = async (req, res, next) => {
     const result = await pool
       .request()
       .input("UserID", sql.Int, decoded.userId)
-      .query("SELECT tokenVersion FROM Users WHERE UserID=@UserID");
+      .query("SELECT TokenVersion FROM Users WHERE UserID=@UserID"); // ✅ FIX
 
     const user = result.recordset[0];
 
-    // ✅ Yaha check aayega (correct place)
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
 
-    // 🔥 MAIN LOGIC (all device logout)
-    if (user.tokenVersion !== decoded.tokenVersion) {
+    // ✅ FIX (TokenVersion)
+    if (user.TokenVersion !== decoded.tokenVersion) {
       return res.status(401).json({ message: "Session expired, login again" });
     }
 
     req.user = decoded;
     next();
   } catch (err) {
+    console.log("JWT ERROR:", err.message);
     return res.status(401).json({ message: "Invalid token" });
   }
 };

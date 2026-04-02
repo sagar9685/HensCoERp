@@ -264,6 +264,15 @@ function App() {
         />
 
         <Route
+          path="/change"
+          element={
+            <ProtectedRoute userOnly={true}>
+              <ChangePassword />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/delivery-summary"
           element={
             <ProtectedRoute userOnly={true}>

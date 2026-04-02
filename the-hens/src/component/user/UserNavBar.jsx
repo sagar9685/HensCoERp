@@ -35,7 +35,7 @@ const UserNavbar = () => {
   }, [reduxModalOpen, reduxSidebarOpen]);
 
   const authData = JSON.parse(localStorage.getItem("authData"));
-  const user = authData?.name;
+  const user = authData?.user || authData;
 
   const userRole = authData?.role || authData?.user?.role; // Check karein aapka structure kya hai
 
@@ -91,6 +91,10 @@ const UserNavbar = () => {
   const handleLogout = () => {
     dispatch(logout());
     navigate("/");
+  };
+
+  const handleChangePassword = () => {
+    navigate("/change");
   };
 
   const handleToggleSidebar = () => {
@@ -201,7 +205,7 @@ const UserNavbar = () => {
               </div>
               <div className={styles.profileInfo}>
                 <h4>{user?.name}</h4>
-                <p>{user?.role}</p>
+                {/* <p>{user?.role}</p> */}
               </div>
 
               <div className={styles.profileDropdown}>
@@ -209,6 +213,14 @@ const UserNavbar = () => {
                   <i className="mdi mdi-chevron-down"></i>
                 </button>
                 <div className={styles.dropdownMenu}>
+                  <button
+                    onClick={handleChangePassword}
+                    className={styles.dropdownItem}
+                  >
+                    <i className="mdi mdi-lock-reset"></i>
+                    Change Password
+                  </button>
+
                   <button
                     onClick={handleLogout}
                     className={`${styles.dropdownItem} ${styles.logoutItem}`}

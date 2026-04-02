@@ -74,12 +74,14 @@ export const fetchStockMovement = createAsyncThunk(
   async ({ fromDate, toDate }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        // Yahan movement ki jagah report karein jo aapka working endpoint hai
         `${API_BASE_URL}/api/stock/report?fromDate=${fromDate}&toDate=${toDate}`,
       );
+
+      console.log("API RESPONSE", response.data);
+
       return response.data;
     } catch (err) {
-      // Safety check agar err.response undefined ho
+      console.log("API ERROR", err);
       return rejectWithValue(err.response?.data || "Something went wrong");
     }
   },
@@ -195,8 +197,10 @@ const stockSlice = createSlice({
         state.loading = false;
         state.movementReport = action.payload;
       })
-      .addCase(fetchStockMovement.rejected, (state) => {
+      .addCase(fetchStockMovement.rejected, (state, action) => {
         state.loading = false;
+        state.movementReport = [];
+        console.error("Stock movement error", action.payload);
       })
       .addCase(dispatchToHeadoffice.pending, (state) => {
         state.loading = true;

@@ -51,7 +51,7 @@ const StockMovementReport = () => {
       item.ProductType,
       item.Opening,
       item.Total_In,
-      item.Sold,
+      item.Total_Sell,
       item.Closing,
     ]);
 
@@ -145,7 +145,8 @@ const StockMovementReport = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {movementReport.length > 0 ? (
+                    {Array.isArray(movementReport) &&
+                    movementReport.length > 0 ? (
                       movementReport.map((item, index) => (
                         <tr key={index}>
                           <td className={styles.productName}>

@@ -73,6 +73,8 @@ const UserForm = () => {
     indexOfFirstItem,
     indexOfLastItem,
     filteredAndSortedOrders,
+    assignFilter,
+    setAssignFilter,
   } = useOrderFilter();
 
   useEffect(() => {
@@ -441,6 +443,16 @@ const UserForm = () => {
                             <option value="cancel">Cancel</option>
                           </select>
 
+                          <select
+                            className={styles.statusFilter}
+                            value={assignFilter}
+                            onChange={(e) => setAssignFilter(e.target.value)}
+                          >
+                            <option value="all">All Assign</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="unassigned">Unassigned</option>
+                          </select>
+
                           {/* Reset Button (Highly Recommended) */}
                           <button
                             className="btn btn-light btn-sm"
@@ -451,6 +463,7 @@ const UserForm = () => {
                               setAreaFilter("all");
                               setStatusFilter("all");
                               setDeliveryManFilter("all");
+                              setAssignFilter("all");
                             }}
                           >
                             Clear

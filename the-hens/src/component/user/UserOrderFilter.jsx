@@ -13,6 +13,8 @@ export const useOrderFilter = () => {
   const [fromDate, setFromDate] = useState(""); // New
   const [toDate, setToDate] = useState("");
 
+  const [assignFilter, setAssignFilter] = useState("all");
+
   const rawAssignedOrders = useSelector(
     (state) => state.assignedOrders.data || [],
   );
@@ -59,6 +61,10 @@ export const useOrderFilter = () => {
         const matchesDeliveryMan =
           deliveryManFilter === "all" ||
           order.DeliveryManName === deliveryManFilter;
+
+        //ASSIGN FILTER LOGI
+        if (assignFilter === "assigned" && !order.AssignID) return false;
+        if (assignFilter === "unassigned" && order.AssignID) return false;
 
         // ✅ 5. Date Logic (Order Date)
         // ✅ 5. Date Logic (Fix: Local Date Comparison)
@@ -108,6 +114,7 @@ export const useOrderFilter = () => {
     fromDate,
     toDate,
     sortConfig,
+    assignFilter,
   ]);
 
   // Pagination logic
@@ -210,5 +217,7 @@ export const useOrderFilter = () => {
     formatPaymentSummary,
     indexOfFirstItem,
     indexOfLastItem,
+    assignFilter,
+    setAssignFilter,
   };
 };
