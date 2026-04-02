@@ -11,19 +11,21 @@ exports.assignOrder = async (req, res) => {
     remark,
     username,
   } = req.body;
-  console.log("ASSIGN ORDER BODY:", req.body);
 
   try {
     const pool = await poolPromise;
+    const transaction = new sql.Transaction(pool);
 
-    const check = await pool
+    await transaction.begin();
+
+    const check = await transaction
       .request()
       .input("OrderID", sql.Int, orderId)
       .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
 
     if (check.recordset.length > 0) {
       // REASSIGN
-      await pool
+      await transaction
         .request()
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -45,10 +47,11 @@ exports.assignOrder = async (req, res) => {
           WHERE OrderID = @OrderID
         `);
 
+      await transaction.commit();
       return res.json({ message: "Order reassigned successfully" });
     } else {
       // FIRST ASSIGN
-      await pool
+      await transaction
         .request()
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -66,10 +69,65 @@ exports.assignOrder = async (req, res) => {
           (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
         `);
 
-      return res.status(201).json({ message: "Order assigned successfully" });
+      // =======================
+      // STOCK DEDUCT
+      // =======================
+
+      const items = await transaction
+        .request()
+        .input("OrderID", sql.Int, orderId).query(`
+          SELECT ProductType, Quantity 
+          FROM OrderItems 
+          WHERE OrderID = @OrderID
+        `);
+
+      for (let item of items.recordset) {
+        let qtyToDeduct = parseInt(item.Quantity);
+        const target = item.ProductType.trim();
+
+        const stockRes = await transaction
+          .request()
+          .input("Target", sql.NVarChar, target).query(`
+            SELECT id, quantity 
+            FROM Stock 
+            WHERE LTRIM(RTRIM(item_name)) = @Target 
+            AND quantity > 0
+            ORDER BY id ASC
+          `);
+
+        for (let row of stockRes.recordset) {
+          if (qtyToDeduct <= 0) break;
+
+          const deduct = Math.min(row.quantity, qtyToDeduct);
+
+          await transaction
+            .request()
+            .input("D", sql.Int, deduct)
+            .input("ID", sql.Int, row.id).query(`
+              UPDATE Stock 
+              SET quantity = quantity - @D 
+              WHERE id = @ID
+            `);
+
+          qtyToDeduct -= deduct;
+        }
+
+        if (qtyToDeduct > 0) {
+          throw new Error(`Not enough stock for ${target}`);
+        }
+      }
+
+      await transaction.commit();
+
+      return res.status(201).json({
+        message: "Order assigned successfully",
+      });
     }
   } catch (err) {
-    console.error("Assign error:", err);
+    if (transaction) {
+      await transaction.rollback();
+    }
+
     res.status(500).json({ message: err.message });
   }
 };

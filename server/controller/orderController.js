@@ -23,12 +23,12 @@ exports.addOrder = async (req, res) => {
     const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
     const lastInvoiceResult = await request.query(`
-  SELECT TOP 1 InvoiceNo 
-  FROM OrdersTemp 
-  WHERE InvoiceNo LIKE '${fyString}/%'
-  ORDER BY 
-  CAST(SUBSTRING(InvoiceNo, CHARINDEX('/', InvoiceNo) + 1, 10) AS INT) DESC
-`);
+      SELECT TOP 1 InvoiceNo 
+      FROM OrdersTemp 
+      WHERE InvoiceNo LIKE '${fyString}/%'
+      ORDER BY 
+      CAST(SUBSTRING(InvoiceNo, CHARINDEX('/', InvoiceNo) + 1, 10) AS INT) DESC
+    `);
 
     let nextSeq = 1;
 
@@ -38,6 +38,7 @@ exports.addOrder = async (req, res) => {
     }
 
     const invoiceNo = `${fyString}/${nextSeq}`;
+
     // ===============================
     // 2️⃣ Insert Order Header
     // ===============================
@@ -64,49 +65,10 @@ exports.addOrder = async (req, res) => {
     const orderId = orderInsert.recordset[0].OrderID;
 
     // ===============================
-    // 3️⃣ Process Each Item
+    // 3️⃣ Insert Items ONLY (NO STOCK DEDUCT)
     // ===============================
 
     for (let item of Items) {
-      const target = item.ProductType.trim();
-      let qtyToDeduct = parseInt(item.Quantity);
-
-      // 🔎 Get Available Stock (FIFO)
-      const stockRes = await transaction
-        .request()
-        .input("Target", sql.NVarChar, target).query(`
-          SELECT id, quantity 
-          FROM Stock 
-          WHERE LTRIM(RTRIM(item_name)) = @Target 
-          AND quantity > 0
-          ORDER BY id ASC
-        `);
-
-      // 🔻 Deduct Stock
-      for (let row of stockRes.recordset) {
-        if (qtyToDeduct <= 0) break;
-
-        const deduct = Math.min(row.quantity, qtyToDeduct);
-
-        await transaction
-          .request()
-          .input("D", sql.Int, deduct)
-          .input("ID", sql.Int, row.id).query(`
-            UPDATE Stock 
-            SET quantity = quantity - @D 
-            WHERE id = @ID
-          `);
-
-        qtyToDeduct -= deduct;
-      }
-
-      if (qtyToDeduct > 0) {
-        throw new Error(`Not enough stock for ${target}`);
-      }
-
-      // ===============================
-      // 4️⃣ Insert Into OrderItems
-      // ===============================
       const total = Number(item.Quantity) * Number(item.Rate);
 
       await transaction
@@ -118,16 +80,12 @@ exports.addOrder = async (req, res) => {
         .input("Quantity", sql.Int, item.Quantity)
         .input("Rate", sql.Decimal(18, 2), item.Rate)
         .input("Total", sql.Decimal(18, 2), total).query(`
-    INSERT INTO OrderItems
-    (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
-    VALUES
-    (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
-  `);
+          INSERT INTO OrderItems
+          (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+          VALUES
+          (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+        `);
     }
-
-    // ===============================
-    // 5️⃣ Commit Transaction
-    // ===============================
 
     await transaction.commit();
 
@@ -137,9 +95,6 @@ exports.addOrder = async (req, res) => {
       invoiceNo,
     });
   } catch (err) {
-    console.log("ERROR MESSAGE:", err.message);
-    console.log("SQL ERROR:", err.originalError);
-
     if (transaction._aborted !== true) {
       await transaction.rollback();
     }

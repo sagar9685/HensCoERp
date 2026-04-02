@@ -474,6 +474,7 @@ const OrderForm = ({ onClose }) => {
                 name="orderDate"
                 value={formData.orderDate}
                 onChange={handleChange}
+                min={getTodayDate()} // ❗ previous date block
                 className={styles.inputField}
               />
               {errors.orderDate && (
