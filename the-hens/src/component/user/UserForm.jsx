@@ -82,6 +82,27 @@ const UserForm = () => {
     dispatch(fetchAssignOrder());
   }, [dispatch]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch(fetchOrder()).then((res) => {
+        res.payload.forEach((order) => {
+          const items = order.ProductTypes?.split(",") || [];
+          const quantities = order.Quantities?.split(",") || [];
+
+          items.forEach((item, i) => {
+            if (Number(quantities[i]) === 0) {
+              toast.warn(
+                `Item "${item.trim()}" in Order #${order.OrderID} is out of stock!`,
+              );
+            }
+          });
+        });
+      });
+    }, 60000); // har 60 second me check
+
+    return () => clearInterval(interval);
+  }, [dispatch]);
+
   //   const handleStatusChange = (row, newStatus) => {
   //   if (newStatus === "Cancel") {
   //     setCancelOrder(row);
@@ -213,10 +234,36 @@ const UserForm = () => {
   //   }
   // };
 
+  // const handleAssignSubmit = async (payload) => {
+  //   try {
+  //     // Agar row mein pehle se AssignID hai, toh update route hit karo
+  //     if (selectedOrder?.AssignID) {
+  //       await dispatch(
+  //         updateAssignedOrder({
+  //           assignmentId: selectedOrder.AssignID,
+  //           ...payload,
+  //           username,
+  //         }),
+  //       ).unwrap();
+  //     } else {
+  //       await dispatch(
+  //         assignOrder({
+  //           ...payload,
+  //           username,
+  //         }),
+  //       ).unwrap();
+  //     }
+  //     dispatch(fetchAssignOrder());
+  //     handleCloseModal();
+  //   } catch (err) {
+  //     toast.error(err.message);
+  //   }
+  // };
+
   const handleAssignSubmit = async (payload) => {
     try {
-      // Agar row mein pehle se AssignID hai, toh update route hit karo
       if (selectedOrder?.AssignID) {
+        // REASSIGN CASE
         await dispatch(
           updateAssignedOrder({
             assignmentId: selectedOrder.AssignID,
@@ -224,18 +271,25 @@ const UserForm = () => {
             username,
           }),
         ).unwrap();
+        toast.success("Order reassigned successfully");
       } else {
+        // ASSIGN CASE
         await dispatch(
           assignOrder({
             ...payload,
             username,
           }),
         ).unwrap();
+        toast.success("Order assigned successfully");
       }
+
       dispatch(fetchAssignOrder());
-      handleCloseModal();
+      handleCloseModal(); // Success hone par hi band hoga
     } catch (err) {
-      toast.error(err.message);
+      // Yahan 'err' wahi message hai jo backend se aa raha hai (e.g. "Tikka out of stock")
+      console.error("Assignment Failed:", err);
+      toast.error(err || "Failed to process assignment");
+      // Modal band nahi hoga, user ko error dikhega
     }
   };
 

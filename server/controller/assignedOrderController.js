@@ -2,6 +2,78 @@ const { sql, poolPromise } = require("../utils/db");
 const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 
 // CREATE Assigned Order
+// exports.assignOrder = async (req, res) => {
+//   const {
+//     orderId,
+//     deliveryManId,
+//     otherDeliveryManName,
+//     deliveryDate,
+//     remark,
+//     username,
+//   } = req.body;
+//   console.log("ASSIGN ORDER BODY:", req.body);
+
+//   try {
+//     const pool = await poolPromise;
+
+//     const check = await pool
+//       .request()
+//       .input("OrderID", sql.Int, orderId)
+//       .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
+
+//     if (check.recordset.length > 0) {
+//       // REASSIGN
+//       await pool
+//         .request()
+//         .input("OrderID", sql.Int, orderId)
+//         .input("DeliveryManID", sql.Int, deliveryManId || null)
+//         .input(
+//           "OtherDeliveryManName",
+//           sql.NVarChar,
+//           otherDeliveryManName || null,
+//         )
+//         .input("DeliveryDate", sql.Date, deliveryDate)
+//         .input("Remark", sql.NVarChar, remark || null)
+//         .input("ReassignedBy", sql.NVarChar, username).query(`
+//           UPDATE AssignedOrders
+//           SET
+//             DeliveryManID = @DeliveryManID,
+//             OtherDeliveryManName = @OtherDeliveryManName,
+//             DeliveryDate = @DeliveryDate,
+//             Remark = @Remark,
+//             ReassignedBy = @ReassignedBy
+//           WHERE OrderID = @OrderID
+//         `);
+
+//       return res.json({ message: "Order reassigned successfully" });
+//     } else {
+//       // FIRST ASSIGN
+//       await pool
+//         .request()
+//         .input("OrderID", sql.Int, orderId)
+//         .input("DeliveryManID", sql.Int, deliveryManId || null)
+//         .input(
+//           "OtherDeliveryManName",
+//           sql.NVarChar,
+//           otherDeliveryManName || null,
+//         )
+//         .input("DeliveryDate", sql.Date, deliveryDate)
+//         .input("Remark", sql.NVarChar, remark || null)
+//         .input("AssignedBy", sql.NVarChar, username).query(`
+//           INSERT INTO AssignedOrders
+//           (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
+//           VALUES
+//           (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
+//         `);
+
+//       return res.status(201).json({ message: "Order assigned successfully" });
+//     }
+//   } catch (err) {
+//     console.error("Assign error:", err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
 exports.assignOrder = async (req, res) => {
   const {
     orderId,
@@ -12,21 +84,20 @@ exports.assignOrder = async (req, res) => {
     username,
   } = req.body;
 
-  try {
-    const pool = await poolPromise;
-    const transaction = new sql.Transaction(pool);
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
 
+  try {
     await transaction.begin();
 
-    const check = await transaction
-      .request()
+    // 1️⃣ Check if order already assigned
+    const check = await new sql.Request(transaction)
       .input("OrderID", sql.Int, orderId)
       .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
 
     if (check.recordset.length > 0) {
       // REASSIGN
-      await transaction
-        .request()
+      await new sql.Request(transaction)
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
         .input(
@@ -49,85 +120,76 @@ exports.assignOrder = async (req, res) => {
 
       await transaction.commit();
       return res.json({ message: "Order reassigned successfully" });
-    } else {
-      // FIRST ASSIGN
-      await transaction
-        .request()
-        .input("OrderID", sql.Int, orderId)
-        .input("DeliveryManID", sql.Int, deliveryManId || null)
-        .input(
-          "OtherDeliveryManName",
-          sql.NVarChar,
-          otherDeliveryManName || null,
-        )
-        .input("DeliveryDate", sql.Date, deliveryDate)
-        .input("Remark", sql.NVarChar, remark || null)
-        .input("AssignedBy", sql.NVarChar, username).query(`
-          INSERT INTO AssignedOrders 
-          (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
-          VALUES 
-          (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
+    }
+
+    // 2️⃣ Insert new assignment
+    await new sql.Request(transaction)
+      .input("OrderID", sql.Int, orderId)
+      .input("DeliveryManID", sql.Int, deliveryManId || null)
+      .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
+      .input("DeliveryDate", sql.Date, deliveryDate)
+      .input("Remark", sql.NVarChar, remark || null)
+      .input("AssignedBy", sql.NVarChar, username).query(`
+        INSERT INTO AssignedOrders 
+        (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
+        VALUES 
+        (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
+      `);
+
+    // 3️⃣ Get items of order
+    const itemsRes = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      orderId,
+    ).query(`
+        SELECT ProductType, Quantity 
+        FROM OrderItems 
+        WHERE OrderID = @OrderID
+      `);
+
+    // 4️⃣ Deduct stock
+    for (let item of itemsRes.recordset) {
+      let qtyToDeduct = parseInt(item.Quantity);
+      const target = item.ProductType.trim();
+
+      const stockRes = await new sql.Request(transaction).input(
+        "Target",
+        sql.NVarChar,
+        target,
+      ).query(`
+          SELECT id, quantity 
+          FROM Stock 
+          WHERE LTRIM(RTRIM(item_name)) = @Target
+          AND quantity > 0
+          ORDER BY id ASC
         `);
 
-      // =======================
-      // STOCK DEDUCT
-      // =======================
+      for (let stockRow of stockRes.recordset) {
+        if (qtyToDeduct <= 0) break;
 
-      const items = await transaction
-        .request()
-        .input("OrderID", sql.Int, orderId).query(`
-          SELECT ProductType, Quantity 
-          FROM OrderItems 
-          WHERE OrderID = @OrderID
-        `);
+        const deductQty = Math.min(stockRow.quantity, qtyToDeduct);
 
-      for (let item of items.recordset) {
-        let qtyToDeduct = parseInt(item.Quantity);
-        const target = item.ProductType.trim();
-
-        const stockRes = await transaction
-          .request()
-          .input("Target", sql.NVarChar, target).query(`
-            SELECT id, quantity 
-            FROM Stock 
-            WHERE LTRIM(RTRIM(item_name)) = @Target 
-            AND quantity > 0
-            ORDER BY id ASC
+        await new sql.Request(transaction)
+          .input("ID", sql.Int, stockRow.id)
+          .input("D", sql.Int, deductQty).query(`
+            UPDATE Stock 
+            SET quantity = quantity - @D 
+            WHERE id = @ID
           `);
 
-        for (let row of stockRes.recordset) {
-          if (qtyToDeduct <= 0) break;
-
-          const deduct = Math.min(row.quantity, qtyToDeduct);
-
-          await transaction
-            .request()
-            .input("D", sql.Int, deduct)
-            .input("ID", sql.Int, row.id).query(`
-              UPDATE Stock 
-              SET quantity = quantity - @D 
-              WHERE id = @ID
-            `);
-
-          qtyToDeduct -= deduct;
-        }
-
-        if (qtyToDeduct > 0) {
-          throw new Error(`Not enough stock for ${target}`);
-        }
+        qtyToDeduct -= deductQty;
       }
 
-      await transaction.commit();
-
-      return res.status(201).json({
-        message: "Order assigned successfully",
-      });
+      if (qtyToDeduct > 0) {
+        throw new Error(`${target} out of stock`);
+      }
     }
+
+    await transaction.commit();
+    res.status(201).json({ message: "Order assigned successfully" });
   } catch (err) {
-    if (transaction) {
-      await transaction.rollback();
-    }
-
+    await transaction.rollback();
+    console.error("AssignOrder Error:", err);
     res.status(500).json({ message: err.message });
   }
 };

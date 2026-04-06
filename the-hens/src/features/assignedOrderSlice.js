@@ -32,25 +32,51 @@ export const fetchCashByDeliveryMen = createAsyncThunk(
 );
 
 // ASSIGN ORDER
+// export const assignOrder = createAsyncThunk(
+//   "assignedOrders/assignOrder",
+//   async (formData) => {
+//     const authData = JSON.parse(localStorage.getItem("authData"));
+//     const username = authData?.name;
+
+//     const payload = {
+//       ...formData,
+//       username,
+//     };
+
+//     console.log("SENDING PAYLOAD:", payload);
+
+//     const res = await axios.post(
+//       `${API_BASE_URL}/api/users/assign-order`,
+//       payload,
+//     );
+
+//     return res.data;
+//   },
+// );
+
 export const assignOrder = createAsyncThunk(
   "assignedOrders/assignOrder",
-  async (formData) => {
-    const authData = JSON.parse(localStorage.getItem("authData"));
-    const username = authData?.name;
+  async (formData, { rejectWithValue }) => {
+    try {
+      const authData = JSON.parse(localStorage.getItem("authData"));
+      const username = authData?.name;
 
-    const payload = {
-      ...formData,
-      username,
-    };
+      const payload = {
+        ...formData,
+        username,
+      };
 
-    console.log("SENDING PAYLOAD:", payload);
+      console.log("SENDING PAYLOAD:", payload);
 
-    const res = await axios.post(
-      `${API_BASE_URL}/api/users/assign-order`,
-      payload,
-    );
+      const res = await axios.post(
+        `${API_BASE_URL}/api/users/assign-order`,
+        payload,
+      );
 
-    return res.data;
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(err.response?.data?.message || "Assign failed");
+    }
   },
 );
 

@@ -77,7 +77,7 @@ exports.addOrder = async (req, res) => {
         .input("ProductName", sql.NVarChar, item.ProductName || null)
         .input("ProductType", sql.NVarChar, item.ProductType)
         .input("Weight", sql.NVarChar, item.Weight || null)
-        .input("Quantity", sql.Int, item.Quantity)
+     .input("Quantity", sql.Decimal(18,2), item.Quantity) // ✅ FIX
         .input("Rate", sql.Decimal(18, 2), item.Rate)
         .input("Total", sql.Decimal(18, 2), total).query(`
           INSERT INTO OrderItems

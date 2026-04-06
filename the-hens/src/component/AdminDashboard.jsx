@@ -270,26 +270,41 @@ const AdminDashboard = () => {
       setIsPaymentModalOpen(true);
     }
   };
-
+ 
   const handleVerifyPayment = () => {
-    dispatch(
-      verifyPayment({
-        paymentId: selectedPayment.PaymentID,
-        receivedAmount: Number(receivedAmount),
-        verificationRemarks,
-      }),
-    )
-      .unwrap()
-      .then(() => {
-        setTimeout(() => dispatch(fetchOrder()), 200);
-        toast.success("Payment updated successfully!");
-        setIsPaymentModalOpen(false);
-        setReceivedAmount("");
-      })
-      .catch((err) =>
-        toast.error(err.message || "Payment verification failed"),
+  dispatch(
+    verifyPayment({
+      paymentId: selectedPayment.PaymentID,
+      receivedAmount: Number(receivedAmount),
+      verificationRemarks,
+    })
+  )
+    .unwrap()
+    .then(() => {
+
+      // ✅ instant UI update
+      setFilteredData((prev) =>
+        prev.map((item) =>
+          item.PaymentID === selectedPayment.PaymentID
+            ? {
+                ...item,
+                PaymentVerifyStatus: "Verified",
+                VerifyMark: verificationRemarks,
+                ShortAmount: 0
+              }
+            : item
+        )
       );
-  };
+
+      toast.success("Payment updated successfully!");
+      setIsPaymentModalOpen(false);
+      setReceivedAmount("");
+      setVerificationRemarks("");
+    })
+    .catch((err) =>
+      toast.error(err.message || "Payment verification failed")
+    );
+};
 
   const deliveryMenList = [
     ...new Set(
@@ -1091,9 +1106,9 @@ const AdminDashboard = () => {
                             const weights = row.Weights
                               ? row.Weights.split(",")
                               : [];
-                            const quantities = row.Quantities
-                              ? row.Quantities.split(",")
-                              : [];
+                           const quantities = row.Quantities
+  ? row.Quantities.split(",").map(q => parseFloat(q))
+  : [];
                             const rates = row.Rates ? row.Rates.split(",") : [];
 
                             return types.map((type, i) => (
@@ -1101,11 +1116,12 @@ const AdminDashboard = () => {
                                 <span className={styles.pType}>
                                   {type?.trim() || "-"}
                                 </span>
-                                <span className={styles.pWeight}>
-                                  {weights[i]?.trim() || "-"}
-                                </span>
+                                 <span className={styles.pWeight}>
+      {weights[i]?.trim() || "-"}
+    </span>
+
                                 <span className={styles.pQty}>
-                                  Qty: {quantities[i]?.trim() || "-"}
+                           Qty: {quantities[i] ? quantities[i].toFixed(2) : "-"}
                                 </span>
                                 <span className={styles.pRate}>
                                   ₹{rates[i]?.trim() || "-"}
