@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchStock, fetchAvailableStock } from "../../features/stockSlice";
+import { fetchStock } from "../../features/stockSlice";
 import UserSideBar from "./UserSidebar";
 import UserNavbar from "./UserNavBar"; // Add import
 import styles from "./stock.module.css";
@@ -17,7 +17,8 @@ import {
 
 const Stock = () => {
   const dispatch = useDispatch();
-  const { available, loading } = useSelector((state) => state.stock);
+  // const { available, loading } = useSelector((state) => state.stock);
+  const { items, loading } = useSelector((state) => state.stock);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all"); // Naya state
   const [filteredStock, setFilteredStock] = useState([]);
@@ -30,69 +31,46 @@ const Stock = () => {
 
   useEffect(() => {
     dispatch(fetchStock());
-    dispatch(fetchAvailableStock());
+    
   }, [dispatch]);
 
-  useEffect(() => {
-    if (available.length > 0) {
-      const filtered = available.filter((item) =>
-        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredStock(filtered);
-
-      // Calculate stats
-      const stats = {
-        totalItems: available.length,
-        lowStockItems: available.filter(
-          (item) => item.available_stock > 0 && item.available_stock < 10
-        ).length,
-        outOfStock: available.filter((item) => item.available_stock === 0)
-          .length,
-        totalQuantity: available.reduce(
-          (sum, item) => sum + (item.available_stock || 0),
-          0
-        ),
-      };
-      setStockStats(stats);
-    }
-  }, [available, searchTerm]);
+ 
 
   useEffect(() => {
-    if (available) {
-      let filtered = available.filter((item) =>
-        item.item_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    if (items) {
+      let filtered = items.filter((item) =>
+        item.ProductName?.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
       if (activeFilter == "low") {
         filtered = filtered.filter(
-          (item) => item.available_stock > 0 && item.available_stock < 10
+          (item) => item.CurrentStock  > 0 && item.CurrentStock  < 10
         );
       } else if (activeFilter == "out") {
-        filtered = filtered.filter((item) => item.available_stock === 0);
+        filtered = filtered.filter((item) => item.CurrentStock  === 0);
       } else if (activeFilter == "high") {
-        filtered = filtered.filter((item) => item.available_stock >= 30);
+        filtered = filtered.filter((item) => item.CurrentStock  >= 30);
       }
 
       setFilteredStock(filtered);
 
       const stats = {
-        totalItems: available.length,
-        lowStockItems: available.filter(
-          (item) => item.available_stock > 0 && item.available_stock < 10
-        ).length,
-        outOfStock: available.filter((item) => item.available_stock === 0)
-          .length,
-        totalQuantity: available.reduce(
-          (sum, item) => sum + (item.available_stock || 0),
-          0
-        ),
-      };
+  totalItems: items.length,
+  lowStockItems: items.filter(
+    (item) => item.CurrentStock > 0 && item.CurrentStock < 10
+  ).length,
+  outOfStock: items.filter((item) => item.CurrentStock === 0).length,
+  totalQuantity: items.reduce(
+    (sum, item) => sum + (item.CurrentStock || 0),
+    0
+  ),
+};
       setStockStats(stats);
     }
-  }, [available, searchTerm, activeFilter]);
+  }, [items, searchTerm, activeFilter]);
 
   const handleRefresh = () => {
-    dispatch(fetchAvailableStock());
+    dispatch(fetchStock());
   };
 
   const getStockStatus = (quantity) => {
@@ -338,40 +316,40 @@ const Stock = () => {
                     <div
                       key={index}
                       className={`${styles.stockCard} ${
-                        styles[getStockStatus(item.available_stock)]
+                        styles[getStockStatus(item.CurrentStock)]
                       }`}
                     >
                       <div className={styles.cardHeader}>
                         <div className={styles.itemIcon}>
-                          {getStatusIcon(item.available_stock)}
+                          {getStatusIcon(item.CurrentStock)}
                         </div>
                         <div className={styles.stockBadge}>
                           <span className={styles.stockQuantity}>
-                            {item.available_stock}
+                            {item.CurrentStock}
                           </span>
                           <span className={styles.stockUnit}>units</span>
                         </div>
                       </div>
 
                       <div className={styles.cardBody}>
-                        <h4 className={styles.itemName}>{item.item_name}</h4>
+                        <h4 className={styles.itemName}>{item.ProductName}</h4>
                         <div className={styles.stockInfo}>
                           <div className={styles.stockDetail}>
                             <span className={styles.detailLabel}>
                               Current Stock:
                             </span>
                             <span className={styles.detailValue}>
-                              {item.available_stock} units
+                              {item.CurrentStock} units
                             </span>
                           </div>
                           <div className={styles.stockDetail}>
                             <span className={styles.detailLabel}>Status:</span>
                             <span
                               className={`${styles.statusBadge} ${
-                                styles[getStockStatus(item.available_stock)]
+                                styles[getStockStatus(item.CurrentStock)]
                               }`}
                             >
-                              {getStockStatus(item.available_stock).replace(
+                              {getStockStatus(item.CurrentStock).replace(
                                 "-",
                                 " "
                               )}
@@ -385,11 +363,11 @@ const Stock = () => {
                           <div className={styles.indicatorBar}>
                             <div
                               className={`${styles.indicatorFill} ${
-                                styles[getStockStatus(item.available_stock)]
+                                styles[getStockStatus(item.CurrentStock)]
                               }`}
                               style={{
                                 width: `${Math.min(
-                                  item.available_stock * 2,
+                                  item.CurrentStock * 2,
                                   100
                                 )}%`,
                               }}

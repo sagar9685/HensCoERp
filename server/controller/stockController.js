@@ -81,27 +81,121 @@ exports.addStock = async (req, res) => {
 exports.getStock = async (req, res) => {
   try {
     const pool = await poolPromise;
-    if (!pool) {
-      return res.status(500).json({ message: "Database connection failed." });
-    }
 
-    const query = `
+    const result = await pool.request().query(`
+      DECLARE @FixedOpeningDate DATE = '2026-04-01';
+
+      ;WITH Products AS (
+          SELECT DISTINCT item_name FROM OpeningStock
+          UNION
+          SELECT DISTINCT item_name FROM StockHistory
+      ),
+
+      BaseOpening AS (
+          SELECT item_name, ISNULL(opening_quantity, 0) as InitialQty
+          FROM OpeningStock
+      ),
+
+      -- 🔥 Previous IN (before today)
+      HistoryBefore AS (
+          SELECT 
+              item_name,
+              SUM(CASE WHEN type = 'IN' THEN quantity ELSE 0 END) as PrevIn
+          FROM StockHistory
+          WHERE CAST(date AS DATE) >= @FixedOpeningDate
+            AND CAST(date AS DATE) < CAST(GETDATE() AS DATE)
+          GROUP BY item_name
+      ),
+
+      -- 🔥 Previous SELL (before today)
+      SalesBefore AS (
+          SELECT 
+              OI.ProductType,
+              SUM(OI.Quantity) as PrevSold
+          FROM OrderItems OI
+          JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID
+          LEFT JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID
+          WHERE CAST(OT.OrderDate AS DATE) >= @FixedOpeningDate
+            AND CAST(OT.OrderDate AS DATE) < CAST(GETDATE() AS DATE)
+            AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'
+          GROUP BY OI.ProductType
+      ),
+
+      -- 🔥 Today IN
+      TodayIn AS (
+          SELECT 
+              item_name,
+              SUM(quantity) as TodayInQty
+          FROM StockHistory
+          WHERE type = 'IN'
+            AND CAST(date AS DATE) = CAST(GETDATE() AS DATE)
+          GROUP BY item_name
+      ),
+
+      -- 🔥 Today SELL
+      TodaySell AS (
+          SELECT 
+              OI.ProductType,
+              SUM(OI.Quantity) as TodaySold
+          FROM OrderItems OI
+          JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID
+          LEFT JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID
+          WHERE CAST(OT.OrderDate AS DATE) = CAST(GETDATE() AS DATE)
+            AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'
+          GROUP BY OI.ProductType
+      )
+
       SELECT 
-        pt.ProductType as ProductName, 
-        SUM(CAST(s.quantity AS INT)) as CurrentStock,
-        CASE 
-          WHEN SUM(CAST(s.quantity AS INT)) <= 0 THEN 'Out Of Stock'
-          WHEN SUM(CAST(s.quantity AS INT)) <= 5 THEN 'Low Stock'
-          WHEN SUM(CAST(s.quantity AS INT)) > 20 THEN 'High Stock'
-          ELSE 'Medium Stock'
-        END as Status
-      FROM ProductTypes pt
-      LEFT JOIN Stock s ON pt.ProductType = s.item_name
-      GROUP BY pt.ProductType
-    `;
+          P.item_name AS ProductName,
 
-    const result = await pool.request().query(query);
+          (
+            ISNULL(BO.InitialQty, 0)
+            + ISNULL(HB.PrevIn, 0)
+            - ISNULL(SB.PrevSold, 0)
+            + ISNULL(TI.TodayInQty, 0)
+            - ISNULL(TS.TodaySold, 0)
+          ) AS CurrentStock,
+
+          CASE 
+            WHEN (
+              ISNULL(BO.InitialQty, 0)
+              + ISNULL(HB.PrevIn, 0)
+              - ISNULL(SB.PrevSold, 0)
+              + ISNULL(TI.TodayInQty, 0)
+              - ISNULL(TS.TodaySold, 0)
+            ) <= 0 THEN 'Out Of Stock'
+
+            WHEN (
+              ISNULL(BO.InitialQty, 0)
+              + ISNULL(HB.PrevIn, 0)
+              - ISNULL(SB.PrevSold, 0)
+              + ISNULL(TI.TodayInQty, 0)
+              - ISNULL(TS.TodaySold, 0)
+            ) <= 5 THEN 'Low Stock'
+
+            WHEN (
+              ISNULL(BO.InitialQty, 0)
+              + ISNULL(HB.PrevIn, 0)
+              - ISNULL(SB.PrevSold, 0)
+              + ISNULL(TI.TodayInQty, 0)
+              - ISNULL(TS.TodaySold, 0)
+            ) > 20 THEN 'High Stock'
+
+            ELSE 'Medium Stock'
+          END AS Status
+
+      FROM Products P
+      LEFT JOIN BaseOpening BO ON P.item_name = BO.item_name
+      LEFT JOIN HistoryBefore HB ON P.item_name = HB.item_name
+      LEFT JOIN SalesBefore SB ON P.item_name = SB.ProductType
+      LEFT JOIN TodayIn TI ON P.item_name = TI.item_name
+      LEFT JOIN TodaySell TS ON P.item_name = TS.ProductType
+
+      ORDER BY P.item_name
+    `);
+
     res.status(200).json(result.recordset);
+
   } catch (error) {
     console.error("Error fetching stock:", error);
     res.status(500).json({
