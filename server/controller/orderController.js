@@ -521,7 +521,7 @@ exports.updateOrder = async (req, res) => {
 };
 
 exports.updateOrderQuantity = async (req, res) => {
-  const { orderId, itemId, newQuantity, newRate, changedBy } = req.body;
+  const { orderId, itemId, newQuantity, newRate, changedBy, reason } = req.body;
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
@@ -529,95 +529,122 @@ exports.updateOrderQuantity = async (req, res) => {
     await transaction.begin();
     const request = new sql.Request(transaction);
 
-    // 1. Purana data fetch karein
-    const itemRes = await request.input("ItemID", sql.Int, itemId).query(`
-      SELECT Quantity, ProductType, Rate, Weight FROM OrderItems WHERE ItemID = @ItemID
-    `);
-    if (itemRes.recordset.length === 0) throw new Error("Item not found");
+    console.log("REQ:", req.body);
 
-    const oldQty = parseFloat(itemRes.recordset[0].Quantity);
-    const updatedQty = parseFloat(newQuantity);
-    const diffQty = oldQty - updatedQty; // (+) Decrease means stock returns, (-) Increase means more stock needed
-    const pType = itemRes.recordset[0].ProductType;
-    const pWeight = itemRes.recordset[0].Weight;
-
-    if (diffQty === 0) {
-        await transaction.rollback();
-        return res.json({ success: true, message: "No change in quantity" });
-    }
-
-    // 2. Strict Stock Check (Dashboard Calculation Logic)
-    if (diffQty < 0) {
-      const neededMore = Math.abs(diffQty);
-      const calcStock = await request.input("P", sql.NVarChar, pType).query(`
-        DECLARE @FixedOpeningDate DATE = '2026-04-01';
-        SELECT 
-          (
-            ISNULL((SELECT opening_quantity FROM OpeningStock WHERE item_name = @P), 0) + 
-            ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = @P AND type IN ('IN', 'RTV') AND CAST(date AS DATE) >= @FixedOpeningDate), 0) -
-            ISNULL((SELECT SUM(OI.Quantity) FROM OrderItems OI 
-                    JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID 
-                    INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
-                    WHERE OI.ProductType = @P AND CAST(OT.OrderDate AS DATE) >= @FixedOpeningDate AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'), 0)
-          ) AS ActualAvailable
+    // 1. Old item
+    const itemRes = await request
+      .input("ItemID", sql.Int, itemId)
+      .query(`
+        SELECT Quantity, ProductType, Rate 
+        FROM OrderItems 
+        WHERE ItemID = @ItemID
       `);
 
-      const available = parseFloat(calcStock.recordset[0].ActualAvailable || 0);
-      if (available < neededMore) {
-        throw new Error(`Insufficient Stock! Available: ${available}, Required more: ${neededMore}`);
-      }
+    if (itemRes.recordset.length === 0)
+      throw new Error("Item not found");
+
+    const oldQty = parseFloat(itemRes.recordset[0].Quantity || 0);
+    const updatedQty = parseFloat(newQuantity || 0);
+    const pType = itemRes.recordset[0].ProductType;
+    const oldRate = parseFloat(itemRes.recordset[0].Rate || 0);
+
+    console.log("OLD:", oldQty);
+    console.log("NEW:", updatedQty);
+    console.log("PRODUCT:", pType);
+
+    if (oldQty === updatedQty) {
+      await transaction.rollback();
+      return res.json({ success: true, message: "No change" });
     }
 
-    // 3. Physical Stock Table Update (FIFO)
-    if (diffQty > 0) {
-        // Qty Kam hui -> Stock wapas dalo
-        await request.input("DQ", sql.Decimal(18,2), diffQty).input("PT", sql.NVarChar, pType)
-          .query(`UPDATE Stock SET quantity = quantity + @DQ WHERE ID = (SELECT TOP 1 ID FROM Stock WHERE UPPER(item_name) = UPPER(@PT) ORDER BY created_at DESC)`);
-    } else {
-        // Qty Badhi -> Stock minus karo
-        let toDeduct = Math.abs(diffQty);
-        const rows = await request.input("PT2", sql.NVarChar, pType).query(`SELECT ID, quantity FROM Stock WHERE UPPER(item_name) = UPPER(@PT2) AND quantity > 0 ORDER BY id ASC`);
-        for (let row of rows.recordset) {
-          if (toDeduct <= 0) break;
-          let d = Math.min(row.quantity, toDeduct);
-          await new sql.Request(transaction).input("D", sql.Decimal(18,2), d).input("ID", sql.Int, row.ID).query(`UPDATE Stock SET quantity = quantity - @D WHERE ID = @ID`);
-          toDeduct -= d;
-        }
+    // 2. STOCK CHECK (FINAL QTY should not exceed available)
+    const stockRes = await new sql.Request(transaction)
+      .input("P", sql.NVarChar, pType)
+      .query(`
+        DECLARE @FixedOpeningDate DATE = '2026-04-01';
+
+        SELECT 
+        (
+          ISNULL((SELECT opening_quantity FROM OpeningStock WHERE item_name = @P), 0) + 
+          ISNULL((SELECT SUM(quantity) FROM StockHistory 
+                  WHERE item_name = @P 
+                  AND type IN ('IN','RTV') 
+                  AND CAST(date AS DATE) >= @FixedOpeningDate),0)
+          -
+          ISNULL((SELECT SUM(quantity) FROM StockHistory 
+                  WHERE item_name = @P 
+                  AND type='REJECT'
+                  AND CAST(date AS DATE) >= @FixedOpeningDate),0)
+          -
+          ISNULL((SELECT SUM(OI.Quantity)
+                  FROM OrderItems OI
+                  JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID
+                  INNER JOIN AssignedOrders AO ON AO.OrderID = OT.OrderID
+                  WHERE OI.ProductType=@P
+                  AND ISNULL(AO.deliveryStatus,'')<>'CANCEL'
+                  AND CAST(OT.OrderDate AS DATE)>=@FixedOpeningDate),0)
+        ) AS Available
+    `);
+
+    const available = parseFloat(stockRes.recordset[0].Available || 0);
+
+    console.log("AVAILABLE:", available);
+
+    // ⭐ FINAL CHECK
+    if (updatedQty > available) {
+      throw new Error(
+        `Limit Exceeded! Only ${available} trays allowed`
+      );
     }
 
-    // 4. ⭐ CRITICAL: Stock History Adjustment (Taaki Dashboard sahi rahe)
-    // Agar Qty badhi hai toh history mein utna 'OUT' dikhayenge, agar kam hui toh utna 'IN' (Adjustment)
-    const historyType = diffQty > 0 ? 'IN' : 'OUT'; 
-    const historyQty = Math.abs(diffQty);
+    // 3. Update OrderItems
+    const finalRate = newRate || oldRate;
 
     await new sql.Request(transaction)
-      .input("hItem", sql.NVarChar, pType)
-      .input("hQty", sql.Decimal(18,2), historyQty)
-      .input("hType", sql.NVarChar, historyType)
-      .input("hRef", sql.NVarChar, `ADJ-ORD-${orderId}`)
-      .input("hWeight", sql.NVarChar, pWeight || null)
+      .input("Q", sql.Decimal(18, 2), updatedQty)
+      .input("T", sql.Decimal(18, 2), updatedQty * finalRate)
+      .input("ID", sql.Int, itemId)
       .query(`
-        INSERT INTO StockHistory (item_name, quantity, type, ref_no, weight, date)
-        VALUES (@hItem, @hQty, @hType, @hRef, @hWeight, GETDATE())
+        UPDATE OrderItems 
+        SET Quantity=@Q, Total=@T 
+        WHERE ItemID=@ID
       `);
 
-    // 5. Update OrderItems Table
-    const finalRate = newRate || itemRes.recordset[0].Rate;
-    await request
-      .input("NQ", sql.Decimal(18,2), updatedQty)
-      .input("ID2", sql.Int, itemId)
-      .input("TOT", sql.Decimal(18,2), updatedQty * finalRate)
-      .input("NR", sql.Decimal(18,2), finalRate)
-      .query(`UPDATE OrderItems SET Quantity = @NQ, Total = @TOT, Rate = @NR WHERE ItemID = @ID2`);
+    console.log("ORDER UPDATED");
+
+    // 4. LOG ENTRY ONLY
+    await new sql.Request(transaction)
+      .input("orderId", sql.Int, orderId)
+      .input("itemId", sql.Int, itemId)
+      .input("oldQty", sql.Decimal(18,2), oldQty)
+      .input("newQty", sql.Decimal(18,2), updatedQty)
+      .input("changedBy", sql.NVarChar, changedBy || "ADMIN")
+      .input("reason", sql.NVarChar, reason || "")
+      .input("oldRate", sql.Decimal(18,2), oldRate)
+      .input("newRate", sql.Decimal(18,2), finalRate)
+      .query(`
+        INSERT INTO OrderEditLogs
+        (OrderID, ItemID, OldQuantity, NewQuantity, ChangedBy, ChangeReason, ChangedAt, OldRate, NewRate)
+        VALUES
+        (@orderId,@itemId,@oldQty,@newQty,@changedBy,@reason,GETDATE(),@oldRate,@newRate)
+      `);
+
+    console.log("LOG INSERTED");
 
     await transaction.commit();
-    res.status(200).json({ success: true, message: "Order and Stock adjusted successfully" });
+
+    res.json({
+      success: true,
+      message: "Quantity updated successfully"
+    });
 
   } catch (err) {
+    console.log("ERROR:", err);
     if (transaction) await transaction.rollback();
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.addRTV = async (req, res) => {
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
