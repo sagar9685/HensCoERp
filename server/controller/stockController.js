@@ -85,17 +85,16 @@ exports.getStock = async (req, res) => {
       DECLARE @FixedOpeningDate DATE = '2026-04-01';
 
       ;WITH Products AS (
-          SELECT DISTINCT item_name FROM OpeningStock
-          UNION
-          SELECT DISTINCT item_name FROM StockHistory
+          SELECT DISTINCT item_name FROM OpeningStock UNION SELECT DISTINCT item_name FROM StockHistory
       ),
       BaseOpening AS (
           SELECT item_name, ISNULL(opening_quantity, 0) as InitialQty FROM OpeningStock
       ),
-      TotalIn AS (
+      TotalInward AS (
           SELECT item_name, SUM(quantity) as InQty 
           FROM StockHistory 
-          WHERE type = 'IN' AND CAST(date AS DATE) >= @FixedOpeningDate
+          WHERE type IN ('IN', 'RTV') -- ✅ RTV ko bhi count kiya
+          AND CAST(date AS DATE) >= @FixedOpeningDate
           GROUP BY item_name
       ),
       TotalSell AS (
@@ -109,29 +108,19 @@ exports.getStock = async (req, res) => {
       )
       SELECT 
           P.item_name AS ProductName,
-          (ISNULL(BO.InitialQty, 0) + ISNULL(TI.InQty, 0) - ISNULL(TS.SoldQty, 0)) AS CurrentStock,
-          CASE 
-            WHEN (ISNULL(BO.InitialQty, 0) + ISNULL(TI.InQty, 0) - ISNULL(TS.SoldQty, 0)) <= 0 THEN 'Out Of Stock'
-            WHEN (ISNULL(BO.InitialQty, 0) + ISNULL(TI.InQty, 0) - ISNULL(TS.SoldQty, 0)) <= 5 THEN 'Low Stock'
-            ELSE 'Available'
-          END AS Status
+          (ISNULL(BO.InitialQty, 0) + ISNULL(TI.InQty, 0) - ISNULL(TS.SoldQty, 0)) AS CurrentStock
       FROM Products P
       LEFT JOIN BaseOpening BO ON P.item_name = BO.item_name
-      LEFT JOIN TotalIn TI ON P.item_name = TI.item_name
+      LEFT JOIN TotalInward TI ON P.item_name = TI.item_name
       LEFT JOIN TotalSell TS ON P.item_name = TS.ProductType
       ORDER BY P.item_name
     `);
-
-    res.status(200).json(result.recordset);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+    res.json(result.recordset);
+  } catch (err) { res.status(500).json({ message: err.message }); }
 };
-
+ 
 exports.getStockMovement = async (req, res) => {
   const { fromDate, toDate } = req.query;
-  if (!fromDate || !toDate) return res.status(400).json({ message: "Dates required" });
-
   try {
     const pool = await poolPromise;
     const result = await pool.request()
@@ -147,7 +136,9 @@ exports.getStockMovement = async (req, res) => {
           SELECT item_name, ISNULL(opening_quantity, 0) as InitialQty FROM OpeningStock
       ),
       HistoryBefore AS (
-          SELECT item_name, SUM(CASE WHEN type = 'IN' THEN quantity ELSE 0 END) as PrevIn
+          SELECT item_name, 
+                 SUM(CASE WHEN type IN ('IN', 'RTV') THEN quantity ELSE 0 END) as PrevIn, -- ✅ RTV added
+                 0 as PrevSold -- (Simplified for clarity)
           FROM StockHistory
           WHERE CAST(date AS DATE) >= @FixedOpeningDate AND CAST(date AS DATE) < @fromDate
           GROUP BY item_name
@@ -164,11 +155,18 @@ exports.getStockMovement = async (req, res) => {
       SELECT 
           P.item_name AS ProductType,
           (ISNULL(BO.InitialQty, 0) + ISNULL(HB.PrevIn, 0) - ISNULL(SB.PrevSold, 0)) AS Opening,
-          ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = P.item_name AND type = 'IN' AND CAST(date AS DATE) BETWEEN @fromDate AND @toDate), 0) AS Total_In,
+          
+          -- Total In (Current Period): IN + RTV
+          ISNULL((SELECT SUM(quantity) FROM StockHistory 
+                  WHERE item_name = P.item_name AND type IN ('IN', 'RTV') 
+                  AND CAST(date AS DATE) BETWEEN @fromDate AND @toDate), 0) AS Total_In,
+          
+          -- Total Sell (Current Period)
           ISNULL((SELECT SUM(OI.Quantity) FROM OrderItems OI 
                   JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID 
                   INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
-                  WHERE OI.ProductType = P.item_name AND CAST(OT.OrderDate AS DATE) BETWEEN @fromDate AND @toDate AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'), 0) AS Total_Sell
+                  WHERE OI.ProductType = P.item_name AND CAST(OT.OrderDate AS DATE) BETWEEN @fromDate AND @toDate 
+                  AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'), 0) AS Total_Sell
       FROM Products P
       LEFT JOIN BaseOpening BO ON P.item_name = BO.item_name
       LEFT JOIN HistoryBefore HB ON P.item_name = HB.item_name
@@ -176,18 +174,16 @@ exports.getStockMovement = async (req, res) => {
       ORDER BY P.item_name
     `);
 
-    const finalData = result.recordset.map((item) => ({
+    // Mapping code same rahega...
+    const finalData = result.recordset.map(item => ({
       ProductType: item.ProductType,
       Opening: Number(item.Opening),
       Total_In: Number(item.Total_In),
       Total_Sell: Number(item.Total_Sell),
-      Closing: Number(item.Opening) + Number(item.Total_In) - Number(item.Total_Sell),
+      Closing: Number(item.Opening) + Number(item.Total_In) - Number(item.Total_Sell)
     }));
-
     res.json(finalData);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+  } catch (err) { res.status(500).json({ message: err.message }); }
 };
 
 exports.getAvailableStock = async (req, res) => {

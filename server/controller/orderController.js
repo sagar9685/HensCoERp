@@ -531,26 +531,30 @@ exports.updateOrderQuantity = async (req, res) => {
 
     // 1. Purana data fetch karein
     const itemRes = await request.input("ItemID", sql.Int, itemId).query(`
-      SELECT Quantity, ProductType, Rate FROM OrderItems WHERE ItemID = @ItemID
+      SELECT Quantity, ProductType, Rate, Weight FROM OrderItems WHERE ItemID = @ItemID
     `);
     if (itemRes.recordset.length === 0) throw new Error("Item not found");
 
     const oldQty = parseFloat(itemRes.recordset[0].Quantity);
     const updatedQty = parseFloat(newQuantity);
-    const diffQty = oldQty - updatedQty; // (+) Decrease, (-) Increase
+    const diffQty = oldQty - updatedQty; // (+) Decrease means stock returns, (-) Increase means more stock needed
     const pType = itemRes.recordset[0].ProductType;
+    const pWeight = itemRes.recordset[0].Weight;
 
-    // 2. Strict Stock Check (Calculation logic se, na ki physical SUM se)
+    if (diffQty === 0) {
+        await transaction.rollback();
+        return res.json({ success: true, message: "No change in quantity" });
+    }
+
+    // 2. Strict Stock Check (Dashboard Calculation Logic)
     if (diffQty < 0) {
       const neededMore = Math.abs(diffQty);
-      
-      // Dashboard wala formula use karenge calculation ke liye
       const calcStock = await request.input("P", sql.NVarChar, pType).query(`
         DECLARE @FixedOpeningDate DATE = '2026-04-01';
         SELECT 
           (
             ISNULL((SELECT opening_quantity FROM OpeningStock WHERE item_name = @P), 0) + 
-            ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = @P AND type = 'IN' AND CAST(date AS DATE) >= @FixedOpeningDate), 0) -
+            ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = @P AND type IN ('IN', 'RTV') AND CAST(date AS DATE) >= @FixedOpeningDate), 0) -
             ISNULL((SELECT SUM(OI.Quantity) FROM OrderItems OI 
                     JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID 
                     INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
@@ -559,41 +563,45 @@ exports.updateOrderQuantity = async (req, res) => {
       `);
 
       const available = parseFloat(calcStock.recordset[0].ActualAvailable || 0);
-
       if (available < neededMore) {
-        throw new Error(`Insufficient Stock! Dashboard shows ${available}, you need ${neededMore} more.`);
+        throw new Error(`Insufficient Stock! Available: ${available}, Required more: ${neededMore}`);
       }
     }
 
     // 3. Physical Stock Table Update (FIFO)
-    // Ye tabhi chalega jab Stock table mein rows hongi. Agar 0 hai toh crash nahi hoga.
-    if (diffQty !== 0) {
-      if (diffQty > 0) {
-        // Quantity kam hui: Stock wapas add karo
+    if (diffQty > 0) {
+        // Qty Kam hui -> Stock wapas dalo
         await request.input("DQ", sql.Decimal(18,2), diffQty).input("PT", sql.NVarChar, pType)
-          .query(`
-            UPDATE Stock SET quantity = quantity + @DQ 
-            WHERE ID = (SELECT TOP 1 ID FROM Stock WHERE UPPER(item_name) = UPPER(@PT) ORDER BY created_at DESC)
-          `);
-      } else {
-        // Quantity badhi: Stock minus karo
+          .query(`UPDATE Stock SET quantity = quantity + @DQ WHERE ID = (SELECT TOP 1 ID FROM Stock WHERE UPPER(item_name) = UPPER(@PT) ORDER BY created_at DESC)`);
+    } else {
+        // Qty Badhi -> Stock minus karo
         let toDeduct = Math.abs(diffQty);
-        const rows = await request.input("PT2", sql.NVarChar, pType).query(`
-          SELECT ID, quantity FROM Stock WHERE UPPER(item_name) = UPPER(@PT2) AND quantity > 0 ORDER BY id ASC
-        `);
-
+        const rows = await request.input("PT2", sql.NVarChar, pType).query(`SELECT ID, quantity FROM Stock WHERE UPPER(item_name) = UPPER(@PT2) AND quantity > 0 ORDER BY id ASC`);
         for (let row of rows.recordset) {
           if (toDeduct <= 0) break;
           let d = Math.min(row.quantity, toDeduct);
-          await new sql.Request(transaction).input("D", sql.Decimal(18,2), d).input("ID", sql.Int, row.ID).query(`
-            UPDATE Stock SET quantity = quantity - @D WHERE ID = @ID
-          `);
+          await new sql.Request(transaction).input("D", sql.Decimal(18,2), d).input("ID", sql.Int, row.ID).query(`UPDATE Stock SET quantity = quantity - @D WHERE ID = @ID`);
           toDeduct -= d;
         }
-      }
     }
 
-    // 4. OrderItems Table Update (Dashboard isi table se live data uthayega)
+    // 4. ⭐ CRITICAL: Stock History Adjustment (Taaki Dashboard sahi rahe)
+    // Agar Qty badhi hai toh history mein utna 'OUT' dikhayenge, agar kam hui toh utna 'IN' (Adjustment)
+    const historyType = diffQty > 0 ? 'IN' : 'OUT'; 
+    const historyQty = Math.abs(diffQty);
+
+    await new sql.Request(transaction)
+      .input("hItem", sql.NVarChar, pType)
+      .input("hQty", sql.Decimal(18,2), historyQty)
+      .input("hType", sql.NVarChar, historyType)
+      .input("hRef", sql.NVarChar, `ADJ-ORD-${orderId}`)
+      .input("hWeight", sql.NVarChar, pWeight || null)
+      .query(`
+        INSERT INTO StockHistory (item_name, quantity, type, ref_no, weight, date)
+        VALUES (@hItem, @hQty, @hType, @hRef, @hWeight, GETDATE())
+      `);
+
+    // 5. Update OrderItems Table
     const finalRate = newRate || itemRes.recordset[0].Rate;
     await request
       .input("NQ", sql.Decimal(18,2), updatedQty)
@@ -603,33 +611,19 @@ exports.updateOrderQuantity = async (req, res) => {
       .query(`UPDATE OrderItems SET Quantity = @NQ, Total = @TOT, Rate = @NR WHERE ItemID = @ID2`);
 
     await transaction.commit();
-    res.status(200).json({ success: true, message: "Stock and Order Updated!" });
+    res.status(200).json({ success: true, message: "Order and Stock adjusted successfully" });
 
   } catch (err) {
     if (transaction) await transaction.rollback();
     res.status(500).json({ message: err.message });
   }
 };
-
 exports.addRTV = async (req, res) => {
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
-
   try {
-    const {
-      OrderID,
-      ItemID,
-      ProductType,
-      Weight,
-      Quantity,
-      Rate,
-      RTVDate,
-      reason,
-      username,
-    } = req.body;
-
+    const { OrderID, ItemID, ProductType, Weight, Quantity, Rate, RTVDate, reason, username } = req.body;
     await transaction.begin();
-
     const total = Quantity * Rate;
 
     // 1️⃣ Insert RTV Entry
@@ -638,56 +632,45 @@ exports.addRTV = async (req, res) => {
       .input("ItemID", sql.Int, ItemID)
       .input("ProductType", sql.NVarChar, ProductType)
       .input("Weight", sql.NVarChar, Weight || null)
-      .input("Quantity", sql.Int, Quantity)
+      .input("Quantity", sql.Decimal(18, 2), Quantity)
       .input("Rate", sql.Decimal(18, 2), Rate)
       .input("Total", sql.Decimal(18, 2), total)
       .input("RTVDate", sql.Date, RTVDate)
       .input("reason", sql.NVarChar, reason || null)
-      .input("username", sql.NVarChar, username || "admin").query(`
-        INSERT INTO RTVEntries
-        (OrderID, ItemID, ProductType, Weight, Quantity, Rate, Total, RTVDate, Reason, CreatedBy)
-        VALUES
-        (@OrderID, @ItemID, @ProductType, @Weight, @Quantity, @Rate, @Total, @RTVDate, @reason, @username)
+      .input("username", sql.NVarChar, username || "admin")
+      .query(`
+        INSERT INTO RTVEntries (OrderID, ItemID, ProductType, Weight, Quantity, Rate, Total, RTVDate, Reason, CreatedBy)
+        VALUES (@OrderID, @ItemID, @ProductType, @Weight, @Quantity, @Rate, @Total, @RTVDate, @reason, @username)
       `);
 
-    // 2️⃣ Add Stock (RTV)
-    // 2️⃣ Add Stock (RTV)
+    // 2️⃣ Add Physical Stock (Isse physical table me 0 se upar quantity aayegi)
     await new sql.Request(transaction)
       .input("inward", sql.NVarChar, `RTV-${OrderID}`)
       .input("item", sql.NVarChar, ProductType)
-      .input("qty", sql.Int, Quantity)
+      .input("qty", sql.Decimal(18, 2), Quantity)
       .input("weight", sql.NVarChar, Weight || null)
-      .input("date", sql.Date, RTVDate).query(`
-    INSERT INTO Stock
-    (inward_no, item_name, quantity, weight, created_at, status)
-    VALUES
-    (@inward, @item, @qty, @weight, @date, 'RTV')
-  `);
+      .input("date", sql.DateTime, new Date(RTVDate)) // Ensure DateTime for created_at
+      .query(`
+        INSERT INTO Stock (inward_no, item_name, quantity, weight, created_at, status)
+        VALUES (@inward, @item, @qty, @weight, @date, 'RTV')
+      `);
 
-    // 3️⃣ Stock History
+    // 3️⃣ Stock History (Reporting ke liye)
     await new sql.Request(transaction)
       .input("itemH", sql.NVarChar, ProductType)
-      .input("qtyH", sql.Int, Quantity)
+      .input("qtyH", sql.Decimal(18, 2), Quantity)
       .input("weightH", sql.NVarChar, Weight || null)
       .input("ref", sql.Int, OrderID)
-      .input("dateH", sql.Date, RTVDate).query(`
-        INSERT INTO StockHistory
-        (item_name, weight, quantity, type, ref_no, date)
-        VALUES
-        (@itemH, @weightH, @qtyH, 'RTV', @ref, @dateH)
+      .input("dateH", sql.Date, RTVDate)
+      .query(`
+        INSERT INTO StockHistory (item_name, weight, quantity, type, ref_no, date)
+        VALUES (@itemH, @weightH, @qtyH, 'RTV', @ref, @dateH)
       `);
 
     await transaction.commit();
-
-    res.json({
-      success: true,
-      message: "RTV added & stock updated",
-    });
+    res.json({ success: true, message: "RTV added & stock updated" });
   } catch (err) {
-    await transaction.rollback();
-
-    res.status(500).json({
-      message: err.message,
-    });
+    if (transaction) await transaction.rollback();
+    res.status(500).json({ message: err.message });
   }
 };
