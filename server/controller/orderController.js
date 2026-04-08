@@ -521,8 +521,7 @@ exports.updateOrder = async (req, res) => {
 };
 
 exports.updateOrderQuantity = async (req, res) => {
-  const { orderId, itemId, newQuantity, newRate, changedBy, reason } = req.body;
-
+  const { orderId, itemId, newQuantity, newRate, changedBy } = req.body;
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
@@ -530,165 +529,85 @@ exports.updateOrderQuantity = async (req, res) => {
     await transaction.begin();
     const request = new sql.Request(transaction);
 
-    // 1️⃣ CHECK ORDER STATUS
-    const statusCheck = await request.input("OrderIDStatus", sql.Int, orderId)
-      .query(`
-        SELECT DeliveryStatus
-        FROM AssignedOrders
-        WHERE OrderID = @OrderIDStatus
-      `);
+    // 1. Purana data fetch karein
+    const itemRes = await request.input("ItemID", sql.Int, itemId).query(`
+      SELECT Quantity, ProductType, Rate FROM OrderItems WHERE ItemID = @ItemID
+    `);
+    if (itemRes.recordset.length === 0) throw new Error("Item not found");
 
-    if (
-      statusCheck.recordset.length > 0 &&
-      statusCheck.recordset[0].DeliveryStatus === "Completed"
-    ) {
-      throw new Error("Completed order cannot be changed!");
-    }
+    const oldQty = parseFloat(itemRes.recordset[0].Quantity);
+    const updatedQty = parseFloat(newQuantity);
+    const diffQty = oldQty - updatedQty; // (+) Decrease, (-) Increase
+    const pType = itemRes.recordset[0].ProductType;
 
-    // 2️⃣ GET CURRENT ITEM
-    const itemResult = await request.input("ItemID", sql.Int, itemId).query(`
-        SELECT Quantity, ProductType, Rate, Weight
-        FROM OrderItems
-        WHERE ItemID = @ItemID
-      `);
-
-    if (itemResult.recordset.length === 0) {
-      throw new Error("Item not found");
-    }
-
-    const currentItem = itemResult.recordset[0];
-
-    const oldQty = currentItem.Quantity;
-    const oldRate = currentItem.Rate;
-
-    const finalRate = newRate || oldRate;
-
-    const diffQty = oldQty - newQuantity;
-
-    const productType = (currentItem.ProductType || "").trim();
-    const weight = (currentItem.Weight || "").trim();
-
-    // 2.1️⃣ GET CUSTOMER NAME
-    const customerResult = await request.input("OID", sql.Int, orderId).query(`
-    SELECT CustomerName
-    FROM orderstemp
-    WHERE OrderID = @OID
-  `);
-
-    const customerName =
-      customerResult.recordset.length > 0
-        ? customerResult.recordset[0].CustomerName
-        : "Customer";
-
-    // 3️⃣ CHECK STOCK (only if quantity increased)
+    // 2. Strict Stock Check (Calculation logic se, na ki physical SUM se)
     if (diffQty < 0) {
-      const absDiff = Math.abs(diffQty);
+      const neededMore = Math.abs(diffQty);
+      
+      // Dashboard wala formula use karenge calculation ke liye
+      const calcStock = await request.input("P", sql.NVarChar, pType).query(`
+        DECLARE @FixedOpeningDate DATE = '2026-04-01';
+        SELECT 
+          (
+            ISNULL((SELECT opening_quantity FROM OpeningStock WHERE item_name = @P), 0) + 
+            ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = @P AND type = 'IN' AND CAST(date AS DATE) >= @FixedOpeningDate), 0) -
+            ISNULL((SELECT SUM(OI.Quantity) FROM OrderItems OI 
+                    JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID 
+                    INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
+                    WHERE OI.ProductType = @P AND CAST(OT.OrderDate AS DATE) >= @FixedOpeningDate AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'), 0)
+          ) AS ActualAvailable
+      `);
 
-      const stockCheck = await request
-        .input("PTypeCheck", sql.NVarChar, productType)
-        .input("PWeightCheck", sql.NVarChar, weight).query(`
-          SELECT SUM(quantity) AS AvailableStock
-          FROM Stock
-          WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PTypeCheck)))
-          AND (
-              @PWeightCheck IS NULL
-              OR weight IS NULL
-              OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeightCheck)))
-          )
-        `);
+      const available = parseFloat(calcStock.recordset[0].ActualAvailable || 0);
 
-      const availableStock = stockCheck.recordset[0].AvailableStock || 0;
-
-      if (availableStock < absDiff) {
-        throw new Error("Insufficient stock! Available: " + availableStock);
+      if (available < neededMore) {
+        throw new Error(`Insufficient Stock! Dashboard shows ${available}, you need ${neededMore} more.`);
       }
     }
 
-    // 4️⃣ UPDATE STOCK
-    const stockUpdate = await request
-      .input("DiffQty", sql.Int, diffQty)
-      .input("PType", sql.NVarChar, productType)
-      .input("PWeight", sql.NVarChar, weight).query(`
-        UPDATE Stock
-        SET Quantity = Quantity + @DiffQty
-        WHERE ID = (
-            SELECT TOP 1 ID
-            FROM Stock
-            WHERE LOWER(LTRIM(RTRIM(item_name))) = LOWER(LTRIM(RTRIM(@PType)))
-            AND (
-                @PWeight IS NULL
-                OR weight IS NULL
-                OR LOWER(LTRIM(RTRIM(weight))) = LOWER(LTRIM(RTRIM(@PWeight)))
-            )
-            ORDER BY created_at DESC
-        );
-      `);
+    // 3. Physical Stock Table Update (FIFO)
+    // Ye tabhi chalega jab Stock table mein rows hongi. Agar 0 hai toh crash nahi hoga.
+    if (diffQty !== 0) {
+      if (diffQty > 0) {
+        // Quantity kam hui: Stock wapas add karo
+        await request.input("DQ", sql.Decimal(18,2), diffQty).input("PT", sql.NVarChar, pType)
+          .query(`
+            UPDATE Stock SET quantity = quantity + @DQ 
+            WHERE ID = (SELECT TOP 1 ID FROM Stock WHERE UPPER(item_name) = UPPER(@PT) ORDER BY created_at DESC)
+          `);
+      } else {
+        // Quantity badhi: Stock minus karo
+        let toDeduct = Math.abs(diffQty);
+        const rows = await request.input("PT2", sql.NVarChar, pType).query(`
+          SELECT ID, quantity FROM Stock WHERE UPPER(item_name) = UPPER(@PT2) AND quantity > 0 ORDER BY id ASC
+        `);
 
-    // 5️⃣ UPDATE ORDER ITEM
-    const newTotal = newQuantity * finalRate;
-
-    await request
-      .input("NewQty", sql.Int, newQuantity)
-      .input("NewRate", sql.Decimal(10, 2), finalRate)
-      .input("NewTotal", sql.Decimal(10, 2), newTotal)
-      .input("ITM_ID", sql.Int, itemId).query(`
-        UPDATE OrderItems
-        SET Quantity = @NewQty,
-            Rate = @NewRate,
-            Total = @NewTotal
-        WHERE ItemID = @ITM_ID
-      `);
-
-    // 6️⃣ SAVE LOG
-    await request
-      .input("OrderIDLog", sql.Int, orderId)
-      .input("ItemIDLog", sql.Int, itemId)
-      .input("OldQtyLog", sql.Int, oldQty)
-      .input("NewQtyLog", sql.Int, newQuantity)
-      .input("OldRateLog", sql.Decimal(10, 2), oldRate)
-      .input("NewRateLog", sql.Decimal(10, 2), finalRate)
-      .input("ChangedByLog", sql.NVarChar, changedBy || "admin")
-      .input("ReasonLog", sql.NVarChar, reason || "Admin Edit").query(`
-        INSERT INTO OrderEditLogs
-        (OrderID, ItemID, OldQuantity, NewQuantity, OldRate, NewRate, ChangedBy, ChangeReason, ChangedAt)
-        VALUES
-        (@OrderIDLog, @ItemIDLog, @OldQtyLog, @NewQtyLog, @OldRateLog, @NewRateLog, @ChangedByLog, @ReasonLog, GETDATE())
-      `);
-
-    // Step 6 ke baad Notifications wala part aise update karein:
-
-    const notifMsg = `Order #${orderId} for ${customerName} updated to ${newQuantity} by ${changedBy || "Admin"}`;
-
-    const notifResult = await request
-      .input("UserRoleNotif", sql.NVarChar, "Operator")
-      .input("MsgNotif", sql.NVarChar, notifMsg)
-      .input("OIDNotif", sql.Int, orderId)
-      .input("CustomerName", sql.NVarChar, customerName).query(`
-    INSERT INTO Notifications (UserRole, Message, OrderID, CustomerName)
-    OUTPUT INSERTED.*
-    VALUES (@UserRoleNotif, @MsgNotif, @OIDNotif, @CustomerName)
-  `);
-
-    // Transaction commit hone ke baad hi emit karein
-    await transaction.commit();
-
-    const io = req.app.get("io");
-    if (io) {
-      io.emit("newNotification", notifResult.recordset[0]);
-      console.log("Socket Emitted:", notifResult.recordset[0]); // Debugging ke liye
+        for (let row of rows.recordset) {
+          if (toDeduct <= 0) break;
+          let d = Math.min(row.quantity, toDeduct);
+          await new sql.Request(transaction).input("D", sql.Decimal(18,2), d).input("ID", sql.Int, row.ID).query(`
+            UPDATE Stock SET quantity = quantity - @D WHERE ID = @ID
+          `);
+          toDeduct -= d;
+        }
+      }
     }
 
-    res.status(200).json({
-      message: "Order updated successfully",
-    });
-  } catch (error) {
-    await transaction.rollback();
+    // 4. OrderItems Table Update (Dashboard isi table se live data uthayega)
+    const finalRate = newRate || itemRes.recordset[0].Rate;
+    await request
+      .input("NQ", sql.Decimal(18,2), updatedQty)
+      .input("ID2", sql.Int, itemId)
+      .input("TOT", sql.Decimal(18,2), updatedQty * finalRate)
+      .input("NR", sql.Decimal(18,2), finalRate)
+      .query(`UPDATE OrderItems SET Quantity = @NQ, Total = @TOT, Rate = @NR WHERE ItemID = @ID2`);
 
-    console.error("Update Order Error:", error.message);
+    await transaction.commit();
+    res.status(200).json({ success: true, message: "Stock and Order Updated!" });
 
-    res.status(500).json({
-      message: error.message,
-    });
+  } catch (err) {
+    if (transaction) await transaction.rollback();
+    res.status(500).json({ message: err.message });
   }
 };
 

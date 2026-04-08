@@ -96,15 +96,11 @@ exports.assignOrder = async (req, res) => {
       .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
 
     if (check.recordset.length > 0) {
-      // REASSIGN
+      // REASSIGN LOGIC (Sirf update, no stock deduction)
       await new sql.Request(transaction)
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
-        .input(
-          "OtherDeliveryManName",
-          sql.NVarChar,
-          otherDeliveryManName || null,
-        )
+        .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
         .input("DeliveryDate", sql.Date, deliveryDate)
         .input("Remark", sql.NVarChar, remark || null)
         .input("ReassignedBy", sql.NVarChar, username).query(`
@@ -122,7 +118,61 @@ exports.assignOrder = async (req, res) => {
       return res.json({ message: "Order reassigned successfully" });
     }
 
-    // 2️⃣ Insert new assignment
+    // 2️⃣ Get items of order
+    const itemsRes = await new sql.Request(transaction)
+      .input("OrderID", sql.Int, orderId)
+      .query(`SELECT ProductType, Quantity FROM OrderItems WHERE OrderID = @OrderID`);
+
+    if (itemsRes.recordset.length === 0) {
+      throw new Error("No items found for this order.");
+    }
+
+    // 3️⃣ Stock Deduction Logic
+    for (let item of itemsRes.recordset) {
+      let qtyToDeduct = parseFloat(item.Quantity || 0);
+      const target = item.ProductType ? item.ProductType.trim() : "";
+
+      if (!target || qtyToDeduct <= 0) continue;
+
+      // FIFO: Purana stock pehle uthayenge jinki quantity > 0 hai
+      const stockRes = await new sql.Request(transaction)
+        .input("Target", sql.NVarChar, target)
+        .query(`
+          SELECT id, quantity 
+          FROM Stock 
+          WHERE UPPER(LTRIM(RTRIM(item_name))) = UPPER(@Target)
+          AND quantity > 0
+          ORDER BY id ASC
+        `);
+
+      // Agar Stock table mein quantity mil rahi hai, tabhi minus karo
+      if (stockRes.recordset.length > 0) {
+        for (let stockRow of stockRes.recordset) {
+          if (qtyToDeduct <= 0) break;
+
+          const currentStockQty = parseFloat(stockRow.quantity || 0);
+          const deductQty = Math.min(currentStockQty, qtyToDeduct);
+
+          await new sql.Request(transaction)
+            .input("ID", sql.Int, stockRow.id)
+            .input("D", sql.Decimal(18, 2), deductQty)
+            .query(`
+              UPDATE Stock 
+              SET quantity = quantity - @D 
+              WHERE id = @ID
+            `);
+
+          qtyToDeduct -= deductQty;
+        }
+      } else {
+        // AGAR STOCK TABLE MEIN 0 HAI:
+        // Yahan hum error nahi phenk rahe taaki order assign ho jaye.
+        // Dashboard pe toh wese bhi StockHistory se sahi dikh raha hai.
+        console.log(`Stock not found in Stock table for ${target}, skipping physical deduction.`);
+      }
+    }
+
+    // 4️⃣ Finally Insert into AssignedOrders
     await new sql.Request(transaction)
       .input("OrderID", sql.Int, orderId)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -136,59 +186,11 @@ exports.assignOrder = async (req, res) => {
         (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
       `);
 
-    // 3️⃣ Get items of order
-    const itemsRes = await new sql.Request(transaction).input(
-      "OrderID",
-      sql.Int,
-      orderId,
-    ).query(`
-        SELECT ProductType, Quantity 
-        FROM OrderItems 
-        WHERE OrderID = @OrderID
-      `);
-
-    // 4️⃣ Deduct stock
-    for (let item of itemsRes.recordset) {
-      let qtyToDeduct = parseInt(item.Quantity);
-      const target = item.ProductType.trim();
-
-      const stockRes = await new sql.Request(transaction).input(
-        "Target",
-        sql.NVarChar,
-        target,
-      ).query(`
-          SELECT id, quantity 
-          FROM Stock 
-          WHERE LTRIM(RTRIM(item_name)) = @Target
-          AND quantity > 0
-          ORDER BY id ASC
-        `);
-
-      for (let stockRow of stockRes.recordset) {
-        if (qtyToDeduct <= 0) break;
-
-        const deductQty = Math.min(stockRow.quantity, qtyToDeduct);
-
-        await new sql.Request(transaction)
-          .input("ID", sql.Int, stockRow.id)
-          .input("D", sql.Int, deductQty).query(`
-            UPDATE Stock 
-            SET quantity = quantity - @D 
-            WHERE id = @ID
-          `);
-
-        qtyToDeduct -= deductQty;
-      }
-
-      if (qtyToDeduct > 0) {
-        throw new Error(`${target} out of stock`);
-      }
-    }
-
     await transaction.commit();
     res.status(201).json({ message: "Order assigned successfully" });
+
   } catch (err) {
-    await transaction.rollback();
+    if (transaction) await transaction.rollback();
     console.error("AssignOrder Error:", err);
     res.status(500).json({ message: err.message });
   }
