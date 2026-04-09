@@ -20,6 +20,7 @@ import { useOrderFilter } from "./UserOrderFilter";
 import CancelOrderModal from "./CancelOrderModal";
 import UpdateQuantityModal from "./UpdateQuantityModal";
 import RTVModal from "./RTVModal";
+import InvoiceGenerator from "../OrderInvoice";
 
 const UserForm = () => {
   const dispatch = useDispatch();
@@ -33,6 +34,9 @@ const UserForm = () => {
   const [selectedItemForUpdate, setSelectedItemForUpdate] = useState(null);
   const [selectedOrderIdForUpdate, setSelectedOrderIdForUpdate] =
     useState(null);
+
+    const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+const [invoiceOrder, setInvoiceOrder] = useState(null);
 
   const [rtvOpen, setRtvOpen] = useState(false);
   const [rtvRow, setRtvRow] = useState(null);
@@ -180,6 +184,11 @@ const UserForm = () => {
     }
   };
 
+ const handleInvoiceClick = (row) => {
+  console.log("Invoice row data:", row);   // 👈 yaha add karo
+  setInvoiceOrder(row);
+  setIsInvoiceOpen(true);
+};
   // Handle Complete Order from Modal
   // UserForm.js mein handleCompleteOrder function:
 
@@ -594,6 +603,7 @@ const UserForm = () => {
                                     onEditClick={handleEditClick}
                                     formatPaymentSummary={formatPaymentSummary}
                                     onRTVClick={handleRTVClick}
+                                    onInvoiceClick={handleInvoiceClick}
                                   />
                                 ))
                               ) : (
@@ -674,6 +684,16 @@ const UserForm = () => {
         row={rtvRow}
         username={username}
       />
+
+      {isInvoiceOpen && (
+        <InvoiceGenerator 
+          orderData={invoiceOrder} 
+          
+          onClose={() => setIsInvoiceOpen(false)} 
+        />
+      )}
+       
+      
     </>
   );
 };
@@ -686,6 +706,7 @@ const OrderTableRow = ({
   onEditClick,
   formatPaymentSummary,
   onRTVClick,
+  onInvoiceClick,
 }) => {
   const isLocked =
     row.OrderStatus === "Complete" ||
@@ -859,6 +880,14 @@ const OrderTableRow = ({
         >
           <i className="mdi mdi-pencil"></i>
         </button>
+        {/* Invoice Button */}
+          <button
+            className="btn btn-dark btn-sm"
+            onClick={() => onInvoiceClick(row)}
+            title="Generate Invoice"
+          >
+            <i className="mdi mdi-file-document"></i>
+          </button>
       </td>
 
       <td>
@@ -935,7 +964,9 @@ const TableFooter = ({
             Next <i className="mdi mdi-chevron-right"></i>
           </button>
         </div>
+        
       </div>
+      
     </>
   );
 };

@@ -464,6 +464,7 @@ const AdminDashboard = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
   const handleGenerateInvoice = (orderRow) => {
+      console.log("Invoice row data:", orderRow); 
     setSelectedOrderForInvoice(orderRow);
     setIsInvoiceModalOpen(true);
   };

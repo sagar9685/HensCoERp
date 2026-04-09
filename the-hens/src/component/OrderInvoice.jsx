@@ -200,7 +200,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
           hsn: COMPANY_INFO.hsnCode,
           gstRate: 0,
           ProductUPC: upc,
-          MRP: r.toFixed(2),
+         MRP: parseFloat(item[5] || r).toFixed(2), // <-- directly from item[5] if available
           Gst_No: orderData.Gst_No || "",
           PAN_No: orderData.PAN_No || "",
           Po_No: orderData.Po_No || "",
@@ -251,8 +251,13 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     const qtys = parseAndCleanArray(orderData.Quantities).map(Number);
     const rates = parseAndCleanArray(orderData.Rates).map(Number);
     const weights = parseAndCleanArray(orderData.Weights);
-    const upcs = parseAndCleanArray(orderData.ProductUPCs);
-    const mrps = parseAndCleanArray(orderData.MRPs).map(Number);
+ const upcs = parseAndCleanArray(
+  orderData.ProductUPC || orderData.ProductUPCs || orderData.UPC
+);
+
+const mrps = parseAndCleanArray(
+  orderData.MRP || orderData.MRPs
+).map(Number);
 
     const productCount = Math.max(names.length, types.length, rates.length);
     // let upcPointer = 0;
@@ -264,10 +269,18 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
       const qty = qtys[i] || 1;
       const rate = rates[i] || 0;
       const weight = weights[i] || "-";
-      const mrp = i < mrps.length ? mrps[i] : rate;
+     const mrp =
+  mrps[i] !== undefined &&
+  mrps[i] !== null &&
+  mrps[i] !== 0
+    ? mrps[i]
+    : rate;
       const total = qty * rate;
 
-      const upc = upcs[i] && upcs[i] !== "NULL" ? upcs[i] : "N/A";
+   const upc =
+  upcs[i] && upcs[i] !== "NULL" && upcs[i] !== "0"
+    ? upcs[i]
+    : "N/A";
 
       totalQty += qty;
       subTotalVal += total;
@@ -406,7 +419,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
                     </p>
                     <p>
                       <strong>Delivery Boy:</strong>{" "}
-                      {orderData.DeliveryManName || "Shubham"}
+                      {orderData.DeliveryManName || "NA"}
                     </p>
                     <p>
                       <strong>Order Taken By:</strong>{" "}
