@@ -20,6 +20,34 @@ exports.completeOrder = async (req, res) => {
   try {
     await transaction.begin();
 
+    // ✅ RTV CASE (SABSE PEHLE HANDLE KARO)
+    if (status === "RTV") {
+      await new sql.Request(transaction)
+        .input("Status", sql.VarChar, status)
+        .input("AssignedOrderID", sql.Int, assignedOrderId)
+        .input("CompletedBy", sql.VarChar, username).query(`
+      UPDATE AssignedOrders
+      SET 
+        DeliveryStatus = @Status,
+        CompletedBy = @CompletedBy
+      WHERE AssignID = @AssignedOrderID
+    `);
+
+      // ✅ IMPORTANT FIX (ye missing hai)
+      await new sql.Request(transaction).input("OrderID", sql.Int, orderId)
+        .query(`
+      UPDATE Orders
+      SET OrderStatus = 'RTV'
+      WHERE OrderID = @OrderID
+    `);
+
+      await transaction.commit();
+
+      return res.status(200).json({
+        message: "Order marked as RTV successfully",
+      });
+    }
+
     // ------------------------------------
     // 1️⃣ UPDATE ASSIGNED ORDERS TABLE
     // ------------------------------------

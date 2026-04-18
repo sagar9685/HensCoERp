@@ -32,11 +32,9 @@ const UserForm = () => {
   const [cancelOrder, setCancelOrder] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedItemForUpdate, setSelectedItemForUpdate] = useState(null);
-  const [selectedOrderIdForUpdate, setSelectedOrderIdForUpdate] =
-    useState(null);
 
-    const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-const [invoiceOrder, setInvoiceOrder] = useState(null);
+  const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
 
   const [rtvOpen, setRtvOpen] = useState(false);
   const [rtvRow, setRtvRow] = useState(null);
@@ -45,10 +43,14 @@ const [invoiceOrder, setInvoiceOrder] = useState(null);
   const username = authData?.name;
 
   const handleRTVClick = (row) => {
+    if (row.DeliveryStatus === "RTV" || row.OrderStatus === "RTV") {
+      toast.info("RTV already done");
+      return;
+    }
+
     setRtvRow(row);
     setRtvOpen(true);
   };
-
   // Use the custom hook for filtering and pagination
   const {
     searchTerm,
@@ -160,6 +162,31 @@ const [invoiceOrder, setInvoiceOrder] = useState(null);
     }
   };
 
+  const handleRTVSubmit = async (reason) => {
+    try {
+      await dispatch(
+        updateDeliveryStatus({
+          assignId: rtvRow.AssignID,
+          status: "RTV",
+          username,
+          reason,
+        }),
+      ).unwrap();
+
+      toast.success("RTV processed successfully");
+
+      // close modal
+      setRtvOpen(false);
+      setRtvRow(null);
+
+      // 🔥 IMPORTANT: refresh data
+      dispatch(fetchAssignOrder());
+    } catch (err) {
+      console.error("RTV Error:", err);
+      toast.error("RTV failed. Please try again.");
+    }
+  };
+
   const handleCancelSubmit = async (reason) => {
     try {
       // unwrap() use karne se humein pakka pata chalta hai ki API success hui
@@ -184,11 +211,11 @@ const [invoiceOrder, setInvoiceOrder] = useState(null);
     }
   };
 
- const handleInvoiceClick = (row) => {
-  console.log("Invoice row data:", row);   // 👈 yaha add karo
-  setInvoiceOrder(row);
-  setIsInvoiceOpen(true);
-};
+  const handleInvoiceClick = (row) => {
+    console.log("Invoice row data:", row); // 👈 yaha add karo
+    setInvoiceOrder(row);
+    setIsInvoiceOpen(true);
+  };
   // Handle Complete Order from Modal
   // UserForm.js mein handleCompleteOrder function:
 
@@ -199,6 +226,7 @@ const [invoiceOrder, setInvoiceOrder] = useState(null);
         updateDeliveryStatus({
           assignId: confirmOrder.AssignID,
           status: "Complete",
+          username,
         }),
       ).unwrap();
 
@@ -683,17 +711,15 @@ const [invoiceOrder, setInvoiceOrder] = useState(null);
         onClose={() => setRtvOpen(false)}
         row={rtvRow}
         username={username}
+        onSubmit={handleRTVSubmit}
       />
 
       {isInvoiceOpen && (
-        <InvoiceGenerator 
-          orderData={invoiceOrder} 
-          
-          onClose={() => setIsInvoiceOpen(false)} 
+        <InvoiceGenerator
+          orderData={invoiceOrder}
+          onClose={() => setIsInvoiceOpen(false)}
         />
       )}
-       
-      
     </>
   );
 };
@@ -708,10 +734,22 @@ const OrderTableRow = ({
   onRTVClick,
   onInvoiceClick,
 }) => {
+  // ✅ 1. ROW LOCK LOGIC:
+  // Agar OrderStatus ya DeliveryStatus processed state mein hai, toh row lock hogi.
   const isLocked =
     row.OrderStatus === "Complete" ||
     row.OrderStatus === "Cancel" ||
-    row.DeliveryStatus === "Cancel";
+    row.OrderStatus === "RTV" ||
+    row.DeliveryStatus === "RTV";
+
+  // ✅ 2. DYNAMIC BADGE COLOR LOGIC:
+  const getStatusBadgeClass = () => {
+    if (row.OrderStatus === "RTV" || row.DeliveryStatus === "RTV")
+      return styles.cancelledBadge; // Red/Orange for RTV
+    if (row.OrderStatus === "Complete") return styles.completedBadge; // Green
+    if (row.OrderStatus === "Cancel") return styles.cancelledBadge; // Red
+    return "";
+  };
 
   return (
     <tr
@@ -730,6 +768,8 @@ const OrderTableRow = ({
         </a>
       </td>
       <td className={styles.areaCell}>{row.Area}</td>
+
+      {/* Items Breakdown */}
       <td className={styles.typeCell}>
         {row.ProductTypes?.split(",").map((item, i) => (
           <div key={i} className={styles.lineItem}>
@@ -751,6 +791,7 @@ const OrderTableRow = ({
           </div>
         ))}
       </td>
+
       <td className={styles.amountCell}>
         <div className={styles.amountInfo}>
           <div>Rate: ₹{row.Rates}</div>
@@ -760,40 +801,30 @@ const OrderTableRow = ({
           </strong>
         </div>
       </td>
+
+      {/* Dates */}
       <td className={styles.dateCell}>
-        {new Date(row.OrderDate)
-          .toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "2-digit",
-          })
-          .replace(",", "")
-          .replace(" ", "-")}
+        {row.OrderDate
+          ? new Date(row.OrderDate)
+              .toLocaleDateString("en-GB")
+              .replace(/\//g, "-")
+          : "-"}
       </td>
       <td className={styles.dateCell}>
         {row.DeliveryDate
           ? new Date(row.DeliveryDate)
-              .toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "2-digit",
-              })
-              .replace(",", "")
-              .toLowerCase()
+              .toLocaleDateString("en-GB")
+              .replace(/\//g, "-")
           : "-"}
       </td>
       <td className={styles.dateCell}>
         {row.PaymentReceivedDate
           ? new Date(row.PaymentReceivedDate)
-              .toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "2-digit",
-              })
-              .replace(",", "")
-              .toLowerCase()
+              .toLocaleDateString("en-GB")
+              .replace(/\//g, "-")
           : "-"}
       </td>
+
       <td className={styles.deliveryCell}>
         {row.DeliveryManName ? (
           <div className={styles.deliveryMan}>
@@ -804,52 +835,30 @@ const OrderTableRow = ({
           "-"
         )}
       </td>
+
       <td>
         <span className={styles.remark}>{row.Remark || "-"}</span>
       </td>
 
-      {/* <td>
-        {isLocked ? (
-          <span className={row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel" ? styles.cancelledBadge : styles.completedBadge}>
-            <i className={`mdi ${row.OrderStatus === "Complete" ? "mdi-check-circle" : "mdi-close-circle"}`}></i>
-            {row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel" ? "Cancelled" : "Completed"}
-          </span>
-        ) : (
-          <select
-            className={styles.statusDropdown}
-            value={row.DeliveryStatus}
-            onChange={(e) => onStatusChange(row, e.target.value)}
-            disabled={!row.AssignID}
-          >
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Complete">Complete</option>
-            <option value="Cancel">Cancel</option>
-          </select>
-        )}
-      </td> */}
-
-      {/* // OrderTableRow component mein Badge logic */}
+      {/* ✅ 3. STATUS COLUMN WITH DROPDRON OR BADGE */}
       <td>
         {isLocked ? (
-          <span
-            className={
-              row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel"
-                ? styles.cancelledBadge // Make sure this is red in your CSS
-                : styles.completedBadge
-            }
-          >
+          <span className={getStatusBadgeClass()}>
             <i
-              className={`mdi ${row.OrderStatus === "Complete" ? "mdi-check-circle" : "mdi-close-circle"}`}
-            ></i>
-            {row.OrderStatus === "Cancel" || row.DeliveryStatus === "Cancel"
-              ? "Cancelled"
-              : "Completed"}
+              className={`mdi ${
+                row.OrderStatus === "RTV"
+                  ? "mdi-backup-restore"
+                  : row.OrderStatus === "Complete"
+                    ? "mdi-check-circle"
+                    : "mdi-close-circle"
+              }`}
+            ></i>{" "}
+            {row.OrderStatus || row.DeliveryStatus}
           </span>
         ) : (
           <select
             className={styles.statusDropdown}
-            value={row.DeliveryStatus}
+            value={row.DeliveryStatus || "Pending"}
             onChange={(e) => onStatusChange(row, e.target.value)}
             disabled={!row.AssignID}
           >
@@ -857,30 +866,32 @@ const OrderTableRow = ({
             <option value="In Progress">In Progress</option>
             <option value="Complete">Complete</option>
             <option value="Cancel">Cancel</option>
+            <option value="RTV">RTV</option>
           </select>
         )}
       </td>
 
-      {/* // OrderTableRow.jsx */}
+      {/* ✅ 4. ACTIONS COLUMN */}
       <td>
-        <button
-          className={`btn ${row.AssignID ? "btn-warning" : "btn-primary"} btn-sm`}
-          onClick={onAssignClick}
-          // Yahan 'isLocked' use karne se Cancel par bhi button disable ho jayega
-          disabled={isLocked}
-          title={isLocked ? "This order is locked and cannot be changed" : ""}
-        >
-          {row.AssignID ? "Reassign" : "Assign"}
-        </button>
-        <button
-          className="btn btn-info btn-sm"
-          onClick={() => onEditClick(row)}
-          disabled={isLocked} // Order complete hone par disable
-          title={isLocked ? "Order Locked" : "Edit Quantity"}
-        >
-          <i className="mdi mdi-pencil"></i>
-        </button>
-        {/* Invoice Button */}
+        <div className="d-flex gap-1">
+          <button
+            className={`btn ${row.AssignID ? "btn-warning" : "btn-primary"} btn-sm`}
+            onClick={onAssignClick}
+            disabled={isLocked}
+            title={isLocked ? "Order Locked" : "Assign/Reassign"}
+          >
+            {row.AssignID ? "Reassign" : "Assign"}
+          </button>
+
+          <button
+            className="btn btn-info btn-sm"
+            onClick={() => onEditClick(row)}
+            disabled={isLocked}
+            title={isLocked ? "Order Locked" : "Edit Quantity"}
+          >
+            <i className="mdi mdi-pencil"></i>
+          </button>
+
           <button
             className="btn btn-dark btn-sm"
             onClick={() => onInvoiceClick(row)}
@@ -888,23 +899,29 @@ const OrderTableRow = ({
           >
             <i className="mdi mdi-file-document"></i>
           </button>
+        </div>
       </td>
 
+      {/* Payment Summary or RTV status */}
       <td>
-        <span className={styles.paymentMode}>
-          {formatPaymentSummary(row.PaymentSummary)}
-        </span>
+        {row.DeliveryStatus === "RTV" || row.OrderStatus === "RTV" ? (
+          <span className="text-danger font-weight-bold">RTV PROCESSED</span>
+        ) : (
+          <span className={styles.paymentMode}>
+            {formatPaymentSummary(row.PaymentSummary)}
+          </span>
+        )}
       </td>
+
+      {/* ✅ 5. DIRECT RTV BUTTON */}
       <td>
-        <td>
-          <button
-            className="btn btn-outline-danger btn-sm"
-            onClick={() => onRTVClick(row)}
-            title="Return To Vendor"
-          >
-            <i className="mdi mdi-backup-restore"></i>
-          </button>
-        </td>
+        <button
+          className="btn btn-outline-danger btn-sm"
+          onClick={() => onRTVClick(row)}
+          disabled={row.OrderStatus === "RTV" || row.DeliveryStatus === "RTV"}
+        >
+          <i className="mdi mdi-backup-restore"></i>
+        </button>
       </td>
     </tr>
   );
@@ -964,9 +981,7 @@ const TableFooter = ({
             Next <i className="mdi mdi-chevron-right"></i>
           </button>
         </div>
-        
       </div>
-      
     </>
   );
 };

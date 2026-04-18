@@ -170,6 +170,8 @@ const AdminDashboard = () => {
         return styles.statusCancelled;
       case "processing":
         return styles.statusProcessing;
+      case "rtv": // ✅ ADD THIS
+        return styles.statusRTV;
       default:
         return "";
     }
@@ -270,41 +272,40 @@ const AdminDashboard = () => {
       setIsPaymentModalOpen(true);
     }
   };
- 
+
   const handleVerifyPayment = () => {
-  dispatch(
-    verifyPayment({
-      paymentId: selectedPayment.PaymentID,
-      receivedAmount: Number(receivedAmount),
-      verificationRemarks,
-    })
-  )
-    .unwrap()
-    .then(() => {
+    dispatch(
+      verifyPayment({
+        paymentId: selectedPayment.PaymentID,
+        receivedAmount: Number(receivedAmount),
+        verificationRemarks,
+      }),
+    )
+      .unwrap()
+      .then(() => {
+        // ✅ instant UI update
+        setFilteredData((prev) =>
+          prev.map((item) =>
+            item.PaymentID === selectedPayment.PaymentID
+              ? {
+                  ...item,
+                  PaymentVerifyStatus: "Verified",
+                  VerifyMark: verificationRemarks,
+                  ShortAmount: 0,
+                }
+              : item,
+          ),
+        );
 
-      // ✅ instant UI update
-      setFilteredData((prev) =>
-        prev.map((item) =>
-          item.PaymentID === selectedPayment.PaymentID
-            ? {
-                ...item,
-                PaymentVerifyStatus: "Verified",
-                VerifyMark: verificationRemarks,
-                ShortAmount: 0
-              }
-            : item
-        )
+        toast.success("Payment updated successfully!");
+        setIsPaymentModalOpen(false);
+        setReceivedAmount("");
+        setVerificationRemarks("");
+      })
+      .catch((err) =>
+        toast.error(err.message || "Payment verification failed"),
       );
-
-      toast.success("Payment updated successfully!");
-      setIsPaymentModalOpen(false);
-      setReceivedAmount("");
-      setVerificationRemarks("");
-    })
-    .catch((err) =>
-      toast.error(err.message || "Payment verification failed")
-    );
-};
+  };
 
   const deliveryMenList = [
     ...new Set(
@@ -464,7 +465,7 @@ const AdminDashboard = () => {
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
   const handleGenerateInvoice = (orderRow) => {
-      console.log("Invoice row data:", orderRow); 
+    console.log("Invoice row data:", orderRow);
     setSelectedOrderForInvoice(orderRow);
     setIsInvoiceModalOpen(true);
   };
@@ -1107,9 +1108,11 @@ const AdminDashboard = () => {
                             const weights = row.Weights
                               ? row.Weights.split(",")
                               : [];
-                           const quantities = row.Quantities
-  ? row.Quantities.split(",").map(q => parseFloat(q))
-  : [];
+                            const quantities = row.Quantities
+                              ? row.Quantities.split(",").map((q) =>
+                                  parseFloat(q),
+                                )
+                              : [];
                             const rates = row.Rates ? row.Rates.split(",") : [];
 
                             return types.map((type, i) => (
@@ -1117,12 +1120,15 @@ const AdminDashboard = () => {
                                 <span className={styles.pType}>
                                   {type?.trim() || "-"}
                                 </span>
-                                 <span className={styles.pWeight}>
-      {weights[i]?.trim() || "-"}
-    </span>
+                                <span className={styles.pWeight}>
+                                  {weights[i]?.trim() || "-"}
+                                </span>
 
                                 <span className={styles.pQty}>
-                           Qty: {quantities[i] ? quantities[i].toFixed(2) : "-"}
+                                  Qty:{" "}
+                                  {quantities[i]
+                                    ? quantities[i].toFixed(2)
+                                    : "-"}
                                 </span>
                                 <span className={styles.pRate}>
                                   ₹{rates[i]?.trim() || "-"}

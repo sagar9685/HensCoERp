@@ -1957,3 +1957,11 @@
   color: #2e7d32;
   font-size: 14px;
 }
+.statusRTV {
+  background-color: #e3f2fd; /* light blue */
+  color: #1976d2; /* dark blue */
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}

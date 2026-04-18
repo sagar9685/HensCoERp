@@ -77,7 +77,7 @@ exports.addOrder = async (req, res) => {
         .input("ProductName", sql.NVarChar, item.ProductName || null)
         .input("ProductType", sql.NVarChar, item.ProductType)
         .input("Weight", sql.NVarChar, item.Weight || null)
-     .input("Quantity", sql.Decimal(18,2), item.Quantity) // ✅ FIX
+        .input("Quantity", sql.Decimal(18, 2), item.Quantity) // ✅ FIX
         .input("Rate", sql.Decimal(18, 2), item.Rate)
         .input("Total", sql.Decimal(18, 2), total).query(`
           INSERT INTO OrderItems
@@ -532,16 +532,13 @@ exports.updateOrderQuantity = async (req, res) => {
     console.log("REQ:", req.body);
 
     // 1. Old item
-    const itemRes = await request
-      .input("ItemID", sql.Int, itemId)
-      .query(`
+    const itemRes = await request.input("ItemID", sql.Int, itemId).query(`
         SELECT Quantity, ProductType, Rate 
         FROM OrderItems 
         WHERE ItemID = @ItemID
       `);
 
-    if (itemRes.recordset.length === 0)
-      throw new Error("Item not found");
+    if (itemRes.recordset.length === 0) throw new Error("Item not found");
 
     const oldQty = parseFloat(itemRes.recordset[0].Quantity || 0);
     const updatedQty = parseFloat(newQuantity || 0);
@@ -558,9 +555,11 @@ exports.updateOrderQuantity = async (req, res) => {
     }
 
     // 2. STOCK CHECK (FINAL QTY should not exceed available)
-    const stockRes = await new sql.Request(transaction)
-      .input("P", sql.NVarChar, pType)
-      .query(`
+    const stockRes = await new sql.Request(transaction).input(
+      "P",
+      sql.NVarChar,
+      pType,
+    ).query(`
         DECLARE @FixedOpeningDate DATE = '2026-04-01';
 
         SELECT 
@@ -592,9 +591,7 @@ exports.updateOrderQuantity = async (req, res) => {
 
     // ⭐ FINAL CHECK
     if (updatedQty > available) {
-      throw new Error(
-        `Limit Exceeded! Only ${available} trays allowed`
-      );
+      throw new Error(`Limit Exceeded! Only ${available} trays allowed`);
     }
 
     // 3. Update OrderItems
@@ -603,8 +600,7 @@ exports.updateOrderQuantity = async (req, res) => {
     await new sql.Request(transaction)
       .input("Q", sql.Decimal(18, 2), updatedQty)
       .input("T", sql.Decimal(18, 2), updatedQty * finalRate)
-      .input("ID", sql.Int, itemId)
-      .query(`
+      .input("ID", sql.Int, itemId).query(`
         UPDATE OrderItems 
         SET Quantity=@Q, Total=@T 
         WHERE ItemID=@ID
@@ -616,13 +612,12 @@ exports.updateOrderQuantity = async (req, res) => {
     await new sql.Request(transaction)
       .input("orderId", sql.Int, orderId)
       .input("itemId", sql.Int, itemId)
-      .input("oldQty", sql.Decimal(18,2), oldQty)
-      .input("newQty", sql.Decimal(18,2), updatedQty)
+      .input("oldQty", sql.Decimal(18, 2), oldQty)
+      .input("newQty", sql.Decimal(18, 2), updatedQty)
       .input("changedBy", sql.NVarChar, changedBy || "ADMIN")
       .input("reason", sql.NVarChar, reason || "")
-      .input("oldRate", sql.Decimal(18,2), oldRate)
-      .input("newRate", sql.Decimal(18,2), finalRate)
-      .query(`
+      .input("oldRate", sql.Decimal(18, 2), oldRate)
+      .input("newRate", sql.Decimal(18, 2), finalRate).query(`
         INSERT INTO OrderEditLogs
         (OrderID, ItemID, OldQuantity, NewQuantity, ChangedBy, ChangeReason, ChangedAt, OldRate, NewRate)
         VALUES
@@ -635,9 +630,8 @@ exports.updateOrderQuantity = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Quantity updated successfully"
+      message: "Quantity updated successfully",
     });
-
   } catch (err) {
     console.log("ERROR:", err);
     if (transaction) await transaction.rollback();
@@ -648,56 +642,97 @@ exports.updateOrderQuantity = async (req, res) => {
 exports.addRTV = async (req, res) => {
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
+
   try {
-    const { OrderID, ItemID, ProductType, Weight, Quantity, Rate, RTVDate, reason, username } = req.body;
+    console.log("👉 RTV API HIT");
+    console.log("BODY:", req.body);
+
+    const { OrderID, RTVDate, reason, username, items } = req.body;
+
+    if (!OrderID || !RTVDate || !items || items.length === 0) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
     await transaction.begin();
-    const total = Quantity * Rate;
+    console.log("✅ Transaction started");
 
-    // 1️⃣ Insert RTV Entry
-    await new sql.Request(transaction)
-      .input("OrderID", sql.Int, OrderID)
-      .input("ItemID", sql.Int, ItemID)
-      .input("ProductType", sql.NVarChar, ProductType)
-      .input("Weight", sql.NVarChar, Weight || null)
-      .input("Quantity", sql.Decimal(18, 2), Quantity)
-      .input("Rate", sql.Decimal(18, 2), Rate)
-      .input("Total", sql.Decimal(18, 2), total)
-      .input("RTVDate", sql.Date, RTVDate)
-      .input("reason", sql.NVarChar, reason || null)
-      .input("username", sql.NVarChar, username || "admin")
-      .query(`
-        INSERT INTO RTVEntries (OrderID, ItemID, ProductType, Weight, Quantity, Rate, Total, RTVDate, Reason, CreatedBy)
-        VALUES (@OrderID, @ItemID, @ProductType, @Weight, @Quantity, @Rate, @Total, @RTVDate, @reason, @username)
+    // ✅ 🔴 CHECK: Order already RTV or not
+    const check = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      OrderID,
+    ).query(`
+        SELECT TOP 1 RTVID FROM RTVEntries WHERE OrderID = @OrderID
       `);
 
-    // 2️⃣ Add Physical Stock (Isse physical table me 0 se upar quantity aayegi)
-    await new sql.Request(transaction)
-      .input("inward", sql.NVarChar, `RTV-${OrderID}`)
-      .input("item", sql.NVarChar, ProductType)
-      .input("qty", sql.Decimal(18, 2), Quantity)
-      .input("weight", sql.NVarChar, Weight || null)
-      .input("date", sql.DateTime, new Date(RTVDate)) // Ensure DateTime for created_at
-      .query(`
-        INSERT INTO Stock (inward_no, item_name, quantity, weight, created_at, status)
-        VALUES (@inward, @item, @qty, @weight, @date, 'RTV')
-      `);
+    if (check.recordset.length > 0) {
+      throw new Error("RTV already done for this order");
+    }
 
-    // 3️⃣ Stock History (Reporting ke liye)
-    await new sql.Request(transaction)
-      .input("itemH", sql.NVarChar, ProductType)
-      .input("qtyH", sql.Decimal(18, 2), Quantity)
-      .input("weightH", sql.NVarChar, Weight || null)
-      .input("ref", sql.Int, OrderID)
-      .input("dateH", sql.Date, RTVDate)
-      .query(`
-        INSERT INTO StockHistory (item_name, weight, quantity, type, ref_no, date)
-        VALUES (@itemH, @weightH, @qtyH, 'RTV', @ref, @dateH)
-      `);
+    // 🔁 LOOP ALL ITEMS
+    for (let item of items) {
+      const total = Number(item.Quantity) * Number(item.Rate);
+
+      await new sql.Request(transaction)
+        .input("OrderID", sql.Int, OrderID)
+        .input("ItemID", sql.Int, parseInt(item.ItemID.trim()))
+        .input("ProductType", sql.NVarChar, item.ProductType)
+        .input("Weight", sql.NVarChar, item.Weight || null)
+        .input("Quantity", sql.Decimal(18, 2), item.Quantity)
+        .input("Rate", sql.Decimal(18, 2), item.Rate)
+        .input("Total", sql.Decimal(18, 2), total)
+        .input("RTVDate", sql.Date, RTVDate)
+        .input("reason", sql.NVarChar, reason || null)
+        .input("username", sql.NVarChar, username || "admin").query(`
+          INSERT INTO RTVEntries
+          (OrderID, ItemID, ProductType, Weight, Quantity, Rate, Total, RTVDate, Reason, CreatedBy)
+          VALUES
+          (@OrderID, @ItemID, @ProductType, @Weight, @Quantity, @Rate, @Total, @RTVDate, @reason, @username)
+        `);
+
+      // STOCK
+      await new sql.Request(transaction)
+        .input("inward", sql.NVarChar, `RTV-${OrderID}`)
+        .input("item", sql.NVarChar, item.ProductType)
+        .input("qty", sql.Decimal(18, 2), item.Quantity)
+        .input("weight", sql.NVarChar, item.Weight || null)
+        .input("date", sql.DateTime, new Date(RTVDate)).query(`
+          INSERT INTO Stock
+          (inward_no, item_name, quantity, weight, created_at, status)
+          VALUES
+          (@inward, @item, @qty, @weight, @date, 'RTV')
+        `);
+
+      // HISTORY
+      await new sql.Request(transaction)
+        .input("itemH", sql.NVarChar, item.ProductType)
+        .input("qtyH", sql.Decimal(18, 2), item.Quantity)
+        .input("weightH", sql.NVarChar, item.Weight || null)
+        .input("ref", sql.Int, OrderID)
+        .input("dateH", sql.Date, RTVDate).query(`
+          INSERT INTO StockHistory
+          (item_name, weight, quantity, type, ref_no, date)
+          VALUES
+          (@itemH, @weightH, @qtyH, 'RTV', @ref, @dateH)
+        `);
+    }
 
     await transaction.commit();
-    res.json({ success: true, message: "RTV added & stock updated" });
+
+    console.log("✅ RTV SUCCESS");
+
+    res.json({
+      success: true,
+      message: "RTV done once for full order",
+    });
   } catch (err) {
     if (transaction) await transaction.rollback();
-    res.status(500).json({ message: err.message });
+
+    console.error("❌ RTV ERROR:", err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
