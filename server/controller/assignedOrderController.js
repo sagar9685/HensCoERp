@@ -75,7 +75,14 @@ const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 // };
 
 exports.assignOrder = async (req, res) => {
-  const { orderId, deliveryManId, otherDeliveryManName, deliveryDate, remark, username } = req.body;
+  const {
+    orderId,
+    deliveryManId,
+    otherDeliveryManName,
+    deliveryDate,
+    remark,
+    username,
+  } = req.body;
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
@@ -94,11 +101,14 @@ exports.assignOrder = async (req, res) => {
       await new sql.Request(transaction)
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
-        .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
+        .input(
+          "OtherDeliveryManName",
+          sql.NVarChar,
+          otherDeliveryManName || null,
+        )
         .input("DeliveryDate", sql.Date, deliveryDate)
         .input("Remark", sql.NVarChar, remark || null)
-        .input("ReassignedBy", sql.NVarChar, username)
-        .query(`
+        .input("ReassignedBy", sql.NVarChar, username).query(`
           UPDATE AssignedOrders
           SET DeliveryManID=@DeliveryManID,
               OtherDeliveryManName=@OtherDeliveryManName,
@@ -115,9 +125,12 @@ exports.assignOrder = async (req, res) => {
     // 2️⃣ Get items of order
     const itemsRes = await new sql.Request(transaction)
       .input("OrderID", sql.Int, orderId)
-      .query(`SELECT ProductType, Quantity FROM OrderItems WHERE OrderID = @OrderID`);
+      .query(
+        `SELECT ProductType, Quantity FROM OrderItems WHERE OrderID = @OrderID`,
+      );
 
-    if (itemsRes.recordset.length === 0) throw new Error("No items found for this order.");
+    if (itemsRes.recordset.length === 0)
+      throw new Error("No items found for this order.");
 
     // 3️⃣ CHECK STOCK USING LOGIC (Opening + Inwards - Sold - Reject)
     for (let item of itemsRes.recordset) {
@@ -127,9 +140,11 @@ exports.assignOrder = async (req, res) => {
       if (!product || qtyNeeded <= 0) continue;
 
       // Get available stock from logical calculation
-      const stockRes = await new sql.Request(transaction)
-        .input("Product", sql.NVarChar, product)
-        .query(`
+      const stockRes = await new sql.Request(transaction).input(
+        "Product",
+        sql.NVarChar,
+        product,
+      ).query(`
           DECLARE @FixedOpeningDate DATE = '2026-04-01';
 
           SELECT 
@@ -146,10 +161,14 @@ exports.assignOrder = async (req, res) => {
         `);
 
       const available = parseFloat(stockRes.recordset[0].AvailableStock || 0);
-      console.log(`Available stock for ${product}: ${available}, required: ${qtyNeeded}`);
+      console.log(
+        `Available stock for ${product}: ${available}, required: ${qtyNeeded}`,
+      );
 
       if (available < qtyNeeded) {
-        throw new Error(`Insufficient stock for ${product}. Required: ${qtyNeeded}, Available: ${available}`);
+        throw new Error(
+          `Insufficient stock for ${product}. Required: ${qtyNeeded}, Available: ${available}`,
+        );
       }
     }
 
@@ -160,8 +179,7 @@ exports.assignOrder = async (req, res) => {
       .input("OtherDeliveryManName", sql.NVarChar, otherDeliveryManName || null)
       .input("DeliveryDate", sql.Date, deliveryDate)
       .input("Remark", sql.NVarChar, remark || null)
-      .input("AssignedBy", sql.NVarChar, username)
-      .query(`
+      .input("AssignedBy", sql.NVarChar, username).query(`
         INSERT INTO AssignedOrders
         (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
         VALUES
@@ -171,7 +189,6 @@ exports.assignOrder = async (req, res) => {
     await transaction.commit();
     console.log("Order assigned successfully");
     res.status(201).json({ message: "Order assigned successfully" });
-
   } catch (err) {
     if (transaction) await transaction.rollback();
     console.error("AssignOrder Error:", err);
@@ -192,6 +209,9 @@ exports.getAssignedOrders = async (req, res) => {
         O.Area,
         O.DeliveryCharge,
         O.OrderDate,
+         O.InvoiceNo,
+    O.InvoiceDate,
+
 
         -- Assignment
         A.AssignID,
@@ -274,7 +294,6 @@ exports.getAssignedOrders = async (req, res) => {
     const result = await pool.request().query(query);
 
     res.status(200).json(result.recordset);
-
   } catch (err) {
     // 🔴 FULL DEBUG
     console.error("❌ SQL ERROR:", err);
