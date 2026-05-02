@@ -242,7 +242,7 @@ const reportSlice = createSlice({
             TotalEggs: 0,
             TotalAmount: 0,
           },
-          deliveryChargeSummary: action.payload?.deliveryChargeSummary || {
+          deliverySummary: action.payload?.deliverySummary || {
             TotalDeliveryCharge: 0,
           },
         };

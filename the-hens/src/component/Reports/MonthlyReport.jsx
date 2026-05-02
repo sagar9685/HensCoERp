@@ -421,19 +421,17 @@ const MonthlyReport = () => {
                       <span>Delivery Charge</span>
                       <strong>
                         {formatINR(
-                          monthly.deliveryChargeSummary?.TotalDeliveryCharge ||
-                            0,
+                          monthly?.deliverySummary?.TotalDeliveryCharge ?? 0,
                         )}
                       </strong>
                     </div>
                     <div className={styles.specialStat}>
                       <span>Avg per Order</span>
                       <strong>
-                        {monthly.summary?.TotalOrders > 0
+                        {monthly?.summary?.TotalOrders > 0
                           ? formatINR(
-                              monthly.deliveryChargeSummary
-                                ?.TotalDeliveryCharge /
-                                monthly.summary?.TotalOrders,
+                              (monthly?.deliverySummary?.TotalDeliveryCharge ??
+                                0) / monthly?.summary?.TotalOrders,
                             )
                           : "₹0"}
                       </strong>

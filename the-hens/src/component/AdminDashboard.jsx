@@ -203,6 +203,17 @@ const AdminDashboard = () => {
     setIsEditModalOpen(true);
   };
 
+  const getRowTotal = (row) => {
+    const quantities = row.Quantities?.split(",").map(Number) || [];
+    const rates = row.Rates?.split(",").map(Number) || [];
+
+    const itemsTotal = quantities.reduce((sum, qty, i) => {
+      return sum + (qty || 0) * (rates[i] || 0);
+    }, 0);
+
+    return itemsTotal + Number(row.DeliveryCharge || 0);
+  };
+
   useEffect(() => {
     dispatch(fetchOrder());
   }, [dispatch]);
@@ -1071,6 +1082,7 @@ const AdminDashboard = () => {
                   <th>Payment Status</th>
                   <th>Actions</th>
                   <th>Verfication Remark</th>
+                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -1244,6 +1256,7 @@ const AdminDashboard = () => {
                       <td className={styles.tableData}>
                         {row.VerifyMark || "-"}
                       </td>
+                      <td className={styles.tableData}>₹{getRowTotal(row)}</td>
                     </tr>
                   ))
                 ) : (
