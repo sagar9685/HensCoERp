@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import UserSideBar from "./UserSidebar";
 import UserNavbar from "./UserNavBar";
+import * as XLSX from "xlsx";
 
 const RejectStock = () => {
   const dispatch = useDispatch();
@@ -167,6 +168,22 @@ const RejectStock = () => {
     doc.save("rejected_stock_report.pdf");
   };
 
+  const handleDownloadExcel = () => {
+    const worksheetData = filtered.map((item) => ({
+      Date: item.date ? item.date.split("T")[0] : "",
+      Product: item.item_name,
+      Quantity: item.quantity,
+      Weight: item.weight,
+      Reason: item.reason,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rejected Stock");
+
+    XLSX.writeFile(workbook, "rejected_stock_report.xlsx");
+  };
+
   return (
     <div className="container-scroller">
       <UserSideBar />
@@ -194,6 +211,12 @@ const RejectStock = () => {
               <h3 className="font-bold">Rejection History</h3>
               <button onClick={handleDownload} className={styles.downloadBtn}>
                 <Download size={16} /> Export PDF
+              </button>
+              <button
+                onClick={handleDownloadExcel}
+                className={styles.downloadBtn}
+              >
+                <Download size={16} /> Export Excel
               </button>
             </div>
 

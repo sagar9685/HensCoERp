@@ -277,3 +277,35 @@ ORDER BY A.DeliveryDate DESC, O.OrderID DESC;
     });
   }
 };
+
+exports.getCashHandoverReport = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const query = `SELECT 
+          cd.TotalHandoverAmount,
+          cd.DenominationJSON,
+          CAST(cd.createdAT AS DATE) AS HandOverDate,
+          dm.Name,
+          dm.Area,
+          dm.MobileNo
+      FROM CashDepartment cd
+      INNER JOIN DeliveryMen dm 
+          ON cd.DeliveryManId = dm.DeliveryManID
+      ORDER BY cd.createdAT DESC`;
+
+    const result = await pool.request().query(query);
+
+    res.status(200).json({
+      success: true,
+      data: result.recordset,
+    });
+  } catch (e) {
+    console.log("Error fetching handover report:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

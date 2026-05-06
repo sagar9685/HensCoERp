@@ -7,10 +7,11 @@ router.post("/delivery-men", deliveryController.addDeliveryMan);
 router.get("/cash", deliveryController.getDeliveryMenCash);
 router.get(
   "/cash/pending/:deliveryManId",
-  deliveryController.getDeliveryManPendingCashOrders
+  deliveryController.getDeliveryManPendingCashOrders,
 );
 
-router.post("/allByDay",deliveryController.getDeliverySummaryByDateAndBoy)
+router.post("/allByDay", deliveryController.getDeliverySummaryByDateAndBoy);
 
+router.get("/handover-report", deliveryController.getCashHandoverReport);
 
 module.exports = router;

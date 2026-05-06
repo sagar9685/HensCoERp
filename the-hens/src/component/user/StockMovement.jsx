@@ -24,56 +24,53 @@ const StockMovementReport = () => {
   };
 
   // --- Excel Export Logic ---
-  const exportToExcel = () => {
-    if (movementReport.length === 0) {
-      alert("No data available to export");
-      return;
+  const exportToExcel = async () => {
+    const workbook = XLSX.utils.book_new();
+
+    let start = new Date(dates.fromDate);
+    let end = new Date(dates.toDate);
+
+    while (start <= end) {
+      const currentDate = start.toISOString().split("T")[0];
+
+      try {
+        // 🔥 API call for each date
+        const res = await fetch(
+          `http://localhost:5005/api/stock/report?fromDate=${currentDate}&toDate=${currentDate}`,
+        );
+        const data = await res.json();
+
+        if (data.length > 0) {
+          const headers = [
+            "Product Name",
+            "Opening",
+            "Total In",
+            "Total Sold",
+            "Closing",
+          ];
+
+          const rows = data.map((item) => [
+            item.ProductType,
+            item.Opening,
+            item.Total_In,
+            item.Total_Sell,
+            item.Closing,
+          ]);
+
+          const sheetData = [[`Date: ${currentDate}`], [], headers, ...rows];
+
+          const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+          // 👇 Sheet name = date
+          XLSX.utils.book_append_sheet(workbook, worksheet, currentDate);
+        }
+      } catch (err) {
+        console.error("Error fetching for date:", currentDate);
+      }
+
+      start.setDate(start.getDate() + 1);
     }
 
-    // 1. Prepare the report info (Date Range)
-    const reportInfo = [
-      ["Stock Movement Report"],
-      [`From Date:`, dates.fromDate],
-      [`To Date:`, dates.toDate],
-      [], // Empty row for spacing
-    ];
-
-    // 2. Prepare the Table Data
-    const tableHeaders = [
-      "Product Name",
-      "Opening Stock",
-      "Total Inward (+)",
-      "Total Sold (-)",
-      "Closing Stock",
-    ];
-
-    const tableRows = movementReport.map((item) => [
-      item.ProductType,
-      item.Opening,
-      item.Total_In,
-      item.Total_Sell,
-      item.Closing,
-    ]);
-
-    // 3. Combine everything
-    const finalData = [...reportInfo, tableHeaders, ...tableRows];
-
-    // 4. Create Worksheet and Workbook
-    const worksheet = XLSX.utils.aoa_to_sheet(finalData); // aoa_to_sheet handles arrays
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Stock Movement");
-
-    // Optional: Set column widths for better visibility
-    const wscols = [
-      { wch: 25 }, // Product Name
-      { wch: 15 }, // Opening
-      { wch: 15 }, // Total In
-      { wch: 15 }, // Total Sold
-      { wch: 15 }, // Closing
-    ];
-    worksheet["!cols"] = wscols;
-
-    // 5. Save the file
     XLSX.writeFile(
       workbook,
       `Stock_Report_${dates.fromDate}_to_${dates.toDate}.xlsx`,

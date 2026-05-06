@@ -554,6 +554,8 @@ ${boyFilter}
     const totalChickenKG = categorySummary.TotalChickenKG || 0;
     const totalEggPCS = categorySummary.TotalEggPCS || 0;
 
+    const pendingAmount = totalSaleAmount - totalReceived;
+
     // =====================================================
     // RESPONSE
     // =====================================================
@@ -567,6 +569,8 @@ ${boyFilter}
         rtvAmount: rtvAmount, // ✅ add this
         paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
+        pendingAmount: pendingAmount, // ✅ NEW FIELD
+
         focAmount: totalFOC,
         totalChickenKG: totalChickenKG,
         totalEggPCS: totalEggPCS,

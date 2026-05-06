@@ -30,6 +30,7 @@ import DispatchStock from "./component/ProductionDaily/DispatchStock";
 import CurrentStockInventory from "./component/ProductionDaily/CurrentStockInventory";
 import ChangePassword from "./component/ChangePassword";
 import AdminViewStock from "./component/AdminOrderModal/AdminViewStock";
+import HandoverReport from "./component/Reports/HandOverReport";
 
 function App() {
   return (
@@ -277,6 +278,15 @@ function App() {
           element={
             <ProtectedRoute userOnly={true}>
               <DeliverySummary />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/handover"
+          element={
+            <ProtectedRoute userOnly={true}>
+              <HandoverReport />
             </ProtectedRoute>
           }
         />

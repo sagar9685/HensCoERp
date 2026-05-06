@@ -145,6 +145,20 @@ export const fetchCustomerDateRangeReport = createAsyncThunk(
   },
 );
 
+export const fetchHandoverReport = createAsyncThunk(
+  "cash/fetchHandoverReport",
+  async (_, thunkAPI) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/users/handover-report`,
+      );
+      return response.data.data;
+    } catch (error) {
+      return thunkAPI.rejectWithValue(error.response.data);
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -200,6 +214,7 @@ const reportSlice = createSlice({
     customerLoading: false,
     ledgerLoading: false,
     error: null,
+    handoverData: [],
   },
 
   reducers: {
@@ -364,6 +379,17 @@ const reportSlice = createSlice({
 
       .addCase(fetchCustomerDateRangeReport.rejected, (state, action) => {
         state.customerDateRangeLoading = false;
+        state.error = action.payload;
+      })
+      .addCase(fetchHandoverReport.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(fetchHandoverReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.handoverData = action.payload;
+      })
+      .addCase(fetchHandoverReport.rejected, (state, action) => {
+        state.loading = false;
         state.error = action.payload;
       });
   },

@@ -16,6 +16,12 @@ const UserSideBar = () => {
     // { path: "/user", icon: "mdi mdi-speedometer", label: "Dashboard" },
     { path: "/userForm", icon: "mdi mdi-playlist-play", label: "Assign Order" },
     { path: "/datatable", icon: "mdi mdi-table-large", label: "Delivery Cash" },
+    {
+      path: "/handover",
+
+      icon: "mdi mdi-cash-multiple",
+      label: "Handover Report",
+    },
     { path: "/stock", icon: "mdi mdi-package-variant", label: "Stock" },
     {
       path: "/movement",
