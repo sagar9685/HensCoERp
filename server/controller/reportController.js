@@ -22,19 +22,18 @@ exports.getMonthlyReport = async (req, res) => {
     // ✅ 1. SALES + ORDERS
     const salesRes = await request.query(`
       SELECT 
-        ISNULL(SUM(oi.ItemTotal),0) + ISNULL(SUM(o.DeliveryCharge),0) AS TotalSales,
-        COUNT(DISTINCT o.OrderID) AS TotalOrders
-
-      FROM OrdersTemp o
-
-      LEFT JOIN (
-        SELECT OrderID, SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS ItemTotal
-        FROM OrderItems
-        GROUP BY OrderID
-      ) oi ON oi.OrderID = o.OrderID
-
-      WHERE YEAR(o.OrderDate) = @year 
-      AND MONTH(o.OrderDate) = @month
+  ISNULL(SUM(oi.ItemTotal),0) + ISNULL(SUM(o.DeliveryCharge),0) AS TotalSales,
+  COUNT(DISTINCT o.OrderID) AS TotalOrders
+FROM OrdersTemp o
+LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+LEFT JOIN (
+  SELECT OrderID, SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS ItemTotal
+  FROM OrderItems
+  GROUP BY OrderID
+) oi ON oi.OrderID = o.OrderID
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month
+AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
     `);
 
     const totalSales = salesRes.recordset[0]?.TotalSales || 0;
@@ -72,32 +71,38 @@ exports.getMonthlyReport = async (req, res) => {
 
     // ✅ 4. PAYMENTS
     const paymentsRes = await request.query(`
-      SELECT 
-        pm.ModeName, 
-        ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS Amount
-      FROM OrderPayments op
-      JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-      JOIN OrdersTemp o ON o.OrderID = op.OrderID
-      WHERE YEAR(o.OrderDate) = @year 
-      AND MONTH(o.OrderDate) = @month
-      GROUP BY pm.ModeName
+   SELECT 
+  pm.ModeName, 
+  ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS Amount
+FROM OrderPayments op
+JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+JOIN OrdersTemp o ON o.OrderID = op.OrderID
+LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month
+AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+GROUP BY pm.ModeName
     `);
 
     // ✅ 5. TOTAL RECEIVED
     const receivedRes = await request.query(`
-      SELECT 
-        ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS TotalReceived
-      FROM OrderPayments op
-      JOIN OrdersTemp o ON o.OrderID = op.OrderID
-      WHERE YEAR(o.OrderDate) = @year 
-      AND MONTH(o.OrderDate) = @month
+     SELECT 
+  ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS TotalReceived
+FROM OrderPayments op
+JOIN OrdersTemp o ON o.OrderID = op.OrderID
+LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+WHERE YEAR(o.OrderDate) = @year 
+AND MONTH(o.OrderDate) = @month
+AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
     `);
 
     const totalReceived = receivedRes.recordset[0]?.TotalReceived || 0;
 
-    // ✅ 6. OUTSTANDING (FINAL FIXED)
-    const totalOutstanding = totalSales - totalReceived;
+    // ✅ RTV sales se minus hoga
+    const netSales = totalSales - rtvAmount;
 
+    // ✅ Outstanding bhi RTV minus ke baad niklega
+    const totalOutstanding = netSales - totalReceived;
     // ✅ 6. CHICKEN & EGG SUMMARY
     const categoryRes = await request.query(`
   SELECT 
@@ -155,8 +160,10 @@ exports.getMonthlyReport = async (req, res) => {
   SELECT 
     ISNULL(SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2))),0) AS DeliveryCharge
   FROM OrdersTemp o
+  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
   WHERE YEAR(o.OrderDate) = @year 
   AND MONTH(o.OrderDate) = @month
+  AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
 `);
 
     const deliveryCharge = deliveryRes.recordset[0]?.DeliveryCharge || 0;
@@ -179,7 +186,8 @@ exports.getMonthlyReport = async (req, res) => {
     res.status(200).json({
       summary: {
         TotalOrders: totalOrders,
-        TotalSales: totalSales,
+        TotalSales: netSales,
+        GrossSales: totalSales,
         RTVAmount: rtvAmount, // info only
         CancelOrderAmount: cancelAmount, // info only
         TotalReceived: totalReceived,
@@ -215,7 +223,6 @@ exports.getWeeklyReport = async (req, res) => {
   try {
     const { year, month, week } = req.query;
 
-    // Safety: string se number banao
     const yearNum = parseInt(year, 10);
     const monthNum = parseInt(month, 10);
     const weekNum = parseInt(week, 10);
@@ -229,7 +236,6 @@ exports.getWeeklyReport = async (req, res) => {
 
     const pool = await poolPromise;
 
-    // Query execute karo
     const request = pool
       .request()
       .input("year", sql.Int, yearNum)
@@ -238,31 +244,78 @@ exports.getWeeklyReport = async (req, res) => {
       .input("endDay", sql.Int, endDay);
 
     const result = await request.query(`
-     SELECT 
-    CAST(o.OrderDate AS DATE) AS OrderDate,
-    COUNT(DISTINCT o.OrderID) AS Orders,
-    SUM(oi.Total) AS TotalSales,
-    p.ProductType,                  
-    p.Rate,
-    SUM(oi.Quantity) AS QuantitySold,
-    SUM(oi.Total) AS ProductTotalAmount
-FROM OrdersTemp o
-JOIN OrderItems oi ON o.OrderID = oi.OrderID
-JOIN OrderItems p ON oi.OrderID = p.OrderID     
-WHERE 
-    YEAR(o.OrderDate) = @year
-    AND MONTH(o.OrderDate) = @month
-    AND DAY(o.OrderDate) BETWEEN @startDay AND @endDay
-GROUP BY 
-    CAST(o.OrderDate AS DATE),
-    p.ProductType,
-    p.Rate
-ORDER BY 
-    OrderDate,
-    ProductTotalAmount DESC; 
+      SELECT 
+        CAST(o.OrderDate AS DATE) AS OrderDate,
+
+        COUNT(DISTINCT o.OrderID) AS Orders,
+
+        ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0)
+        + ISNULL(SUM(CASE 
+            WHEN oi.RowNo = 1 THEN TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)) 
+            ELSE 0 
+          END), 0) AS GrossSales,
+
+        ISNULL(rtv.RTVAmount, 0) AS RTVAmount,
+
+        (
+          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0)
+          + ISNULL(SUM(CASE 
+              WHEN oi.RowNo = 1 THEN TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)) 
+              ELSE 0 
+            END), 0)
+          - ISNULL(rtv.RTVAmount, 0)
+        ) AS TotalSales,
+
+        oi.ProductType,
+        oi.Rate,
+
+        SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))) AS QuantitySold,
+        SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))) AS ProductTotalAmount
+
+      FROM OrdersTemp o
+
+      LEFT JOIN AssignedOrders ao 
+        ON ao.OrderID = o.OrderID
+
+      JOIN (
+        SELECT 
+          OrderID,
+          ProductType,
+          Rate,
+          Quantity,
+          Total,
+          ROW_NUMBER() OVER(PARTITION BY OrderID ORDER BY ItemID) AS RowNo
+        FROM OrderItems
+      ) oi ON o.OrderID = oi.OrderID
+
+      LEFT JOIN (
+        SELECT 
+          CAST(RTVDate AS DATE) AS RTVDate,
+          SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS RTVAmount
+        FROM RTVEntries
+        WHERE YEAR(RTVDate) = @year
+          AND MONTH(RTVDate) = @month
+          AND DAY(RTVDate) BETWEEN @startDay AND @endDay
+        GROUP BY CAST(RTVDate AS DATE)
+      ) rtv ON rtv.RTVDate = CAST(o.OrderDate AS DATE)
+
+      WHERE 
+        YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+        AND DAY(o.OrderDate) BETWEEN @startDay AND @endDay
+        AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+
+      GROUP BY 
+        CAST(o.OrderDate AS DATE),
+        oi.ProductType,
+        oi.Rate,
+        rtv.RTVAmount
+
+      ORDER BY 
+        OrderDate,
+        ProductTotalAmount DESC;
     `);
 
-    // Response bhejo
     res.status(200).json({
       week: weekNum,
       from: startDay,
@@ -270,7 +323,7 @@ ORDER BY
       data: result.recordset || [],
     });
   } catch (err) {
-    console.error("Weekly Report Error:", err); // ← server console mein detail dikhega
+    console.error("Weekly Report Error:", err);
     res.status(500).json({
       message: err.message || "Internal server error in weekly report",
     });

@@ -14,6 +14,8 @@ router.post(
   orderController.cancelOrderBeforeAssign,
 );
 
+router.post("/remove-order-item", orderController.removeOrderItem);
+
 router.post("/add-item", orderController.updateOrder);
 
 router.post("/rtv", orderController.addRTV);

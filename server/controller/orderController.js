@@ -736,3 +736,135 @@ exports.addRTV = async (req, res) => {
     });
   }
 };
+
+exports.removeOrderItem = async (req, res) => {
+  console.log("🔥 REMOVE ITEM API HIT");
+  console.log("REQ BODY:", req.body);
+
+  const { orderId, itemId, changedBy, reason } = req.body;
+
+  const pool = await poolPromise;
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    await transaction.begin();
+
+    console.log("✅ TRANSACTION STARTED");
+
+    if (!orderId || !itemId) {
+      console.log("❌ ORDER ID OR ITEM ID MISSING");
+      throw new Error("OrderID and ItemID are required");
+    }
+
+    if (!reason) {
+      console.log("❌ REASON MISSING");
+      throw new Error("Reason is required");
+    }
+
+    console.log("➡️ FETCHING OLD ITEM");
+
+    // 1. Old item detail
+    const itemRes = await new sql.Request(transaction)
+      .input("ItemID", sql.Int, itemId)
+      .input("OrderID", sql.Int, orderId).query(`
+        SELECT 
+          ItemID,
+          OrderID,
+          Quantity,
+          ProductType,
+          Weight,
+          Rate,
+          Total
+        FROM OrderItems
+        WHERE ItemID = @ItemID
+        AND OrderID = @OrderID
+      `);
+
+    console.log("OLD ITEM RESULT:", itemRes.recordset);
+
+    if (itemRes.recordset.length === 0) {
+      console.log("❌ ITEM NOT FOUND");
+      throw new Error("Item not found");
+    }
+
+    const oldItem = itemRes.recordset[0];
+
+    console.log("✅ OLD ITEM FOUND:", oldItem);
+
+    // 2. Log insert before delete
+    console.log("➡️ INSERTING LOG");
+
+    await new sql.Request(transaction)
+      .input("orderId", sql.Int, orderId)
+      .input("itemId", sql.Int, itemId)
+      .input("oldQty", sql.Decimal(18, 2), Number(oldItem.Quantity) || 0)
+      .input("newQty", sql.Decimal(18, 2), 0)
+      .input("changedBy", sql.NVarChar, changedBy || "ADMIN")
+      .input("reason", sql.NVarChar, reason || "Item removed")
+      .input("oldRate", sql.Decimal(18, 2), Number(oldItem.Rate) || 0)
+      .input("newRate", sql.Decimal(18, 2), 0).query(`
+        INSERT INTO OrderEditLogs
+        (
+          OrderID,
+          ItemID,
+          OldQuantity,
+          NewQuantity,
+          ChangedBy,
+          ChangeReason,
+          ChangedAt,
+          OldRate,
+          NewRate
+        )
+        VALUES
+        (
+          @orderId,
+          @itemId,
+          @oldQty,
+          @newQty,
+          @changedBy,
+          @reason,
+          GETDATE(),
+          @oldRate,
+          @newRate
+        )
+      `);
+
+    console.log("✅ LOG INSERTED");
+
+    // 3. Delete item
+    console.log("➡️ DELETING ITEM");
+
+    const deleteRes = await new sql.Request(transaction)
+      .input("ItemID", sql.Int, itemId)
+      .input("OrderID", sql.Int, orderId).query(`
+        DELETE FROM OrderItems
+WHERE ItemID = @ItemID
+AND OrderID = @OrderID
+      `);
+
+    console.log("DELETE RESULT:", deleteRes);
+
+    console.log("✅ ITEM DELETED");
+
+    await transaction.commit();
+
+    console.log("✅ TRANSACTION COMMITTED");
+
+    res.json({
+      success: true,
+      message: "Item removed successfully",
+    });
+  } catch (err) {
+    console.log("❌ REMOVE ITEM ERROR:", err);
+
+    if (transaction) {
+      await transaction.rollback();
+      console.log("⛔ TRANSACTION ROLLBACK");
+    }
+
+    res.status(500).json({
+      success: false,
+      message: err.message || "Failed to remove item",
+    });
+  }
+};
