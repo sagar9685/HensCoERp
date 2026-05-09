@@ -149,3 +149,32 @@
   padding: 1.5rem;
   height: 360px;
 }
+.exportExcelBtn {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: white;
+  border: none;
+  padding: 12px 22px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
+}
+
+.exportExcelBtn:hover {
+  background: linear-gradient(135deg, #15803d, #166534);
+  transform: translateY(-2px);
+}
+
+.exportExcelBtn:active {
+  transform: scale(0.98);
+}
+
+.exportExcelBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}

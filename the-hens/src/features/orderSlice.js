@@ -26,6 +26,27 @@ export const addOrder = createAsyncThunk(
   },
 );
 
+export const removeOrderItem = createAsyncThunk(
+  "orders/removeItem",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        `${API_BASE_URL}/api/orders/remove-order-item`,
+        data,
+      );
+
+      return {
+        ...res.data,
+        itemId: data.itemId,
+        orderId: data.orderId,
+      };
+    } catch (err) {
+      console.log("REMOVE API ERROR:", err.response);
+      return rejectWithValue(err.response?.data || "Failed to remove item");
+    }
+  },
+);
+
 export const fetchOrder = createAsyncThunk(
   "fetchOrder",
   async (_, thunkAPI) => {
@@ -196,6 +217,51 @@ export const orderSlice = createSlice({
     });
 
     builder.addCase(addRTV.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload;
+    });
+    builder.addCase(removeOrderItem.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(removeOrderItem.fulfilled, (state, action) => {
+      state.loading = false;
+
+      const { itemId } = action.payload;
+
+      state.record = state.record.map((order) => {
+        if (!order.ItemIDs) return order;
+
+        const ids = order.ItemIDs.split(",").map((id) => id.trim());
+        const types = order.ProductTypes.split(",").map((v) => v.trim());
+        const qtys = order.Quantities.split(",").map((v) => v.trim());
+        const weights = order.Weights.split(",").map((v) => v.trim());
+        const rates = order.Rates.split(",").map((v) => v.trim());
+
+        const index = ids.indexOf(String(itemId));
+
+        if (index !== -1) {
+          ids.splice(index, 1);
+          types.splice(index, 1);
+          qtys.splice(index, 1);
+          weights.splice(index, 1);
+          rates.splice(index, 1);
+
+          return {
+            ...order,
+            ItemIDs: ids.join(", "),
+            ProductTypes: types.join(", "),
+            Quantities: qtys.join(", "),
+            Weights: weights.join(", "),
+            Rates: rates.join(", "),
+          };
+        }
+
+        return order;
+      });
+    });
+
+    builder.addCase(removeOrderItem.rejected, (state, action) => {
       state.loading = false;
       state.error = action.payload;
     });

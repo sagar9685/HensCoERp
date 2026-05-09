@@ -103,6 +103,7 @@ const DailyReport = () => {
             </div>
             <div className={`${styles.statCard} ${styles.green}`}>
               <span className={styles.cardLabel}>Payment Collected</span>
+
               <h3>
                 ₹{Number(daily.summary?.paymentCollected || 0).toLocaleString()}
               </h3>
@@ -112,6 +113,12 @@ const DailyReport = () => {
               <span className={styles.cardLabel}>Outstanding Balance</span>
               <h3>
                 ₹{Number(daily.summary?.totalOutstanding || 0).toLocaleString()}
+              </h3>
+            </div>
+            <div className={`${styles.statCard} ${styles.red}`}>
+              <span className={styles.cardLabel}>Pending Balance</span>
+              <h3>
+                ₹{Number(daily.summary?.pendingAmount || 0).toLocaleString()}
               </h3>
             </div>
             <div className={`${styles.statCard} ${styles.purple}`}>

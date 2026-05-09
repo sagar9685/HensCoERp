@@ -4,6 +4,7 @@ import {
   updateOrderQuantity,
   fetchOrder,
   addItemToOrder,
+  removeOrderItem,
 } from "../../features/orderSlice";
 import { cancelOrderBeforeAssign } from "../../features/assignedOrderSlice";
 import OrderFormModal from "./OrderFormModal";
@@ -64,13 +65,31 @@ export default function EditOrderModal({ order, onClose }) {
 
   const handleChange = (index, field, value) => {
     const updated = [...items];
-    updated[index][field] = value;
+
+    let numValue = Number(value);
+
+    // ✅ Qty aur Rate negative nahi honge
+    if (field === "quantity" || field === "rate") {
+      if (value === "") {
+        updated[index][field] = "";
+      } else {
+        updated[index][field] = Math.max(0, numValue);
+      }
+    } else {
+      updated[index][field] = value;
+    }
+
     setItems(updated);
   };
 
   const handleUpdate = async (item) => {
     if (!reason) {
       toast.error("Please enter a reason for edit");
+      return;
+    }
+
+    if (Number(item.quantity) < 0 || Number(item.rate) < 0) {
+      toast.error("Quantity and Rate cannot be negative");
       return;
     }
 
@@ -82,7 +101,7 @@ export default function EditOrderModal({ order, onClose }) {
           newQuantity: Number(item.quantity),
           newRate: Number(item.rate),
           changedBy: username,
-          reason: reason, // ✅ send reason
+          reason: reason,
         }),
       ).unwrap();
 
@@ -91,6 +110,48 @@ export default function EditOrderModal({ order, onClose }) {
       onClose();
     } catch (err) {
       toast.error(err.message);
+    }
+  };
+
+  const handleRemoveItem = async (item) => {
+    console.log("REMOVE CLICKED ITEM:", item);
+
+    // ✅ At least 1 item rehna chahiye
+    if (items.length <= 1) {
+      toast.error("At least one item is required in order");
+      return;
+    }
+
+    if (!reason) {
+      toast.error("Please enter a reason for remove item");
+      return;
+    }
+
+    if (!item.itemId) {
+      toast.error("Item ID not found");
+      return;
+    }
+
+    try {
+      const res = await dispatch(
+        removeOrderItem({
+          orderId: order.OrderID,
+          itemId: item.itemId,
+          changedBy: username || "ADMIN",
+          reason,
+        }),
+      ).unwrap();
+
+      console.log("REMOVE SUCCESS:", res);
+
+      toast.success("Item removed successfully");
+
+      dispatch(fetchOrder());
+
+      onClose();
+    } catch (err) {
+      console.log("REMOVE FAILED ERROR:", err);
+      toast.error(err?.message || "Failed to remove item");
     }
   };
 
@@ -168,8 +229,27 @@ export default function EditOrderModal({ order, onClose }) {
                 <label>Qty</label>
                 <input
                   type="number"
+                  min="1"
+                  step="1"
                   value={item.quantity}
-                  onChange={(e) => handleChange(i, "quantity", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // ✅ only positive numbers
+                    if (/^\d*$/.test(value)) {
+                      handleChange(
+                        i,
+                        "quantity",
+                        value === "" ? "" : Math.max(1, Number(value)),
+                      );
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // ✅ prevent minus, e, +, dot
+                    if (["-", "+", "e", "E", "."].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
 
@@ -177,8 +257,27 @@ export default function EditOrderModal({ order, onClose }) {
                 <label>Rate</label>
                 <input
                   type="number"
+                  min="1"
+                  step="1"
                   value={item.rate}
-                  onChange={(e) => handleChange(i, "rate", e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value;
+
+                    // ✅ only positive numbers
+                    if (/^\d*$/.test(value)) {
+                      handleChange(
+                        i,
+                        "rate",
+                        value === "" ? "" : Math.max(1, Number(value)),
+                      );
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    // ✅ prevent minus, e, +, dot
+                    if (["-", "+", "e", "E", "."].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
 
@@ -187,6 +286,13 @@ export default function EditOrderModal({ order, onClose }) {
                 onClick={() => handleUpdate(item)}
               >
                 Update
+              </button>
+
+              <button
+                className={styles.cancelBtn}
+                onClick={() => handleRemoveItem(item)}
+              >
+                Remove
               </button>
             </div>
           ))}

@@ -13,6 +13,8 @@ import {
 } from "chart.js";
 
 import styles from "./WeeklyReport.module.css";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 // Register Chart.js (only once)
 ChartJS.register(
@@ -21,7 +23,7 @@ ChartJS.register(
   BarElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
 );
 
 const WeeklyReport = () => {
@@ -42,6 +44,55 @@ const WeeklyReport = () => {
 
   const maxWeeks = getMaxWeeks(selectedYear, selectedMonth);
 
+  const exportToExcel = () => {
+    if (!weekly?.data || weekly.data.length === 0) {
+      alert("No data available to export");
+      return;
+    }
+
+    const formattedData = weekly.data.map((row) => ({
+      Date: new Date(row.OrderDate)
+        .toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+        .replace(/ /g, "-"),
+
+      Orders: row.Orders || 0,
+
+      TotalSales: Number(row.TotalSales || 0),
+
+      Product: row.ProductName || row.ProductType || "—",
+
+      QuantitySold: row.QuantitySold || 0,
+
+      Amount: Number(row.ProductTotalAmount || row.ProductSales || 0),
+    }));
+
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(formattedData);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Week_${selectedWeek}`);
+
+    // Generate excel file
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const fileData = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+
+    saveAs(
+      fileData,
+      `Weekly_Report_Week${selectedWeek}_${selectedMonth}_${selectedYear}.xlsx`,
+    );
+  };
+
   useEffect(() => {
     setSelectedWeek(1);
   }, [selectedYear, selectedMonth]);
@@ -52,7 +103,7 @@ const WeeklyReport = () => {
         year: selectedYear,
         month: selectedMonth,
         week: selectedWeek,
-      })
+      }),
     );
   };
 
@@ -177,7 +228,7 @@ const WeeklyReport = () => {
               const start = (w - 1) * 7 + 1;
               const end = Math.min(
                 w * 7,
-                new Date(selectedYear, selectedMonth, 0).getDate()
+                new Date(selectedYear, selectedMonth, 0).getDate(),
               );
               return (
                 <option key={w} value={w}>
@@ -195,6 +246,14 @@ const WeeklyReport = () => {
         disabled={weeklyLoading}
       >
         {weeklyLoading ? "Loading..." : "Get Weekly Report"}
+      </button>
+
+      <button
+        className={styles.exportExcelBtn}
+        onClick={exportToExcel}
+        disabled={!weekly?.data?.length}
+      >
+        Export to Excel
       </button>
 
       {error && <div className={styles.error}>Error: {error}</div>}
@@ -245,7 +304,7 @@ const WeeklyReport = () => {
                     <td className={styles.rightAlign}>
                       ₹
                       {Number(
-                        row.ProductTotalAmount || row.ProductSales || 0
+                        row.ProductTotalAmount || row.ProductSales || 0,
                       ).toLocaleString("en-IN", {
                         minimumFractionDigits: 2,
                       })}

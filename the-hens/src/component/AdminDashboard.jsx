@@ -115,27 +115,30 @@ const AdminDashboard = () => {
   };
 
   // Filter statistics based on filteredData
+  const activeOrders = filteredData.filter((order) => {
+    const status = (order.OrderStatus || "").toLowerCase().trim();
+    return status !== "cancel" && status !== "cancelled";
+  });
+
   const filterStats = {
-    totalOrders: filteredData.length,
-    totalItems: filteredData.reduce((acc, order) => {
+    totalOrders: activeOrders.length,
+
+    totalItems: activeOrders.reduce((acc, order) => {
       const quantities = order.Quantities
         ? order.Quantities.split(",").map(Number)
         : [];
+
       const totalQty = quantities.reduce((sum, q) => sum + (q || 0), 0);
       return acc + totalQty;
     }, 0),
-    totalDueAmount: filteredData.reduce((acc, order) => {
-      return acc + (order.ShortAmount || 0);
+
+    totalDueAmount: activeOrders.reduce((acc, order) => {
+      return acc + (Number(order.ShortAmount) || 0);
     }, 0),
-    // Isse filterStats object ke andar replace karein
-    totalPending: filteredData.filter((order) => {
+
+    totalPending: activeOrders.filter((order) => {
       const status = (order.OrderStatus || "").toLowerCase().trim();
-      return (
-        status === "pending" ||
-        status === "n/a" ||
-        status === "" ||
-        status === null
-      );
+      return status === "pending" || status === "n/a" || status === "";
     }).length,
   };
 
@@ -560,9 +563,18 @@ const AdminDashboard = () => {
       const weights = (order.Weights || "").split(",");
       const quantities = (order.Quantities || "").split(",");
       const rates = (order.Rates || "").split(",");
+
+      // ✅ Actual item total from backend/database
+      const itemTotals = (
+        order.ItemTotals ||
+        order.Totals ||
+        order.ProductTotals ||
+        ""
+      ).split(",");
+
       const deliveryCharge = Number(order.DeliveryCharge) || 0;
 
-      // Payment Summary parsing
+      // ✅ Payment Summary parsing
       const payments = {};
       if (order.PaymentSummary) {
         order.PaymentSummary.split("|").forEach((item) => {
@@ -573,34 +585,62 @@ const AdminDashboard = () => {
         });
       }
 
-      // 1. Pehle pure order ka subtotal calculate karein (Final Total ke liye)
-      const orderSubtotal = quantities.reduce((acc, qty, idx) => {
-        return acc + Number(qty) * Number(rates[idx] || 0);
+      // ✅ Debug: agar product/rate/qty mismatch ho
+      if (
+        productNames.length !== quantities.length ||
+        productNames.length !== rates.length
+      ) {
+        console.log("Excel Export Mismatch Order:", order.OrderID, {
+          productNames,
+          quantities,
+          rates,
+          itemTotals,
+        });
+      }
+
+      // ✅ Actual subtotal from backend total, fallback qty * rate
+      const orderSubtotal = productNames.reduce((acc, _, idx) => {
+        const qty = Number(quantities[idx]) || 0;
+        const rate = Number(rates[idx]) || 0;
+
+        const backendTotal = Number(itemTotals[idx]);
+        const finalItemTotal =
+          !isNaN(backendTotal) && backendTotal > 0 ? backendTotal : qty * rate;
+
+        return acc + finalItemTotal;
       }, 0);
 
-      // 2. Har product row generate karein
       productNames.forEach((name, index) => {
         const qty = Number(quantities[index]) || 0;
         const rate = Number(rates[index]) || 0;
-        const productTotal = qty * rate;
+
+        const backendTotal = Number(itemTotals[index]);
+
+        // ✅ Product total database se aayega, nahi mila to qty * rate
+        const productTotal =
+          !isNaN(backendTotal) && backendTotal > 0 ? backendTotal : qty * rate;
 
         const row = {
           "Sl No": index === 0 ? slNo : "",
 
           "Product Name": name.trim(),
-          "Customer Name": order.CustomerName,
-          Address: order.Address,
-          Area: order.Area,
-          "Contact No": order.ContactNo,
+          "Customer Name": order.CustomerName || "-",
+          Address: order.Address || "-",
+          Area: order.Area || "-",
+          "Contact No": order.ContactNo || "-",
           "Product Type": productTypes[index]?.trim() || "-",
           "Default Weight": weights[index]?.trim() || "-",
           Qty: qty,
           Rate: rate,
           "Product Total": productTotal,
+
+          // ✅ Delivery charge only first row
           "Delivery Charge": index === 0 ? deliveryCharge : 0,
-          // --- Ye raha aapka maanga hua column ---
+
+          // ✅ Final payable only first row
           "Final Payable (Total + Delivery)":
             index === 0 ? orderSubtotal + deliveryCharge : "",
+
           "Order Date": order.OrderDate ? new Date(order.OrderDate) : "",
           "Delivery Date": order.DeliveryDate
             ? new Date(order.DeliveryDate)
@@ -609,48 +649,51 @@ const AdminDashboard = () => {
           "Order Status": order.OrderStatus || "Pending",
           "Order Taken By": order.OrderTakenBy || "-",
 
-          // Payment Amounts
-          Cash: payments["CASH"] || 0,
-          GPay: payments["GPAY"] || 0,
-          Paytm: payments["PAYTM"] || 0,
-          FOC: payments["FOC"] || 0,
-          "Bank Transfer": payments["BANK TRANSFER"] || payments["BANK"] || 0,
+          // ✅ Payment amount only first row
+          Cash: index === 0 ? payments["CASH"] || 0 : 0,
+          GPay: index === 0 ? payments["GPAY"] || 0 : 0,
+          Paytm: index === 0 ? payments["PAYTM"] || 0 : 0,
+          FOC: index === 0 ? payments["FOC"] || 0 : 0,
+          "Bank Transfer":
+            index === 0
+              ? payments["BANK TRANSFER"] || payments["BANK"] || 0
+              : 0,
         };
 
         exportData.push(row);
       });
+
       slNo++;
     });
 
     const worksheet = XLSX.utils.json_to_sheet(exportData);
 
-    // Professional Column Widths
     const wscols = [
       { wch: 6 },
-      { wch: 10 },
       { wch: 20 },
-      { wch: 25 },
+      { wch: 22 },
       { wch: 35 },
+      { wch: 18 },
       { wch: 15 },
       { wch: 15 },
       { wch: 15 },
       { wch: 10 },
-      { wch: 8 },
       { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 18 },
+      { wch: 15 },
+      { wch: 18 },
       { wch: 12 },
-      { wch: 15 },
-      { wch: 20 },
       { wch: 12 },
       { wch: 12 },
-      { wch: 15 },
       { wch: 12 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 15 },
+      { wch: 18 },
     ];
+
     worksheet["!cols"] = wscols;
 
     const workbook = XLSX.utils.book_new();
