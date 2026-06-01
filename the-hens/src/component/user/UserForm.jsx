@@ -52,11 +52,13 @@ const UserForm = () => {
     setRtvOpen(true);
   };
 
-//  use the custom hook for filter and pagination
+  //  use the custom hook for filter and pagination
 
   const {
     searchTerm,
     setSearchTerm,
+    invoiceFilter,
+    setInvoiceFilter,
     statusFilter,
     setStatusFilter,
     areaFilter,
@@ -466,6 +468,15 @@ const UserForm = () => {
                               onChange={(e) => setSearchTerm(e.target.value)}
                             />
                           </div>
+                          <div className={styles.searchBox}>
+                            <i className="mdi mdi-file-document"></i>
+                            <input
+                              type="text"
+                              placeholder="Search Invoice / Order ID..."
+                              value={invoiceFilter}
+                              onChange={(e) => setInvoiceFilter(e.target.value)}
+                            />
+                          </div>
 
                           {/* Date Range Group - Wrapping in a div helps layout */}
                           <div className={styles.dateGroup}>
@@ -553,6 +564,7 @@ const UserForm = () => {
                               setFromDate("");
                               setToDate("");
                               setSearchTerm("");
+                              setInvoiceFilter("");
                               setAreaFilter("all");
                               setStatusFilter("all");
                               setDeliveryManFilter("all");

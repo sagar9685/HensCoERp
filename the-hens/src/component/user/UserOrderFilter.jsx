@@ -14,6 +14,7 @@ export const useOrderFilter = () => {
   const [toDate, setToDate] = useState("");
 
   const [assignFilter, setAssignFilter] = useState("all");
+  const [invoiceFilter, setInvoiceFilter] = useState("");
 
   const rawAssignedOrders = useSelector(
     (state) => state.assignedOrders.data || [],
@@ -62,6 +63,17 @@ export const useOrderFilter = () => {
           deliveryManFilter === "all" ||
           order.DeliveryManName === deliveryManFilter;
 
+        const keyword = invoiceFilter.toLowerCase();
+
+        const matchesInvoice =
+          !keyword ||
+          String(order.OrderID || "")
+            .toLowerCase()
+            .includes(keyword) ||
+          String(order.InvoiceNo || "")
+            .toLowerCase()
+            .includes(keyword);
+
         //ASSIGN FILTER LOGI
         if (assignFilter === "assigned" && !order.AssignID) return false;
         if (assignFilter === "unassigned" && order.AssignID) return false;
@@ -94,6 +106,7 @@ export const useOrderFilter = () => {
           matchesStatus &&
           matchesArea &&
           matchesDeliveryMan &&
+          matchesInvoice &&
           matchesDate
         );
       })
@@ -111,6 +124,7 @@ export const useOrderFilter = () => {
     statusFilter,
     areaFilter,
     deliveryManFilter,
+    invoiceFilter,
     fromDate,
     toDate,
     sortConfig,
@@ -137,6 +151,7 @@ export const useOrderFilter = () => {
     deliveryManFilter,
     fromDate,
     toDate,
+    invoiceFilter,
   ]);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -193,6 +208,8 @@ export const useOrderFilter = () => {
   return {
     searchTerm,
     setSearchTerm,
+    invoiceFilter,
+    setInvoiceFilter,
     statusFilter,
     setStatusFilter,
     areaFilter,

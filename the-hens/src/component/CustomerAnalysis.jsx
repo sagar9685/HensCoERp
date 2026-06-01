@@ -26,7 +26,7 @@ import {
 const CustomerAnalysis = () => {
   const dispatch = useDispatch();
   const { weekWise, monthWise, yearWise, loading } = useSelector(
-    (state) => state.customerAnalysis
+    (state) => state.customerAnalysis,
   );
 
   const [type, setType] = useState("week");
@@ -156,17 +156,17 @@ const CustomerAnalysis = () => {
     // Save file
     saveAs(
       dataBlob,
-      `customer_analysis_${type}_${new Date().toISOString().split("T")[0]}.xlsx`
+      `customer_analysis_${type}_${new Date().toISOString().split("T")[0]}.xlsx`,
     );
   };
 
   const getTypeStats = () => {
     const totalOrders = filteredData.reduce(
       (sum, item) => sum + item.TotalOrders,
-      0
+      0,
     );
     const uniqueCustomers = new Set(
-      filteredData.map((item) => item.CustomerName)
+      filteredData.map((item) => item.CustomerName),
     ).size;
 
     return { totalOrders, uniqueCustomers };
@@ -412,7 +412,7 @@ const CustomerAnalysis = () => {
                           <span className={styles.monthBadge}>
                             {new Date(0, row.OrderMonth - 1).toLocaleString(
                               "default",
-                              { month: "long" }
+                              { month: "long" },
                             )}
                           </span>
                         </td>
@@ -425,10 +425,10 @@ const CustomerAnalysis = () => {
                               width: `${Math.min(
                                 (row.TotalOrders /
                                   Math.max(
-                                    ...filteredData.map((d) => d.TotalOrders)
+                                    ...filteredData.map((d) => d.TotalOrders),
                                   )) *
                                   100,
-                                100
+                                100,
                               )}%`,
                             }}
                           ></div>
@@ -517,7 +517,7 @@ const CustomerAnalysis = () => {
                     onChange={(e) => {
                       const page = Math.max(
                         1,
-                        Math.min(totalPages, Number(e.target.value))
+                        Math.min(totalPages, Number(e.target.value)),
                       );
                       goToPage(page);
                     }}

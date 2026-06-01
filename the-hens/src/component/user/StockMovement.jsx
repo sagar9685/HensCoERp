@@ -36,7 +36,7 @@ const StockMovementReport = () => {
       try {
         // 🔥 API call for each date
         const res = await fetch(
-          `http://localhost:5005/api/stock/report?fromDate=${currentDate}&toDate=${currentDate}`,
+          `http://137.97.174.50:5005/api/stock/report?fromDate=${currentDate}&toDate=${currentDate}`,
         );
         const data = await res.json();
 

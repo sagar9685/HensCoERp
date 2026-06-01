@@ -31,6 +31,8 @@ import EditOrderModal from "./AdminOrderModal/EditOrderModal";
 import { fetchProductTypes } from "../features/productTypeSlice";
 import ViewOrderModal from "./ViewOrderModal";
 import { fetchPaymentModes } from "../features/paymentModeSlice";
+import { fetchBulkCustomerOrders } from "../features/customerAnalysisSlice";
+import { fetchArea } from "../features/cutomerSlice";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -50,9 +52,15 @@ const AdminDashboard = () => {
           ProductName: "",
           ProductType: "",
           invoice: "", // ✅ add
+          area: "", // ✅ new
+          bulkCustomer: "", // ✅ new
           paymentModes: [], // ✅ VERY IMPORTANT
         };
   });
+
+  const bulkLoading = useSelector((state) => state.customerAnalysis.loading);
+
+  const areaData = useSelector((state) => state.customer.areaData || []);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -253,6 +261,10 @@ const AdminDashboard = () => {
     console.log("Payment Modes Changed:", filters.paymentModes);
   }, [filters.paymentModes]);
 
+  useEffect(() => {
+    dispatch(fetchArea());
+  }, [dispatch]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -281,7 +293,7 @@ const AdminDashboard = () => {
       setIsPaymentModalOpen(true); // modal open karo
     }
 
-    if (value === "Incomplete") {
+    if (value === "Short") {
       setSelectedPayment(row);
       setIsPaymentModalOpen(true);
     }
@@ -342,6 +354,8 @@ const AdminDashboard = () => {
       paymentStatus: "",
       invoice: "", // ✅ add this
       paymentModes: [], // ✅ next feature
+      area: "",
+      bulkCustomer: "",
     };
 
     setFilters(resetFilters);
@@ -349,9 +363,18 @@ const AdminDashboard = () => {
     setCurrentPage(1);
   };
 
-  const handleSearch = () => {
-    setIsOpen(false); // ✅ Dropdown band karne ke liye line add karein
-    let filtered = [...orders];
+  const handleSearch = async () => {
+    setIsOpen(false);
+    setCurrentPage(1);
+
+    let data = orders;
+
+    if (filters.bulkCustomer) {
+      const result = await dispatch(fetchBulkCustomerOrders(filters)).unwrap();
+      data = result;
+    }
+
+    let filtered = [...data];
 
     if (filters.fromDate || filters.toDate) {
       filtered = filtered.filter((item) =>
@@ -422,6 +445,17 @@ const AdminDashboard = () => {
         item.InvoiceNo?.toString().includes(filters.invoice),
       );
     }
+
+    // AREA FILTER
+    if (filters.area) {
+      filtered = filtered.filter(
+        (item) =>
+          item.Area?.trim().toLowerCase() === filters.area.trim().toLowerCase(),
+      );
+    }
+
+    // BULK CUSTOMER FILTER
+    // BULK CUSTOMER FILTER
 
     console.log(filters.paymentModes, "before if");
 
@@ -740,7 +774,7 @@ const AdminDashboard = () => {
                 </div>
                 <div className={styles.statItem}>
                   <span className={styles.statNumber}>
-                    ₹{filterStats.totalDueAmount}
+                    ₹{filterStats.totalDueAmount.toFixed(2)}
                   </span>
                   <span className={styles.statLabel}>Total Due Amount</span>
                 </div>
@@ -806,7 +840,7 @@ const AdminDashboard = () => {
               <option value="">All</option>
               <option value="Pending">Pending</option>
               <option value="Verified">Verified</option>
-              <option value="Incomplete">Incomplete</option>
+              <option value="Short">Incomplete</option>
             </select>
           </div>
           {/* PRODUCT ID */}
@@ -961,6 +995,35 @@ const AdminDashboard = () => {
               )}
             </div>
           </div>
+
+          {/* AREA */}
+          <div className={styles.inputGroup}>
+            <label>AREA</label>
+            <select name="area" value={filters.area} onChange={handleChange}>
+              <option value="">All</option>
+
+              {areaData.map((area) => (
+                <option key={area.AreaId || area.id} value={area.areaName}>
+                  {area.areaName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* BULK CUSTOMER */}
+          <div className={styles.inputGroup}>
+            <label>BULK CUSTOMER</label>
+
+            <select
+              name="bulkCustomer"
+              value={filters.bulkCustomer}
+              onChange={handleChange}
+            >
+              <option value="">All</option>
+              <option value="bulk">Bulk Customer</option>
+              <option value="normal">Normal Customer</option>
+            </select>
+          </div>
         </div>
 
         {/* ACTION BUTTONS */}
@@ -1094,15 +1157,16 @@ const AdminDashboard = () => {
           </div>
 
           <div className={styles.tableContainer}>
-            {(loading || isFilterLoading) && (
+            {(loading || bulkLoading || isFilterLoading) && (
               <div className={styles.loaderWrapper}>
                 <Loader />
               </div>
             )}
 
-            {!loading && !isFilterLoading && filteredData.length === 0 && (
-              <p>No orders found...</p>
-            )}
+            {!loading &&
+              !bulkLoading &&
+              !isFilterLoading &&
+              filteredData.length === 0 && <p>No orders found...</p>}
 
             <table className={styles.table}>
               <thead>
