@@ -17,7 +17,10 @@ import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
 import AddCustomerModal from "./AddCustomerModal";
 import { useDispatch, useSelector } from "react-redux";
-import { verifyPayment } from "../features/paymentVerifySlice";
+import {
+  verifyPayment,
+  verifyAdvancePayment,
+} from "../features/paymentVerifySlice";
 import { toast } from "react-toastify";
 import { fetchOrder } from "../features/orderSlice";
 import PaymentModal from "./PaymentModal";
@@ -78,6 +81,11 @@ const AdminDashboard = () => {
 
   const paymentModesList = useSelector(
     (state) => state.paymentMode?.list || [],
+  );
+
+  const [paymentMode, setPaymentMode] = useState("");
+  const [paymentReceivedDate, setPaymentReceivedDate] = useState(
+    new Date().toISOString().split("T")[0],
   );
 
   console.log(paymentModesList, "list of payment mode");
@@ -299,7 +307,39 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleVerifyPayment = () => {
+  const handleVerifyPayment = (paymentReceivedDate) => {
+    const status = (selectedPayment?.OrderStatus || "").toLowerCase().trim();
+
+    // ✅ Pending / Processing / N/A order = Advance Payment
+    if (status !== "complete" && status !== "completed") {
+      dispatch(
+        verifyAdvancePayment({
+          orderId: selectedPayment.OrderID,
+          paymentModeId: Number(paymentMode),
+          receivedAmount: Number(receivedAmount),
+          verificationRemarks,
+          paymentReceivedDate,
+        }),
+      )
+        .unwrap()
+        .then(() => {
+          toast.success("Advance payment verified successfully!");
+
+          setIsPaymentModalOpen(false);
+          setReceivedAmount("");
+          setVerificationRemarks("");
+          setPaymentMode("");
+
+          dispatch(fetchOrder());
+        })
+        .catch((err) => {
+          toast.error(err.message || "Advance payment failed");
+        });
+
+      return;
+    }
+
+    // ✅ Complete order = Old payment verify flow
     dispatch(
       verifyPayment({
         paymentId: selectedPayment.PaymentID,
@@ -309,7 +349,6 @@ const AdminDashboard = () => {
     )
       .unwrap()
       .then(() => {
-        // ✅ instant UI update
         setFilteredData((prev) =>
           prev.map((item) =>
             item.PaymentID === selectedPayment.PaymentID
@@ -327,6 +366,7 @@ const AdminDashboard = () => {
         setIsPaymentModalOpen(false);
         setReceivedAmount("");
         setVerificationRemarks("");
+        setPaymentMode("");
       })
       .catch((err) =>
         toast.error(err.message || "Payment verification failed"),
@@ -907,6 +947,7 @@ const AdminDashboard = () => {
             <select
               name="ProductName"
               value={filters.ProductName}
+              le
               onChange={handleChange}
               disabled={!filters.ProductType}
             >
@@ -1179,6 +1220,7 @@ const AdminDashboard = () => {
                   <th>Contact No</th>
                   <th>Product Type</th>
                   <th>Delivery Charge</th>
+                  <th>Total</th>
                   <th>Order Date</th>
                   <th>Delivery Date</th>
                   <th>Delivery Man</th>
@@ -1189,7 +1231,6 @@ const AdminDashboard = () => {
                   <th>Payment Status</th>
                   <th>Actions</th>
                   <th>Verfication Remark</th>
-                  <th>Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -1258,6 +1299,7 @@ const AdminDashboard = () => {
                         </div>
                       </td>
                       <td className={styles.tableData}>{row.DeliveryCharge}</td>
+                      <td className={styles.tableData}>₹{getRowTotal(row)}</td>
                       <td className={styles.tableData}>
                         {new Date(row.OrderDate)
                           .toLocaleDateString("en-GB", {
@@ -1300,11 +1342,7 @@ const AdminDashboard = () => {
                       <td>
                         <select
                           value={row.PaymentVerifyStatus || "Pending"}
-                          disabled={
-                            row.PaymentVerifyStatus === "Verified" ||
-                            !row.PaymentID ||
-                            isFilterLoading
-                          }
+                          disabled={row.PaymentVerifyStatus === "Verified"}
                           onChange={(e) =>
                             handleStatusChange(row, e.target.value)
                           }
@@ -1363,7 +1401,6 @@ const AdminDashboard = () => {
                       <td className={styles.tableData}>
                         {row.VerifyMark || "-"}
                       </td>
-                      <td className={styles.tableData}>₹{getRowTotal(row)}</td>
                     </tr>
                   ))
                 ) : (
@@ -1451,13 +1488,19 @@ const AdminDashboard = () => {
           setIsPaymentModalOpen(false);
           setReceivedAmount("");
           setVerificationRemarks("");
+          setPaymentMode("");
         }}
         selectedPayment={selectedPayment}
         receivedAmount={receivedAmount}
         setReceivedAmount={setReceivedAmount}
         verificationRemarks={verificationRemarks}
         setVerificationRemarks={setVerificationRemarks}
+        paymentMode={paymentMode}
+        setPaymentMode={setPaymentMode}
+        paymentModesList={paymentModesList}
         onVerifyPayment={handleVerifyPayment}
+        paymentReceivedDate={paymentReceivedDate}
+        setPaymentReceivedDate={setPaymentReceivedDate}
       />
 
       {isInvoiceModalOpen && (

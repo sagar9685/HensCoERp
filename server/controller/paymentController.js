@@ -72,6 +72,36 @@ exports.completeOrder = async (req, res) => {
     // ------------------------------------
     // 2️⃣ GET PAYMENT MODES
     // ------------------------------------
+
+    const existingVerified = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      orderId,
+    ).query(`
+    SELECT COUNT(*) AS Count
+    FROM OrderPayments
+    WHERE OrderID = @OrderID
+      AND PaymentVerifyStatus = 'Verified'
+  `);
+
+    const isAlreadyPaid = existingVerified.recordset[0].Count > 0;
+
+    // ✅ Add here
+    if (isAlreadyPaid) {
+      await new sql.Request(transaction)
+        .input("OrderID", sql.Int, orderId)
+        .input("AssignID", sql.Int, assignedOrderId)
+        .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || null)
+        .query(`
+      UPDATE OrderPayments
+      SET 
+        AssignID = @AssignID,
+        PaymentReceivedDate = ISNULL(PaymentReceivedDate, @PaymentReceivedDate)
+      WHERE OrderID = @OrderID
+        AND PaymentVerifyStatus = 'Verified'
+    `);
+    }
+
     const paymentModesResult = await new sql.Request(transaction).query(`
       SELECT PaymentModeID, ModeName FROM PaymentModes
     `);
@@ -81,30 +111,31 @@ exports.completeOrder = async (req, res) => {
     // ------------------------------------
     // 3️⃣ INSERT PAYMENT SETTLEMENT
     // ------------------------------------
-    for (const [mode, amount] of Object.entries(paymentSettlement)) {
-      if (amount > 0) {
-        const modeData = paymentModes.find(
-          (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase().trim(),
-        );
+    if (!isAlreadyPaid) {
+      for (const [mode, amount] of Object.entries(paymentSettlement)) {
+        if (amount > 0) {
+          const modeData = paymentModes.find(
+            (pm) => pm.ModeName.toLowerCase() === mode.toLowerCase().trim(),
+          );
 
-        if (!modeData) continue;
+          if (!modeData) continue;
 
-        let paymentVerifyStatus = "Pending";
-        let shortAmount = 0;
+          let paymentVerifyStatus = "Pending";
+          let shortAmount = 0;
 
-        // ✅ Only PaymentModeID = 1 (Cash)
-        if (modeData.PaymentModeID === 1) {
-          paymentVerifyStatus = "Verified";
-        }
+          // ✅ Only PaymentModeID = 1 (Cash)
+          if (modeData.PaymentModeID === 1) {
+            paymentVerifyStatus = "Verified";
+          }
 
-        await new sql.Request(transaction)
-          .input("OrderID", sql.Int, orderId)
-          .input("AssignID", sql.Int, assignedOrderId)
-          .input("PaymentModeID", sql.Int, modeData.PaymentModeID)
-          .input("Amount", sql.Decimal(10, 2), amount)
-          .input("PaymentReceivedDate", sql.Date, paymentReceivedDate)
-          .input("VerifyStatus", sql.VarChar, paymentVerifyStatus)
-          .input("ShortAmount", sql.Decimal(10, 2), shortAmount).query(`
+          await new sql.Request(transaction)
+            .input("OrderID", sql.Int, orderId)
+            .input("AssignID", sql.Int, assignedOrderId)
+            .input("PaymentModeID", sql.Int, modeData.PaymentModeID)
+            .input("Amount", sql.Decimal(10, 2), amount)
+            .input("PaymentReceivedDate", sql.Date, paymentReceivedDate)
+            .input("VerifyStatus", sql.VarChar, paymentVerifyStatus)
+            .input("ShortAmount", sql.Decimal(10, 2), shortAmount).query(`
         INSERT INTO OrderPayments
           (OrderID, AssignID, PaymentModeID, Amount, 
            PaymentReceivedDate, PaymentVerifyStatus, ShortAmount, CreatedAt)
@@ -112,9 +143,9 @@ exports.completeOrder = async (req, res) => {
           (@OrderID, @AssignID, @PaymentModeID, @Amount,
            @PaymentReceivedDate, @VerifyStatus, @ShortAmount, GETDATE());
       `);
+        }
       }
     }
-
     // ------------------------------------
     // 4️⃣ GET DELIVERY MAN ID
     // ------------------------------------
@@ -143,7 +174,7 @@ exports.completeOrder = async (req, res) => {
       paymentSettlement?.CASH ||
       0;
 
-    if (cashAmount > 0) {
+    if (!isAlreadyPaid && cashAmount > 0) {
       // ⭐ 5A: MERGE → auto insert + update
       await new sql.Request(transaction)
         .input("DeliveryManID", sql.Int, deliveryManID)
@@ -472,5 +503,74 @@ exports.getPaymentModes = async (req, res) => {
     res.status(200).json(result.recordset);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.verifyAdvancePayment = async (req, res) => {
+  try {
+    const {
+      orderId,
+      paymentModeId,
+      receivedAmount,
+      verificationRemarks,
+      paymentReceivedDate,
+    } = req.body;
+
+    if (!orderId || !paymentModeId || !receivedAmount) {
+      return res.status(400).json({
+        message: "Order ID, Payment Mode and Amount are required",
+      });
+    }
+
+    const pool = await poolPromise;
+
+    await pool
+      .request()
+      .input("OrderID", sql.Int, orderId)
+      .input("AssignID", sql.Int, null)
+      .input("PaymentModeID", sql.Int, paymentModeId)
+      .input("Amount", sql.Decimal(10, 2), receivedAmount)
+      .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || new Date())
+      .input("PaymentVerifyStatus", sql.VarChar(50), "Verified")
+      .input("ShortAmount", sql.Decimal(10, 2), 0)
+      .input("VerificationRemarks", sql.VarChar(500), verificationRemarks || "")
+      .query(`
+        INSERT INTO OrderPayments
+        (
+          OrderID,
+          AssignID,
+          PaymentModeID,
+          Amount,
+            PaymentReceivedDate,
+          PaymentVerifyStatus,
+          ShortAmount,
+          VerificationRemarks,
+          CreatedAt
+        )
+        VALUES
+        (
+          @OrderID,
+          @AssignID,
+          @PaymentModeID,
+          @Amount,
+            @PaymentReceivedDate,
+
+          @PaymentVerifyStatus,
+          @ShortAmount,
+          @VerificationRemarks,
+          GETDATE()
+        )
+      `);
+
+    return res.status(200).json({
+      message: "Advance payment verified successfully",
+    });
+  } catch (error) {
+    console.error("Advance payment error:", error);
+
+    return res.status(500).json({
+      message: "Advance payment verification failed",
+      error: error.message,
+    });
   }
 };

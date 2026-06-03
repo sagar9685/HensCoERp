@@ -5,10 +5,12 @@ const uploadExcel = require("../middleware/upload");
 
 router.get("/area", areaController.getAreaName);
 
+router.get("/bulk", areaController.getBulkCustomer);
+
 router.post(
   "/area/import",
   uploadExcel.single("file"),
-  areaController.importAreaExcel
+  areaController.importAreaExcel,
 );
 
 module.exports = router;

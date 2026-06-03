@@ -153,23 +153,40 @@ exports.getAllorder = async (req, res) => {
           WHERE OI.OrderID = O.OrderID
       ) Items
 
-      OUTER APPLY (
-          SELECT
-              MAX(OP.PaymentID) AS PaymentID,
-              'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
-              ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20)) 
-              AS PaymentSummary,
-              ISNULL(SUM(OP.Amount),0) AS TotalPaid,
-              ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
-              MAX(OP.PaymentVerifyStatus) AS PaymentVerifyStatus,
-              MAX(OP.VerificationRemarks) AS VerifyMark -- ⭐ Mapping your DB column to Frontend key
-          FROM OrderPayments OP WITH (NOLOCK)
-          LEFT JOIN PaymentModes PM WITH (NOLOCK) ON OP.PaymentModeID = PM.PaymentModeID
-          WHERE OP.AssignID = A.AssignID
-      ) Payments
+     OUTER APPLY (
+    SELECT
+        MAX(OP.PaymentID) AS PaymentID,
+
+        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
+        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20))
+        AS PaymentSummary,
+
+        ISNULL(SUM(OP.Amount),0) AS TotalPaid,
+
+        ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
+
+        CASE
+            WHEN COUNT(
+                CASE
+                    WHEN OP.PaymentVerifyStatus = 'Verified'
+                    THEN 1
+                END
+            ) > 0
+            THEN 'Verified'
+            ELSE 'Pending'
+        END AS PaymentVerifyStatus,
+
+        MAX(OP.VerificationRemarks) AS VerifyMark
+
+    FROM OrderPayments OP WITH (NOLOCK)
+    LEFT JOIN PaymentModes PM WITH (NOLOCK)
+        ON OP.PaymentModeID = PM.PaymentModeID
+
+    WHERE OP.OrderID = O.OrderID
+) Payments
       ORDER BY O.OrderID DESC
     `);
 

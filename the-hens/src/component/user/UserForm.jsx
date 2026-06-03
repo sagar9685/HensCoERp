@@ -503,8 +503,14 @@ const UserForm = () => {
                             onChange={(e) => setAreaFilter(e.target.value)}
                           >
                             <option value="all">All Areas</option>
-                            {[...new Set(assignedOrders?.map((i) => i.Area))]
-                              .filter(Boolean)
+
+                            {[
+                              ...new Set(
+                                assignedOrders
+                                  ?.map((i) => i.Area?.trim())
+                                  .filter(Boolean),
+                              ),
+                            ]
                               .sort()
                               .map((a) => (
                                 <option key={a} value={a}>

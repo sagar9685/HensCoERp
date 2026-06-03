@@ -14,11 +14,32 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   const { loading, success } = useSelector((state) => state.orderCompletion);
   const paymentModes = useSelector((state) => state.paymentMode?.list || []);
   console.log("ORDER RECEIVED IN MODAL ===>", order);
+
   const authData = JSON.parse(localStorage.getItem("authData"));
   const username = authData?.name;
   const totalAmount = order
     ? Number(order.GrandItemTotal || 0) + Number(order.DeliveryCharge || 0)
     : 0;
+
+  const alreadyVerified =
+    order?.PaymentVerifyStatus === "Verified" ||
+    Number(order?.TotalPaid || 0) > 0 ||
+    (order?.PaymentSummary &&
+      order.PaymentSummary !== "-" &&
+      !order.PaymentSummary.toLowerCase().includes("cash: 0") &&
+      !order.PaymentSummary.toLowerCase().includes("gpay: 0") &&
+      !order.PaymentSummary.toLowerCase().includes("paytm: 0") &&
+      !order.PaymentSummary.toLowerCase().includes("foc: 0") &&
+      !order.PaymentSummary.toLowerCase().includes("bank transfer: 0"));
+
+  console.log("alreadyVerified =>", alreadyVerified);
+  console.log("PaymentVerifyStatus =>", order?.PaymentVerifyStatus);
+  console.log("TotalPaid =>", order?.TotalPaid);
+  console.log("PaymentSummary =>", order?.PaymentSummary);
+
+  const advancePaidAmount = Number(order?.TotalPaid || 0);
+
+  const advancePaymentSummary = order?.PaymentSummary || "";
 
   const [formData, setFormData] = useState({
     remarks: "",
@@ -50,7 +71,11 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
           ?.ModeName || paymentModes[0]?.ModeName;
 
       setFormData((prev) => ({ ...prev, ...initialAmounts }));
-      setSelectedPaymentMethods(defaultSelected ? [defaultSelected] : []);
+      if (alreadyVerified) {
+        setSelectedPaymentMethods([]);
+      } else {
+        setSelectedPaymentMethods(defaultSelected ? [defaultSelected] : []);
+      }
     }
   }, [paymentModes]);
 
@@ -66,13 +91,30 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     if (order) {
       const today = new Date().toISOString().split("T")[0];
 
-      // if payment mode keys exist in formData, set Cash (or default) to total
-      const newForm = { remarks: "", deliveryDate: today, ...formData };
+      const newForm = {
+        remarks: "",
+        deliveryDate: today,
+        ...formData,
+      };
 
-      // Put total amount into CashAmount if Cash exists, else first available amount key
+      // ✅ Agar admin already payment verify kar chuka hai
+      if (alreadyVerified) {
+        paymentModes.forEach((pm) => {
+          const amountKey = makeAmountKey(pm.ModeName);
+          newForm[amountKey] = "0";
+        });
+
+        setSelectedPaymentMethods([]);
+        setFormData((prev) => ({ ...prev, ...newForm }));
+        setRemainingAmount(0);
+        return;
+      }
+
+      // ✅ Normal old flow
       const cashPM = paymentModes.find(
         (pm) => pm.ModeName.toLowerCase() === "cash",
       );
+
       if (cashPM) {
         newForm[makeAmountKey(cashPM.ModeName)] = totalAmount.toString();
         setSelectedPaymentMethods([cashPM.ModeName]);
@@ -85,7 +127,6 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
       setFormData((prev) => ({ ...prev, ...newForm }));
       setRemainingAmount(0);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order, totalAmount, paymentModes.length]);
 
   const handleInputChange = (e) => {
@@ -152,19 +193,27 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.deliveryDate)
+    if (!formData.deliveryDate) {
       newErrors.deliveryDate = "Payment received date is required";
-    if (selectedPaymentMethods.length === 0)
-      newErrors.paymentMethods = "Select at least 1 payment method";
+    }
 
-    selectedPaymentMethods.forEach((modeName) => {
-      const amountKey = makeAmountKey(modeName);
-      if (!formData[amountKey] || Number(formData[amountKey]) <= 0) {
-        newErrors[amountKey] = `${modeName} amount is required`;
+    if (!alreadyVerified) {
+      if (selectedPaymentMethods.length === 0) {
+        newErrors.paymentMethods = "Select at least 1 payment method";
       }
-    });
 
-    if (!formData.remarks.trim()) newErrors.remarks = "Remarks are required";
+      selectedPaymentMethods.forEach((modeName) => {
+        const amountKey = makeAmountKey(modeName);
+
+        if (!formData[amountKey] || Number(formData[amountKey]) <= 0) {
+          newErrors[amountKey] = `${modeName} amount is required`;
+        }
+      });
+    }
+
+    if (!formData.remarks.trim()) {
+      newErrors.remarks = "Remarks are required";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -174,10 +223,13 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     if (!validateForm()) return;
 
     const paymentSettlement = {};
-    selectedPaymentMethods.forEach((modeName) => {
-      const amountKey = makeAmountKey(modeName);
-      paymentSettlement[modeName] = Number(formData[amountKey] || 0);
-    });
+
+    if (!alreadyVerified) {
+      selectedPaymentMethods.forEach((modeName) => {
+        const amountKey = makeAmountKey(modeName);
+        paymentSettlement[modeName] = Number(formData[amountKey] || 0);
+      });
+    }
 
     const payload = {
       orderId: order.OrderID,
@@ -190,16 +242,9 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
     };
 
     try {
-      // .unwrap() se hum result ka wait karenge
       await dispatch(completeOrder(payload)).unwrap();
-
-      // Instant Feedback
       toast.success("Order Completed Successfully!");
-
-      // Modal band karein
       onClose();
-
-      // Optional: Reset store
       dispatch(resetOrderState());
     } catch (err) {
       toast.error("Failed to complete order");
@@ -267,109 +312,123 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
                   <p className={styles.errorText}>{errors.deliveryDate}</p>
                 )}
               </div>
+              {!alreadyVerified && (
+                <>
+                  <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                    <label className={styles.formLabel}>
+                      <i className="mdi mdi-credit-card-multiple"></i>
+                      Select Payment Methods
+                    </label>
 
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                <label className={styles.formLabel}>
-                  <i className="mdi mdi-credit-card-multiple"></i>
-                  Select Payment Methods
-                </label>
-
-                <div className={styles.paymentMethodsGrid}>
-                  {paymentModes.map((pm) => {
-                    const modeName = pm.ModeName; // exact DB name
-                    return (
-                      <div
-                        key={pm.PaymentModeID}
-                        className={styles.paymentMethodCheckbox}
-                      >
-                        <input
-                          type="checkbox"
-                          id={`payment-${pm.PaymentModeID}`}
-                          checked={selectedPaymentMethods.includes(modeName)}
-                          onChange={() => handlePaymentMethodToggle(modeName)}
-                        />
-                        <label htmlFor={`payment-${pm.PaymentModeID}`}>
-                          {modeName === "Cash" && (
-                            <i className="mdi mdi-cash"></i>
-                          )}
-                          {(modeName === "GPay" ||
-                            modeName.toLowerCase() === "gpay") && (
-                            <i className="mdi mdi-cellphone"></i>
-                          )}
-                          {modeName === "Paytm" && (
-                            <i className="mdi mdi-cellphone"></i>
-                          )}
-                          {modeName === "FOC" && (
-                            <i className="mdi mdi-tag"></i>
-                          )}
-                          {modeName === "Bank Transfer" && (
-                            <i className="mdi mdi-bank"></i>
-                          )}
-                          {pm.ModeName}
-                        </label>
-                        {errors.paymentMethods && (
-                          <p className={styles.errorText}>
-                            {errors.paymentMethods}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className={`${styles.formGroup} ${styles.fullWidth}`}>
-                <label className={styles.formLabel}>
-                  <i className="mdi mdi-cash-usd"></i>
-                  Payment Amounts
-                </label>
-
-                <div className={styles.paymentAmountsGrid}>
-                  {selectedPaymentMethods.map((modeName) => {
-                    const amountKey = makeAmountKey(modeName);
-                    return (
-                      <div key={modeName} className={styles.paymentInputGroup}>
-                        <label className={styles.amountLabel}>
-                          {modeName} Amount
-                        </label>
-                        <div className={styles.amountInputWrapper}>
-                          <input
-                            type="number"
-                            value={
-                              formData[amountKey] === undefined
-                                ? "0"
-                                : formData[amountKey]
-                            }
-                            onChange={(e) =>
-                              handlePaymentAmountChange(
+                    <div className={styles.paymentMethodsGrid}>
+                      {paymentModes.map((pm) => {
+                        const modeName = pm.ModeName; // exact DB name
+                        return (
+                          <div
+                            key={pm.PaymentModeID}
+                            className={styles.paymentMethodCheckbox}
+                          >
+                            <input
+                              type="checkbox"
+                              id={`payment-${pm.PaymentModeID}`}
+                              checked={selectedPaymentMethods.includes(
                                 modeName,
-                                e.target.value,
-                              )
-                            }
-                            className={styles.amountInput}
-                            placeholder="0"
-                          />
-                          {remainingAmount > 0 && (
-                            <button
-                              type="button"
-                              className={styles.addRemainingButton}
-                              onClick={() =>
-                                distributeRemainingAmount(modeName)
+                              )}
+                              onChange={() =>
+                                handlePaymentMethodToggle(modeName)
                               }
-                              title={`Add remaining ₹${remainingAmount}`}
-                            >
-                              <i className="mdi mdi-plus-circle"></i>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {errors.paymentMethods && (
-                    <p className={styles.errorText}>{errors.paymentMethods}</p>
-                  )}
-                </div>
-              </div>
+                              disabled={alreadyVerified}
+                            />
+                            <label htmlFor={`payment-${pm.PaymentModeID}`}>
+                              {modeName === "Cash" && (
+                                <i className="mdi mdi-cash"></i>
+                              )}
+                              {(modeName === "GPay" ||
+                                modeName.toLowerCase() === "gpay") && (
+                                <i className="mdi mdi-cellphone"></i>
+                              )}
+                              {modeName === "Paytm" && (
+                                <i className="mdi mdi-cellphone"></i>
+                              )}
+                              {modeName === "FOC" && (
+                                <i className="mdi mdi-tag"></i>
+                              )}
+                              {modeName === "Bank Transfer" && (
+                                <i className="mdi mdi-bank"></i>
+                              )}
+                              {pm.ModeName}
+                            </label>
+                            {errors.paymentMethods && (
+                              <p className={styles.errorText}>
+                                {errors.paymentMethods}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className={`${styles.formGroup} ${styles.fullWidth}`}>
+                    <label className={styles.formLabel}>
+                      <i className="mdi mdi-cash-usd"></i>
+                      Payment Amounts
+                    </label>
+
+                    <div className={styles.paymentAmountsGrid}>
+                      {selectedPaymentMethods.map((modeName) => {
+                        const amountKey = makeAmountKey(modeName);
+                        return (
+                          <div
+                            key={modeName}
+                            className={styles.paymentInputGroup}
+                          >
+                            <label className={styles.amountLabel}>
+                              {modeName} Amount
+                            </label>
+                            <div className={styles.amountInputWrapper}>
+                              <input
+                                type="number"
+                                value={
+                                  formData[amountKey] === undefined
+                                    ? "0"
+                                    : formData[amountKey]
+                                }
+                                onChange={(e) =>
+                                  handlePaymentAmountChange(
+                                    modeName,
+                                    e.target.value,
+                                  )
+                                }
+                                className={styles.amountInput}
+                                placeholder="0"
+                                disabled={alreadyVerified}
+                              />
+                              {remainingAmount > 0 && (
+                                <button
+                                  type="button"
+                                  className={styles.addRemainingButton}
+                                  onClick={() =>
+                                    distributeRemainingAmount(modeName)
+                                  }
+                                  title={`Add remaining ₹${remainingAmount}`}
+                                >
+                                  <i className="mdi mdi-plus-circle"></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {errors.paymentMethods && (
+                        <p className={styles.errorText}>
+                          {errors.paymentMethods}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Summary */}
               <div className={`${styles.formGroup} ${styles.fullWidth}`}>
@@ -391,6 +450,11 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
                       </div>
                     );
                   })}
+                  {alreadyVerified && (
+                    <div className={styles.remainingHint}>
+                      Payment already verified by admin: {advancePaymentSummary}
+                    </div>
+                  )}
 
                   <div className={styles.summaryItem}>
                     <span>Total Paid:</span>
@@ -465,7 +529,7 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
           <button
             className={styles.completeButton}
             onClick={handleSubmit}
-            disabled={remainingAmount !== 0 || loading}
+            disabled={(!alreadyVerified && remainingAmount !== 0) || loading}
           >
             {loading ? "Processing..." : "Mark as Complete"}
           </button>

@@ -56,7 +56,8 @@ export const useOrderFilter = () => {
           (statusFilter === "cancel" && status?.includes("cancel"));
 
         // 3. Area Logic
-        const matchesArea = areaFilter === "all" || order.Area === areaFilter;
+        const matchesArea =
+          areaFilter === "all" || order.Area?.trim() === areaFilter;
 
         // 4. Delivery Boy Logic
         const matchesDeliveryMan =

@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "./PaymentModal.module.css";
 import { FaTimes, FaRupeeSign, FaCheck } from "react-icons/fa";
+import { toast } from "react-toastify";
 
 const PaymentModal = ({
   isOpen,
@@ -11,6 +12,11 @@ const PaymentModal = ({
   verificationRemarks,
   setVerificationRemarks,
   onVerifyPayment,
+  paymentMode,
+  setPaymentMode,
+  paymentModesList,
+  paymentReceivedDate,
+  setPaymentReceivedDate,
   loading = false,
 }) => {
   if (!isOpen) return null;
@@ -51,10 +57,21 @@ const PaymentModal = ({
   };
 
   const handleSubmit = () => {
-    if (!receivedAmount || receivedAmount <= 0) {
+    const selectedMode = String(paymentMode || "").trim();
+
+    if (!selectedMode) {
+      return toast.error("Please select payment mode!");
+    }
+
+    if (!receivedAmount || Number(receivedAmount) <= 0) {
       return toast.error("Please enter a valid amount!");
     }
-    onVerifyPayment();
+
+    if (!paymentReceivedDate) {
+      return toast.error("Please select payment received date!");
+    }
+
+    onVerifyPayment(paymentReceivedDate);
   };
 
   return (
@@ -108,6 +125,38 @@ const PaymentModal = ({
         {/* Input Section */}
         <div className={styles.inputSection}>
           <label className={styles.inputLabel}>
+            Payment Mode <span className={styles.required}>*</span>
+          </label>
+
+          <select
+            value={paymentMode || ""}
+            onChange={(e) => setPaymentMode(e.target.value)}
+            className={styles.amountInput}
+          >
+            <option value="">Select Payment Mode</option>
+
+            {(paymentModesList?.length > 0
+              ? paymentModesList
+              : [
+                  { PaymentModeID: 2, ModeName: "GPay" },
+                  { PaymentModeID: 3, ModeName: "Paytm" },
+                  { PaymentModeID: 4, ModeName: "FOC" },
+                  { PaymentModeID: 5, ModeName: "Bank Transfer" },
+                ]
+            )
+              .filter((mode) => mode.ModeName?.toLowerCase() !== "cash")
+              .map((mode) => (
+                <option
+                  key={mode.PaymentModeID}
+                  value={String(mode.PaymentModeID)}
+                >
+                  {mode.ModeName}
+                </option>
+              ))}
+          </select>
+        </div>
+        <div className={styles.inputSection}>
+          <label className={styles.inputLabel}>
             Received Amount <span className={styles.required}>*</span>
           </label>
           <div className={styles.inputContainer}>
@@ -116,6 +165,12 @@ const PaymentModal = ({
               type="number"
               value={receivedAmount}
               onChange={(e) => setReceivedAmount(e.target.value)}
+              onWheel={(e) => e.currentTarget.blur()}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                }
+              }}
               placeholder="Enter received amount"
               className={styles.amountInput}
               min="0"
@@ -128,6 +183,18 @@ const PaymentModal = ({
               Received amount cannot exceed total amount
             </p>
           )}
+        </div>
+        <div className={styles.inputSection}>
+          <label className={styles.inputLabel}>
+            Payment Received Date <span className={styles.required}>*</span>
+          </label>
+
+          <input
+            type="date"
+            value={paymentReceivedDate}
+            onChange={(e) => setPaymentReceivedDate(e.target.value)}
+            className={styles.amountInput}
+          />
         </div>
         {/* Verification Remarks */}
         <div className={styles.inputSection}>

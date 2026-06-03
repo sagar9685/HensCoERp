@@ -10,5 +10,5 @@ router.post("/denominations", paymentController.addDenominations);
 router.post("/handover", paymentController.handoverCash);
 router.post("/verify", paymentController.verifyPayment);
 router.post("/mark-verified", paymentController.markPaymentVerified);
-
+router.post("/verify-advance-payment", paymentController.verifyAdvancePayment);
 module.exports = router;

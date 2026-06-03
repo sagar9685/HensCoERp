@@ -236,8 +236,9 @@ exports.getAssignedOrders = async (req, res) => {
         Items.GrandItemTotal,
 
         -- PAYMENT
-        Payments.PaymentSummary,
-        Payments.TotalPaid
+       Payments.PaymentSummary,
+Payments.TotalPaid,
+Payments.PaymentVerifyStatus
 
     FROM OrdersTemp O
     LEFT JOIN AssignedOrders A ON O.OrderID = A.OrderID
@@ -281,11 +282,17 @@ exports.getAssignedOrders = async (req, res) => {
             ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END), 0) AS VARCHAR(20))
             AS PaymentSummary,
 
-            ISNULL(SUM(OP.Amount), 0) AS TotalPaid
+            ISNULL(SUM(OP.Amount), 0) AS TotalPaid,
+
+            CASE
+  WHEN COUNT(CASE WHEN OP.PaymentVerifyStatus = 'Verified' THEN 1 END) > 0
+  THEN 'Verified'
+  ELSE 'Pending'
+END AS PaymentVerifyStatus
 
         FROM OrderPayments OP
         LEFT JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-        WHERE OP.AssignID = A.AssignID
+     WHERE OP.OrderID = O.OrderID
     ) Payments
 
     ORDER BY O.OrderID DESC;

@@ -49,3 +49,57 @@ exports.importAreaExcel = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// GET /api/orders?fromDate=2026-05-13&toDate=2026-05-13&bulkMode=0
+exports.getBulkCustomer = async (req, res) => {
+  try {
+    const { fromDate, toDate, bulkMode } = req.query;
+
+    let query = `
+      WITH UniqueCustomers AS (
+        SELECT 
+          LTRIM(RTRIM(Contact_No)) AS Contact_No,
+          MAX(CAST(Bulk_Mode AS int)) AS Bulk_Mode
+        FROM Customers
+        GROUP BY LTRIM(RTRIM(Contact_No))
+      )
+      SELECT ot.*, cm.Bulk_Mode
+      FROM OrdersTemp ot
+      JOIN UniqueCustomers cm
+        ON LTRIM(RTRIM(ot.ContactNo)) = cm.Contact_No
+      WHERE 1 = 1
+    `;
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    if (fromDate) {
+      query += ` AND CAST(ot.OrderDate AS date) >= @fromDate`;
+      request.input("fromDate", sql.Date, fromDate);
+    }
+
+    if (toDate) {
+      query += ` AND CAST(ot.OrderDate AS date) <= @toDate`;
+      request.input("toDate", sql.Date, toDate);
+    }
+
+    if (bulkMode === "0" || bulkMode === "1") {
+      query += ` AND cm.Bulk_Mode = @bulkMode`;
+      request.input("bulkMode", sql.Int, Number(bulkMode));
+    }
+
+    query += ` ORDER BY ot.OrderDate DESC`;
+
+    const result = await request.query(query);
+
+    res.json({
+      success: true,
+      data: result.recordset,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Orders fetch failed",
+      error: error.message,
+    });
+  }
+};
