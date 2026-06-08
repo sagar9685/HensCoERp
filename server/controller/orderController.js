@@ -607,8 +607,14 @@ exports.updateOrderQuantity = async (req, res) => {
     console.log("AVAILABLE:", available);
 
     // ⭐ FINAL CHECK
-    if (updatedQty > available) {
-      throw new Error(`Limit Exceeded! Only ${available} trays allowed`);
+    const effectiveAvailable = available + oldQty;
+
+    console.log("EFFECTIVE AVAILABLE:", effectiveAvailable);
+
+    if (updatedQty > effectiveAvailable) {
+      throw new Error(
+        `Limit Exceeded! Only ${effectiveAvailable} trays allowed`,
+      );
     }
 
     // 3. Update OrderItems
