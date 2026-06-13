@@ -81,6 +81,7 @@ LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
 WHERE YEAR(o.OrderDate) = @year 
 AND MONTH(o.OrderDate) = @month
 AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+AND UPPER(pm.ModeName) <> 'FOC'
 GROUP BY pm.ModeName
     `);
 
@@ -89,17 +90,34 @@ GROUP BY pm.ModeName
      SELECT 
   ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS TotalReceived
 FROM OrderPayments op
+JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
 JOIN OrdersTemp o ON o.OrderID = op.OrderID
 LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
 WHERE YEAR(o.OrderDate) = @year 
 AND MONTH(o.OrderDate) = @month
 AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+AND UPPER(pm.ModeName) <> 'FOC'
     `);
+
+    const focRes = await request.query(`
+  SELECT 
+    ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS FOCAmount
+  FROM OrderPayments op
+  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
+  JOIN OrdersTemp o ON o.OrderID = op.OrderID
+  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+  WHERE YEAR(o.OrderDate) = @year 
+  AND MONTH(o.OrderDate) = @month
+  AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+  AND UPPER(pm.ModeName) = 'FOC'
+`);
+
+    const focAmount = focRes.recordset[0]?.FOCAmount || 0;
 
     const totalReceived = receivedRes.recordset[0]?.TotalReceived || 0;
 
     // ✅ RTV sales se minus hoga
-    const netSales = totalSales - rtvAmount;
+    const netSales = totalSales - rtvAmount - focAmount;
 
     // ✅ Outstanding bhi RTV minus ke baad niklega
     const totalOutstanding = netSales - totalReceived;
@@ -194,6 +212,7 @@ AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
         TotalSales: netSales,
         GrossSales: totalSales,
         RTVAmount: rtvAmount, // info only
+        FOCAmount: focAmount, // ✅ add this
         CancelOrderAmount: cancelAmount, // info only
         TotalReceived: totalReceived,
         TotalOutstanding: totalOutstanding,
@@ -488,7 +507,9 @@ exports.getDailyReport = async (req, res) => {
       ${boyFilter}
       AND (op.PaymentModeID = 4 OR pm.IsRevenue = 0)
     `);
+    // ✅ FOC AMOUNT (exclude from sales)
 
+    const focAmount = focRes.recordset[0]?.FOCAmount || 0;
     // =====================================================
     // 🥚 CHICKEN KG & EGG PCS SUMMARY
     // =====================================================

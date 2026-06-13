@@ -10,4 +10,6 @@ router.post("/", rateController.addRate);
 
 router.get("/type/:productType", rateController.getRateByProductType);
 
+router.put("/update-order-rate", rateController.updateOrderRate);
+
 module.exports = router;

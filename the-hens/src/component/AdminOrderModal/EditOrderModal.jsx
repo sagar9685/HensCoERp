@@ -13,6 +13,7 @@ import {
   fetchWeightByType,
   fetchRateByProductType,
 } from "../../features/productTypeSlice";
+import { updateOrderRate } from "../../features/rateSlice";
 import { toast } from "react-toastify";
 import styles from "./EditOrderModal.module.css";
 
@@ -88,28 +89,34 @@ export default function EditOrderModal({ order, onClose }) {
       return;
     }
 
-    if (Number(item.quantity) < 0 || Number(item.rate) < 0) {
-      toast.error("Quantity and Rate cannot be negative");
-      return;
-    }
-
     try {
+      // Quantity Update
       await dispatch(
         updateOrderQuantity({
           orderId: order.OrderID,
           itemId: item.itemId,
           newQuantity: Number(item.quantity),
-          newRate: Number(item.rate),
           changedBy: username,
-          reason: reason,
+          reason,
         }),
       ).unwrap();
 
-      toast.success("Quantity updated");
+      // Rate Update
+      await dispatch(
+        updateOrderRate({
+          orderId: order.OrderID,
+          itemId: item.itemId,
+          newRate: Number(item.rate),
+          changedBy: username,
+          reason,
+        }),
+      ).unwrap();
+
+      toast.success("Order updated successfully");
       dispatch(fetchOrder());
       onClose();
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || "Update failed");
     }
   };
 

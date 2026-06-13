@@ -1301,14 +1301,31 @@ const AdminDashboard = () => {
                       <td className={styles.tableData}>{row.DeliveryCharge}</td>
                       <td className={styles.tableData}>₹{getRowTotal(row)}</td>
                       <td className={styles.tableData}>
-                        {new Date(row.OrderDate)
-                          .toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "2-digit",
-                          })
-                          .replace(",", "")
-                          .replace(" ", "-")}
+                        <div>
+                          <div>
+                            {new Date(row.OrderDate).toLocaleDateString(
+                              "en-GB",
+                              {
+                                day: "2-digit",
+                                month: "short",
+                                year: "2-digit",
+                              },
+                            )}
+                          </div>
+
+                          {row.CreatedAt && (
+                            <small style={{ color: "#666" }}>
+                              {new Date(row.CreatedAt).toLocaleTimeString(
+                                "en-IN",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                  hour12: true,
+                                },
+                              )}
+                            </small>
+                          )}
+                        </div>
                       </td>
                       <td className={styles.tableData}>
                         {new Date(row.DeliveryDate)
@@ -1341,8 +1358,19 @@ const AdminDashboard = () => {
                       <td className={styles.tableData}>{row.Remark}</td>
                       <td>
                         <select
-                          value={row.PaymentVerifyStatus || "Pending"}
-                          disabled={row.PaymentVerifyStatus === "Verified"}
+                          value={
+                            ["cancel", "cancelled"].includes(
+                              (row.OrderStatus || "").toLowerCase().trim(),
+                            )
+                              ? "Verified"
+                              : row.PaymentVerifyStatus || "Pending"
+                          }
+                          disabled={
+                            row.PaymentVerifyStatus === "Verified" ||
+                            ["cancel", "cancelled"].includes(
+                              (row.OrderStatus || "").toLowerCase().trim(),
+                            )
+                          }
                           onChange={(e) =>
                             handleStatusChange(row, e.target.value)
                           }

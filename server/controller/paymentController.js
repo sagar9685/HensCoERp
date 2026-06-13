@@ -533,7 +533,7 @@ exports.verifyAdvancePayment = async (req, res) => {
       .input("PaymentReceivedDate", sql.Date, paymentReceivedDate || new Date())
       .input("PaymentVerifyStatus", sql.VarChar(50), "Verified")
       .input("ShortAmount", sql.Decimal(10, 2), 0)
-      
+
       .input("VerificationRemarks", sql.VarChar(500), verificationRemarks || "")
       .query(`
         INSERT INTO OrderPayments

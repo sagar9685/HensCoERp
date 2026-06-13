@@ -54,12 +54,13 @@ exports.addOrder = async (req, res) => {
       .input("InvoiceNo", sql.NVarChar, invoiceNo)
       .input("Po_No", sql.NVarChar, req.body.Po_No || null)
       .input("Po_Date", sql.Date, req.body.Po_Date || null)
-      .input("InvoiceDate", sql.Date, req.body.InvoiceDate).query(`
+      .input("InvoiceDate", sql.Date, req.body.InvoiceDate)
+      .input("CreatedAt", sql.DateTime2, new Date()).query(`
         INSERT INTO OrdersTemp
-        (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo, Po_No, Po_Date, InvoiceDate)
+        (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo, Po_No, Po_Date, InvoiceDate, CreatedAt)
         OUTPUT INSERTED.OrderID
         VALUES
-        (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date, @InvoiceDate)
+        (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date, @InvoiceDate, @CreatedAt)
       `);
 
     const orderId = orderInsert.recordset[0].OrderID;
@@ -114,7 +115,7 @@ exports.getAllorder = async (req, res) => {
       SELECT 
         O.OrderID, O.CustomerName, O.ContactNo, O.Address, O.Area,
         C.Gst_No, C.PAN_No, O.DeliveryCharge, O.OrderDate, O.OrderTakenBy,
-        O.InvoiceNo, O.Po_No, O.Po_Date, O.InvoiceDate, 
+        O.InvoiceNo, O.Po_No, O.Po_Date, O.InvoiceDate,  O.CreatedAt, 
         A.AssignID, A.DeliveryDate, A.DeliveryManID, DM.Name AS DeliveryManName,
         A.Remark, A.DeliveryStatus AS OrderStatus, A.ActualDeliveryDate, A.PaymentReceivedDate,
         Items.ItemIDs, Items.ProductNames, Items.ProductTypes, Items.ProductUPCs, Items.MRPs,

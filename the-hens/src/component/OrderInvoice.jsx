@@ -183,8 +183,11 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         }
 
         const price = parseFloat(item[4]) || 0;
-        const q = 1;
+        const q = parseFloat(item[0]) || 0;
         const r = price;
+
+        if (q <= 0) return; // skip item completely
+
         const t = q * r;
 
         totalQty += q;
@@ -200,7 +203,7 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
           hsn: COMPANY_INFO.hsnCode,
           gstRate: 0,
           ProductUPC: upc,
-         MRP: parseFloat(item[5] || r).toFixed(2), // <-- directly from item[5] if available
+          MRP: parseFloat(item[5] || r).toFixed(2), // <-- directly from item[5] if available
           Gst_No: orderData.Gst_No || "",
           PAN_No: orderData.PAN_No || "",
           Po_No: orderData.Po_No || "",
@@ -215,7 +218,9 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
           upc = item.ProductUPC || item.upc || "N/A";
         }
 
-        const q = Number(item.qty || item.Quantity || 1);
+        const q = Number(item.qty ?? item.Quantity ?? 0);
+
+        if (q <= 0) return;
         const r = Number(item.rate || item.Price || 0);
         const t = q * r;
 
@@ -251,13 +256,13 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
     const qtys = parseAndCleanArray(orderData.Quantities).map(Number);
     const rates = parseAndCleanArray(orderData.Rates).map(Number);
     const weights = parseAndCleanArray(orderData.Weights);
- const upcs = parseAndCleanArray(
-  orderData.ProductUPC || orderData.ProductUPCs || orderData.UPC
-);
+    const upcs = parseAndCleanArray(
+      orderData.ProductUPC || orderData.ProductUPCs || orderData.UPC,
+    );
 
-const mrps = parseAndCleanArray(
-  orderData.MRP || orderData.MRPs
-).map(Number);
+    const mrps = parseAndCleanArray(orderData.MRP || orderData.MRPs).map(
+      Number,
+    );
 
     const productCount = Math.max(names.length, types.length, rates.length);
     // let upcPointer = 0;
@@ -266,21 +271,18 @@ const mrps = parseAndCleanArray(
       const productType = types[i] || names[i] || "N/A";
       const productName = names[i] || productType;
 
-      const qty = qtys[i] || 1;
+      const qty = qtys[i] || 0;
+      if (qty <= 0) continue; // don't show in invoice
       const rate = rates[i] || 0;
       const weight = weights[i] || "-";
-     const mrp =
-  mrps[i] !== undefined &&
-  mrps[i] !== null &&
-  mrps[i] !== 0
-    ? mrps[i]
-    : rate;
+      const mrp =
+        mrps[i] !== undefined && mrps[i] !== null && mrps[i] !== 0
+          ? mrps[i]
+          : rate;
       const total = qty * rate;
 
-   const upc =
-  upcs[i] && upcs[i] !== "NULL" && upcs[i] !== "0"
-    ? upcs[i]
-    : "N/A";
+      const upc =
+        upcs[i] && upcs[i] !== "NULL" && upcs[i] !== "0" ? upcs[i] : "N/A";
 
       totalQty += qty;
       subTotalVal += total;
