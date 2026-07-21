@@ -29,6 +29,7 @@ import { getNotes, deleteNote } from "../../features/noteSlice";
 import Header from "../Header";
 import NoteInvoice from "./NoteInvoice";
 import NoteViewModal from "./NoteViewModal";
+import UpdateNote from "./UpdateNote";
 
 const NoteList = () => {
   const dispatch = useDispatch();
@@ -44,6 +45,8 @@ const NoteList = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [viewMode, setViewMode] = useState("table"); // 'table' or 'grid'
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editNote, setEditNote] = useState(null);
 
   useEffect(() => {
     dispatch(getNotes());
@@ -136,6 +139,11 @@ const NoteList = () => {
     }));
   };
 
+  const handleEdit = (note) => {
+    setEditNote(note);
+    setShowEditModal(true);
+  };
+
   const handleInvoice = (note) => {
     console.log("invoice cliked");
     setSelectedNote(note);
@@ -143,6 +151,8 @@ const NoteList = () => {
   };
 
   const handleDelete = (id, noteNo) => {
+    console.log(id, noteNo);
+
     if (window.confirm(`Delete note ${noteNo}? This can't be undone.`)) {
       dispatch(deleteNote(id));
     }
@@ -444,13 +454,13 @@ const NoteList = () => {
                         <FaEye />
                       </button>
 
-                      {/* <button
+                      <button
                         type="button"
                         className={styles.editBtn}
-                        title="Edit note"
-                        aria-label={`Edit note ${item.note_no}`}
+                        title="Edit Note"
+                        onClick={() => handleEdit(item)}
                       >
-                        <FaEdit aria-hidden="true" />
+                        <FaEdit />
                       </button>
                       <button
                         type="button"
@@ -460,7 +470,7 @@ const NoteList = () => {
                         aria-label={`Delete note ${item.note_no}`}
                       >
                         <FaTrash aria-hidden="true" />
-                      </button> */}
+                      </button>
                       <button
                         type="button"
                         className={styles.invoiceBtn}
@@ -759,6 +769,15 @@ const NoteList = () => {
           onClose={() => {
             setShowViewModal(false);
             setSelectedViewNote(null);
+          }}
+        />
+      )}
+      {showEditModal && (
+        <UpdateNote
+          note={editNote}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditNote(null);
           }}
         />
       )}
