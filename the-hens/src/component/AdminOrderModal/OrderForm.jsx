@@ -460,6 +460,7 @@ const OrderForm = ({ onClose }) => {
                 name="deliveryCharge"
                 value={formData.deliveryCharge}
                 onChange={handleChange}
+                onWheel={(e) => e.target.blur()} // Prevent scroll value change
                 placeholder="Enter delivery charge"
                 min="0"
                 step="0.01"
@@ -479,7 +480,6 @@ const OrderForm = ({ onClose }) => {
                 name="orderDate"
                 value={formData.orderDate}
                 onChange={handleChange}
-              
                 className={styles.inputField}
               />
               {errors.orderDate && (

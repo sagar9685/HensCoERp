@@ -288,6 +288,28 @@ const MonthlyReport = () => {
                 </div>
               </div>
 
+              <div
+                className={`${styles.metricCard} ${styles.creditNoteBorder}`}
+              >
+                <div className={styles.metricIcon}>↗️</div>
+                <div className={styles.metricContent}>
+                  <span className={styles.metricLabel}>Credit Note</span>
+                  <span className={styles.metricValue}>
+                    {formatINR(monthly.summary.CreditAmount)}
+                  </span>
+                </div>
+              </div>
+
+              <div className={`${styles.metricCard} ${styles.debitNoteBorder}`}>
+                <div className={styles.metricIcon}>↘️</div>
+                <div className={styles.metricContent}>
+                  <span className={styles.metricLabel}>Debit Note</span>
+                  <span className={styles.metricValue}>
+                    {formatINR(monthly.summary.DebitAmount)}
+                  </span>
+                </div>
+              </div>
+
               <div className={`${styles.metricCard} ${styles.redBorder}`}>
                 <div className={styles.metricIcon}>❌</div>
                 <div className={styles.metricContent}>

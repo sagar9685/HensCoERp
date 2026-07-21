@@ -47,6 +47,22 @@ AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
       AND MONTH(RTVDate) = @month
     `);
 
+    // ✅ CREDIT / DEBIT NOTE AMOUNT
+    const noteRes = await request.query(`
+SELECT
+    ISNULL(SUM(CASE WHEN n.note_type = 'Credit' THEN TRY_CAST(n.amount AS DECIMAL(18,2)) ELSE 0 END),0) AS CreditAmount,
+    ISNULL(SUM(CASE WHEN n.note_type = 'Debit' THEN TRY_CAST(n.amount AS DECIMAL(18,2)) ELSE 0 END),0) AS DebitAmount
+FROM credit_debit_notes n
+LEFT JOIN AssignedOrders ao
+    ON ao.OrderID = n.order_id
+WHERE YEAR(n.created_at) = @year
+AND MONTH(n.created_at) = @month
+AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
+`);
+
+    const creditAmount = noteRes.recordset[0]?.CreditAmount || 0;
+    const debitAmount = noteRes.recordset[0]?.DebitAmount || 0;
+
     const rtvAmount = rtvRes.recordset[0]?.RTVAmount || 0;
 
     // ✅ 3. CANCEL ORDER AMOUNT (INFO ONLY)
@@ -117,7 +133,8 @@ AND UPPER(pm.ModeName) <> 'FOC'
     const totalReceived = receivedRes.recordset[0]?.TotalReceived || 0;
 
     // ✅ RTV sales se minus hoga
-    const netSales = totalSales - rtvAmount - focAmount;
+    const netSales =
+      totalSales - rtvAmount - focAmount - creditAmount + debitAmount;
 
     // ✅ Outstanding bhi RTV minus ke baad niklega
     const totalOutstanding = netSales - totalReceived;
@@ -211,6 +228,8 @@ AND UPPER(pm.ModeName) <> 'FOC'
         TotalOrders: totalOrders,
         TotalSales: netSales,
         GrossSales: totalSales,
+        CreditAmount: creditAmount,
+        DebitAmount: debitAmount,
         RTVAmount: rtvAmount, // info only
         FOCAmount: focAmount, // ✅ add this
         CancelOrderAmount: cancelAmount, // info only
@@ -469,6 +488,21 @@ exports.getDailyReport = async (req, res) => {
     `);
 
     // =====================================================
+    // CREDIT / DEBIT NOTE AMOUNT
+    // =====================================================
+    const noteAmountResult = await request.query(`
+SELECT
+    ISNULL(SUM(CASE WHEN n.note_type = 'Credit' THEN n.amount ELSE 0 END),0) AS CreditAmount,
+    ISNULL(SUM(CASE WHEN n.note_type = 'Debit' THEN n.amount ELSE 0 END),0) AS DebitAmount
+FROM credit_debit_notes n
+LEFT JOIN AssignedOrders ao
+    ON ao.OrderID = n.order_id
+WHERE CAST(n.created_at AS DATE) = @targetDate
+AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
+${boyFilter}
+`);
+
+    // =====================================================
     // 4️⃣ PAYMENT COLLECTED (Based on Order Date, matching Customer Report logic)
     // =====================================================
     const paymentCollectedResult = await request.query(`
@@ -509,7 +543,7 @@ exports.getDailyReport = async (req, res) => {
     `);
     // ✅ FOC AMOUNT (exclude from sales)
 
-    const focAmount = focRes.recordset[0]?.FOCAmount || 0;
+    const focAmount = focAmountResult.recordset[0]?.FOCAmount || 0;
     // =====================================================
     // 🥚 CHICKEN KG & EGG PCS SUMMARY
     // =====================================================
@@ -560,6 +594,7 @@ WHERE CAST(r.RTVDate AS DATE) = @targetDate
 AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
 ${boyFilter}
 `);
+
     // =====================================================
     // 6️⃣ TOTAL ORDERS COUNT
     // =====================================================
@@ -623,7 +658,13 @@ ${boyFilter}
     const grossSales = grossSalesResult.recordset[0]?.GrossSales || 0;
     const rtvAmount = rtvAmountResult.recordset[0]?.RTVAmount || 0;
 
-    const totalSaleAmount = Math.max(0, grossSales - rtvAmount);
+    const creditAmount = noteAmountResult.recordset[0]?.CreditAmount || 0;
+    const debitAmount = noteAmountResult.recordset[0]?.DebitAmount || 0;
+
+    const totalSaleAmount = Math.max(
+      0,
+      grossSales - rtvAmount - creditAmount + debitAmount,
+    );
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
@@ -650,6 +691,8 @@ ${boyFilter}
         totalOrders: totalOrders,
         revenueOrders: revenueOrders,
         totalGrossSales: totalSaleAmount,
+        creditAmount,
+        debitAmount,
         rtvAmount: rtvAmount, // ✅ add this
         paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,
@@ -664,8 +707,10 @@ ${boyFilter}
     });
   } catch (err) {
     console.error("Daily Report Error:", err);
+
     res.status(500).json({
-      message: "Internal server error in Daily Report",
+      message: err.message,
+      stack: err.stack,
     });
   }
 };

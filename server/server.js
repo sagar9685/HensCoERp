@@ -24,7 +24,7 @@ const productionRoutes = require("./routes/productionRoutes");
 const demoInvoice = require("./routes/demoInvoiceRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
-
+const noteRoutes = require("./routes/noteRoutes");
 dotenv.config();
 const app = express();
 
@@ -68,6 +68,8 @@ app.use("/api/production", productionRoutes);
 
 app.use("/api", aiRoutes);
 app.use("/api", notificationRoutes);
+
+app.use("/api/note", noteRoutes);
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);

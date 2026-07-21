@@ -12,6 +12,7 @@ import {
   FaShieldAlt,
   FaFileInvoiceDollar,
   FaTruck,
+  FaStickyNote,
 } from "react-icons/fa";
 import { PiEggBold } from "react-icons/pi";
 import AddOrderModal from "./AdminOrderModal/AddOrderModal";
@@ -36,6 +37,8 @@ import ViewOrderModal from "./ViewOrderModal";
 import { fetchPaymentModes } from "../features/paymentModeSlice";
 import { fetchBulkCustomerOrders } from "../features/customerAnalysisSlice";
 import { fetchArea } from "../features/cutomerSlice";
+
+import NoteModal from "./AdminOrderModal/NoteModal";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -79,9 +82,17 @@ const AdminDashboard = () => {
 
   const [isFilterLoading, setIsFilterLoading] = useState(false);
 
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [selectedNoteOrder, setSelectedNoteOrder] = useState(null);
+
   const paymentModesList = useSelector(
     (state) => state.paymentMode?.list || [],
   );
+
+  const handleOpenNote = (order) => {
+    setSelectedNoteOrder(order);
+    setIsNoteModalOpen(true);
+  };
 
   const [paymentMode, setPaymentMode] = useState("");
   const [paymentReceivedDate, setPaymentReceivedDate] = useState(
@@ -1425,6 +1436,13 @@ const AdminDashboard = () => {
                         >
                           <FaTruck />
                         </button>
+                        <button
+                          className={styles.actionBtn}
+                          title="Debit / Credit Note"
+                          onClick={() => handleOpenNote(row)}
+                        >
+                          <FaStickyNote />
+                        </button>
                       </td>
                       <td className={styles.tableData}>
                         {row.VerifyMark || "-"}
@@ -1556,6 +1574,11 @@ const AdminDashboard = () => {
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
         order={selectedViewOrder}
+      />
+      <NoteModal
+        isOpen={isNoteModalOpen}
+        onClose={() => setIsNoteModalOpen(false)}
+        order={selectedNoteOrder}
       />
     </div>
   );

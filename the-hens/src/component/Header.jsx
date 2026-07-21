@@ -19,6 +19,8 @@ import {
   FaLifeRing,
   FaTimes,
   FaToggleOn,
+  FaStickyNote,
+  FaBoxes,
   FaToggleOff,
   FaLock,
 } from "react-icons/fa";
@@ -122,11 +124,17 @@ const Header = () => {
       label: "Reports",
       path: "/reports",
     },
+    {
+      key: "Notes",
+      icon: <FaStickyNote />,
+      label: "Notes",
+      path: "/note",
+    },
 
     {
       key: "stock",
-      icon: <FaBullhorn />,
-      label: "stock",
+      icon: <FaBoxes />,
+      label: "Stock",
       path: "/stocks",
     },
 

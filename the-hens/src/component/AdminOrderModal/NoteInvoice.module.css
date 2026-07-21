@@ -1,0 +1,899 @@
+/*
+*** General Page and Container Styling ***
+Ensures the invoice content is contained within an A4-like structure in print/PDF mode,
+and uses a modal for on-screen preview.
+*/
+
+:root {
+  --primary-color: #db2024; /* Blue for highlights and buttons */
+  --secondary-color: #6c757d; /* Grey for borders and secondary text */
+  --accent-color: #28a745; /* Green for success/download */
+  --text-dark: #343a40;
+  --text-light: #6a6f74;
+  --border-light: #dee2e6;
+  --background-light: #f8f9fa;
+  --font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
+}
+
+body {
+  -webkit-print-color-adjust: exact !important; /* Forces background/colors to print */
+  print-color-adjust: exact !important;
+}
+.headerRight {
+  flex: 1;
+  max-width: 220px;
+}
+/* Modal Overlay and Content for Preview */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modalContent {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 900px; /* Max width for comfortable preview */
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background-color: rgb(219, 32, 36);
+  color: #ffffff;
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+  flex-shrink: 0; /* Prevents header from shrinking */
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btnClose {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.btnClose:hover {
+  opacity: 1;
+}
+
+.invoiceWrapper {
+  overflow-y: auto; /* Allows scrolling if content exceeds modal height */
+  padding: 20px;
+  flex-grow: 1;
+}
+
+.invoiceBody {
+  background: #ffffff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  min-height: 297mm; /* Simulate A4 height */
+}
+
+/*
+*** Base Invoice Content Styles (for Preview) ***
+*/
+.invoiceContainer {
+  padding: 20px;
+  color: var(--text-dark);
+  font-family: var(--font-family);
+  font-size: 10px; /* Smaller base font for compact layout */
+  line-height: 1.4;
+}
+
+/*
+*** Print/PDF Specific Styles ***
+This is the most critical section to ensure a single-page A4 print/PDF.
+We force a smaller font size and tighter padding.
+*/
+.printMode {
+  width: 210mm; /* A4 width */
+  height: 297mm; /* A4 height - Important for single-page rendering */
+  max-height: 297mm;
+  overflow: hidden; /* Crucial to prevent content from overflowing to a second page */
+  box-sizing: border-box;
+  padding: 5mm;
+  margin: 0;
+  font-size: 9pt; /* Smaller font for maximum content density */
+}
+
+/* Utility classes for alignment */
+.textCenter {
+  text-align: center !important;
+  font-weight: bold;
+}
+.textRight {
+  text-align: right !important;
+}
+
+/*
+*** Header Section ***
+*/
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid rgb(219, 32, 36);
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.companyInfo {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  width: 58%; /* Allocate space for company details */
+}
+
+.logoContainer {
+  width: 50px; /* Small logo size to save space */
+  height: 50px;
+  flex-shrink: 0;
+}
+
+.logoImage {
+  width: 400%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.brandInfo {
+  line-height: 1.3;
+}
+
+.companyDetails p {
+  margin: 2px 0;
+  font-size: 1.1em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 165px;
+}
+
+.companyDetails strong {
+  font-size: 1.1em;
+  color: #db2024;
+}
+
+/*
+*** Invoice Meta (top-right block: note no / dates) ***
+Fixed: was wrapping "2026" onto a new line because of a fixed-width label
+(min-width: 130px) fighting for space inside a narrow 30% column.
+*/
+.invoiceMeta {
+  text-align: right;
+  width: 42%; /* was 30% — gives the date line enough room */
+  flex-shrink: 0;
+}
+
+.invoiceMeta h1 {
+  font-size: 1.25rem;
+  color: #db2024;
+  margin: 0 0 8px 0;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.invoiceDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.invoiceDetails p {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap; /* never let a row wrap */
+}
+
+/* Attractive "chip" style row for Note No / Note Date / Against Invoice etc. */
+.invoiceRow {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.invoiceRow strong {
+  min-width: auto; /* removed the fixed 130px that pushed the value off-line */
+  font-weight: 600;
+  font-size: 0.85em;
+  color: var(--text-light);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.invoiceRow strong::after {
+  content: ":";
+  margin-right: 2px;
+}
+
+.invoiceRow span {
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.85em;
+  color: var(--text-dark);
+  background: #fff3f3;
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid #ffd6d7;
+}
+
+/*
+*** Customer & Order Details Section ***
+Uses flexbox for side-by-side layout.
+*/
+.customerDetails {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+.detailBox {
+  border: 1px solid var(--border-light);
+  padding: 8px 12px;
+  border-radius: 4px;
+  width: 49%;
+}
+
+.detailBox h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.1em;
+  color: var(--secondary-color);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.customerInfo p,
+.orderInfo p {
+  margin: 1px 0;
+  font-size: 1rem;
+  font-family: unset;
+}
+
+.customerName {
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.customerAddress,
+.customerContact {
+  color: var(--text-light);
+}
+
+/*
+*** Products Table Section ***
+Critical area for space saving.
+*/
+.tableContainer {
+  margin-bottom: 10px;
+}
+
+.productsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.productsTable thead tr {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.productsTable th,
+.productsTable td {
+  padding: 4px 6px; /* Reduced padding for more rows */
+  border: 1px solid var(--border-light);
+  vertical-align: middle;
+}
+
+.productsTable th {
+  font-size: 0.95em;
+  white-space: nowrap;
+}
+
+.productsTable tbody tr:nth-child(even) {
+  background-color: var(--background-light);
+}
+
+.productsTable td strong {
+  font-weight: 600;
+}
+
+.productsTable td small {
+  display: block;
+  font-size: 0.8em;
+  color: var(--text-light);
+}
+
+/*
+*** Footer Grid Section ***
+Uses CSS Grid to manage three columns for optimal use of horizontal space.
+*/
+.footerSection {
+  display: grid;
+  grid-template-columns: 35% 35% 30%; /* Balanced columns */
+  gap: 10px;
+  border: 1px solid var(--border-light);
+  padding: 8px;
+}
+
+.footerColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: right; /* Space for alignment */
+}
+
+/* Column 1: Amount in Words & Terms */
+.amountInWords {
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 5px;
+  margin-bottom: 5px;
+}
+
+.amountInWords span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: #db2024;
+  font-size: 1em;
+}
+
+.amountInWords p {
+  margin: 5px 0 0 0;
+  font-style: italic;
+  font-size: 0.95em;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.termsBox h4 {
+  margin: 0 0 5px 0;
+  font-size: 1em;
+  color: #db2024;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.termsBox ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 5px 0;
+}
+
+.termsBox li {
+  font-size: 0.85em;
+  margin-bottom: 2px;
+}
+
+/* Updated QR & Terms Section Styling */
+.qrTermContainer {
+  display: flex;
+  align-items: flex-start; /* Changed from center to start for better alignment */
+  gap: 12px; /* Increased gap */
+  margin-top: 8px;
+  padding: 6px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  border: 1px solid #eaeaea;
+}
+
+.qrSmall {
+  width: 100px; /* Increased from 30px */
+  height: 100px; /* Increased from 30px */
+  border: 1px solid var(--border-light);
+  padding: 3px; /* Increased padding */
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.qrText {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.qrText p {
+  margin: 0;
+  font-size: 0.85em; /* Slightly larger */
+  line-height: 1.3;
+  color: var(--text-dark);
+}
+
+.qrText p:first-child {
+  font-weight: 700;
+  color: #db2024;
+  margin-bottom: 2px;
+}
+
+/* Terms Box Enhancement */
+.termsBox {
+  padding: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: linear-gradient(to bottom, #ffffff, #fafafa);
+  margin-bottom: 45px;
+}
+
+.termsBox h4 {
+  margin: 0 0 10px 0; /* Increased bottom margin */
+  font-size: 1.1em; /* Slightly larger */
+  color: #db2024; /* Changed to primary color */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.termsBox ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 12px 0; /* Increased bottom margin */
+}
+
+.termsBox li {
+  font-size: 0.9em; /* Slightly larger */
+  margin-bottom: 4px; /* Increased spacing */
+  padding-left: 15px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.termsBox li:before {
+  content: "•";
+  color: var(--primary-color);
+  font-weight: bold;
+  position: absolute;
+  left: 0;
+}
+
+/* Column 2: Payment Details & QR */
+.paymentInfo {
+  border-right: 1px dashed var(--border-light);
+  padding-right: 8px;
+  height: 100%;
+}
+
+.paymentInfo h4 {
+  margin: 0 0 5px 0;
+  font-size: 1.1em;
+  color: #db2024;
+  font-weight: 700;
+}
+
+.payQrBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.qrPaymentImg {
+  width: 90px; /* Small QR for space saving */
+  height: 90px;
+  border: 1px solid var(--border-light);
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.bankDetailsText p {
+  margin: 1px 0;
+  font-size: 0.9em;
+  line-height: 1.2;
+  width: 110%;
+  font-weight: 500;
+}
+
+.bankDetailsText strong {
+  font-weight: 600;
+  width: 70px; /* Align text vertically */
+  display: inline-block;
+  color: var(--text-dark);
+}
+
+.paymentNote {
+  font-size: 0.8em;
+  color: #dc3545; /* Alert color for note */
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+.noQrMessage {
+  text-align: center;
+  padding: 10px 5px;
+  background-color: var(--background-light);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  width: 100%;
+  font-size: 0.8em;
+}
+
+/* Column 3: Totals & Signature */
+.totalsBox {
+  border: 2px solid var(--accent-color);
+  padding: 5px;
+  margin-bottom: 10px;
+  background-color: #e6f7ed; /* Light green background */
+  border-radius: 4px;
+  width: 220px;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  margin: 1px 0;
+  font-size: 1rem;
+  font-weight: 500;
+  padding: 1px 0;
+}
+
+.grandTotalRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 1.1em;
+  font-weight: 700;
+  color: var(--accent-color);
+  border-top: 1px solid var(--accent-color);
+  padding-top: 5px;
+  margin-top: 5px;
+}
+
+.signatureSection {
+  text-align: center;
+  padding-top: 5px;
+}
+
+.signatureContainer {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 10px;
+  margin-bottom: 5px;
+}
+
+.signImg {
+  height: 100px; /* Small height for signature image */
+  width: auto;
+  object-fit: contain;
+  margin-bottom: -5px;
+  opacity: 0.8;
+}
+
+.signatureLine {
+  border-top: 1px solid var(--text-dark);
+  width: 150px;
+  margin: 0 auto;
+}
+
+.authText {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 600;
+  font-size: 0.9em;
+  margin-top: 2px;
+  color: #db2024;
+  justify-content: center;
+}
+
+.companyStamp p {
+  margin: 0;
+  font-size: 0.9em;
+  font-style: italic;
+  color: var(--text-light);
+}
+
+/*
+*** Footer Notes ***
+*/
+.footerNotes {
+  margin-top: 10px;
+  border-top: 1px solid var(--border-light);
+  padding-top: 5px;
+  text-align: center;
+}
+
+.noteBox p {
+  font-size: 0.8em;
+  margin: 0;
+  color: black;
+  font-style: italic;
+}
+
+/*
+*** Modal Action Buttons ***
+*/
+.modalActions {
+  padding: 15px 20px;
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  background-color: var(--background-light);
+  flex-shrink: 0;
+}
+
+.btn {
+  padding: 8px 15px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1em;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition:
+    background-color 0.2s,
+    opacity 0.2s;
+}
+
+.btnDownload {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+.btnDownload:hover {
+  background-color: #1e7e34;
+}
+
+.btnPrint {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.btnPrint:hover {
+  background-color: #0056b3;
+}
+
+.modalActions .btnClose {
+  background-color: var(--secondary-color);
+  color: #ffffff;
+  font-size: 1em;
+  padding: 8px 15px;
+  border-radius: 4px;
+}
+
+.modalActions .btnClose:hover {
+  background-color: #5a6268;
+  opacity: 1;
+}
+
+/*
+*** PRINT MEDIA QUERY FOR PAGE BREAK CONTROL ***
+This is the final, crucial step to try and enforce a single page.
+*/
+/*
+*** PRINT MEDIA QUERY FOR PAGE BREAK CONTROL ***
+*/
+@media print {
+  /* Hide the modal overlay and action buttons for printing */
+  body > div:first-child:not(#invoice-print-content) {
+    display: none !important;
+  }
+
+  /* Ensure only the invoice content is visible and takes full page */
+  .modalOverlay,
+  .modalActions {
+    display: none !important;
+  }
+
+  /* Print styling on the actual invoice content - PORTRAIT MODE */
+  .invoiceContainer {
+    width: 100%;
+    max-width: 210mm; /* A4 width */
+    height: 297mm; /* A4 height */
+    margin: 0;
+    box-shadow: none;
+    padding: 5mm !important; /* Reduced padding */
+    font-size: 8pt !important; /* Smaller font for portrait */
+    line-height: 1.2 !important;
+    overflow: hidden !important;
+  }
+
+  /* Make table more compact for portrait */
+  .productsTable {
+    font-size: 7pt !important;
+  }
+
+  .productsTable th,
+  .productsTable td {
+    padding: 2px 4px !important;
+  }
+
+  /* Reduce font sizes throughout */
+  .invoiceMeta h1 {
+    font-size: 14pt !important;
+  }
+
+  .companyDetails p,
+  .invoiceDetails p {
+    font-size: 7pt !important;
+  }
+
+  .detailBox h3 {
+    font-size: 9pt !important;
+  }
+
+  .customerInfo p,
+  .orderInfo p {
+    font-size: 7pt !important;
+  }
+
+  /* Reduce footer section spacing */
+  .footerSection {
+    padding: 5px !important;
+    gap: 5px !important;
+  }
+
+  .amountInWords p {
+    font-size: 7pt !important;
+  }
+
+  .termsBox li {
+    font-size: 6pt !important;
+  }
+
+  .bankDetailsText p {
+    font-size: 6pt !important;
+  }
+
+  .totalRow {
+    font-size: 8pt !important;
+  }
+
+  /* Override print background color for print */
+  .productsTable thead tr {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: rgb(219, 32, 36) !important; /* Your primary color */
+    color: #ffffff !important;
+  }
+
+  .totalsBox {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: #e6f7ed !important;
+    border-color: #28a745 !important;
+  }
+
+  /* Enforce portrait page */
+  @page {
+    size: A4 portrait; /* Explicitly set portrait */
+    margin: 5mm; /* Add small margins */
+  }
+
+  html,
+  body {
+    height: 297mm;
+    width: 210mm;
+    margin: 0;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .invoiceBody {
+    min-height: auto;
+    height: 297mm;
+    max-height: 297mm;
+    overflow: hidden !important; /* Prevent native print from adding pages */
+  }
+} /* Table को और compact बनाएं */
+@media print {
+  .productsTable {
+    transform: scale(0.95);
+    transform-origin: top left;
+    width: 105%; /* Compensate for scaling */
+  }
+
+  /* Reduce logo size in print */
+  .logoContainer {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  /* Reduce QR code sizes */
+  .qrPaymentImg {
+    width: 90px !important;
+    height: 90px !important;
+  }
+
+  .qrSmall {
+    width: 25px !important;
+    height: 25px !important;
+  }
+
+  /* Reduce signature size */
+  .signImg {
+    height: 70px !important;
+  }
+  @media print {
+    /* ...existing print styles... */
+
+    /* Enhanced QR in print */
+    .qrTermContainer {
+      margin-top: 10px !important;
+      background: transparent !important;
+      border: 1px solid #ccc !important;
+    }
+
+    .qrSmall {
+      width: 45px !important; /* Larger in print */
+      height: 45px !important;
+      border: 2px solid #000 !important;
+    }
+
+    .qrText p {
+      font-size: 9pt !important;
+      font-weight: 600 !important;
+    }
+
+    .termsBox {
+      border: 2px solid #000 !important;
+      padding: 8px !important;
+    }
+
+    .termsBox li {
+      font-size: 8pt !important;
+      margin-bottom: 3px !important;
+    }
+
+    /* Compact, non-wrapping invoice meta chips in print */
+    .invoiceMeta {
+      width: 42% !important;
+    }
+
+    .invoiceRow strong,
+    .invoiceRow span {
+      font-size: 6.5pt !important;
+      white-space: nowrap !important;
+    }
+
+    .invoiceRow span {
+      padding: 1px 6px !important;
+    }
+  }
+}

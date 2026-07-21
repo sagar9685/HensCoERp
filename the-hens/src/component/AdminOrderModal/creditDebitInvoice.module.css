@@ -1,0 +1,649 @@
+/* ==========================================================================
+   Credit / Debit Note — Ledger Letterhead
+   Design language: a bound account-book page, not a generic "invoice card".
+   Ink navy + paper white, with a single functional accent that swaps
+   between gold (Credit — money returning) and maroon (Debit — amount owed).
+   Display serif for authority, Plex Sans for body, Plex Mono for every
+   figure so amounts line up like a real ledger.
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+.overlay {
+  --ink: #16233f;
+  --ink-soft: #56637a;
+  --paper: #fdfdfc;
+  --paper-dim: #f6f7f5;
+  --hairline: #dde1e7;
+  --credit: #a7791f;
+  --credit-soft: #f7ecd4;
+  --debit: #9c3b3b;
+  --debit-soft: #f6e3e0;
+  --accent: var(--credit);
+  --accent-soft: var(--credit-soft);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 20, 32, 0.62);
+  backdrop-filter: blur(3px);
+  animation: fadeIn 0.18s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal {
+  width: 100%;
+  max-width: 860px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 30px 60px -20px rgba(10, 15, 30, 0.5);
+  font-family:
+    "IBM Plex Sans",
+    -apple-system,
+    sans-serif;
+  animation: riseIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 22px;
+  background: var(--ink);
+  color: #eef1f6;
+}
+
+.topbar h2 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 18px;
+  letter-spacing: 0.02em;
+}
+
+.topbar button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #eef1f6;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+.topbar button:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: rotate(90deg);
+}
+
+.topbar button:focus-visible {
+  outline: 2px solid #eef1f6;
+  outline-offset: 2px;
+}
+
+/* ---- scrollable ledger sheet -------------------------------------- */
+
+.invoice {
+  position: relative;
+  overflow-y: auto;
+  padding: 34px 38px 30px 46px;
+  color: var(--ink);
+  background:
+    linear-gradient(var(--paper), var(--paper)) padding-box,
+    repeating-linear-gradient(
+        to bottom,
+        transparent,
+        transparent 34px,
+        var(--hairline) 34px,
+        var(--hairline) 35px
+      )
+      40px 96px / 100% 35px no-repeat;
+}
+
+/* the ledger "spine": a perforated stub running down the left edge,
+   colour-coded to the note type — the one signature flourish of the page */
+.invoice::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 14px;
+  background: var(--accent);
+  background-image: radial-gradient(
+    circle at 7px 10px,
+    var(--paper) 3px,
+    transparent 3.5px
+  );
+  background-size: 14px 20px;
+  background-repeat: repeat-y;
+}
+
+.invoice.credit {
+  --accent: var(--credit);
+  --accent-soft: var(--credit-soft);
+}
+.invoice.debit {
+  --accent: var(--debit);
+  --accent-soft: var(--debit-soft);
+}
+
+.header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+}
+
+.company {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.logo {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  padding: 4px;
+  background: #fff;
+}
+
+.company h3 {
+  margin: 0 0 4px;
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 16.5px;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.company p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+.company svg {
+  flex: none;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.noteTitle {
+  text-align: right;
+  flex: none;
+  min-width: 200px;
+}
+
+.noteTitle h1 {
+  margin: 0 0 8px;
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.noteTitle p {
+  margin: 3px 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.noteTitle p b {
+  font-family: "IBM Plex Sans", sans-serif;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.invoice hr {
+  border: none;
+  border-top: 1px solid var(--hairline);
+  margin: 4px 0 20px;
+}
+
+/* ---- info boxes ------------------------------------------------------ */
+
+.box {
+  display: inline-block;
+  vertical-align: top;
+  width: calc(50% - 10px);
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: var(--paper-dim);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+}
+
+.box:first-of-type {
+  margin-right: 20px;
+}
+
+.box h3 {
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent);
+}
+
+.box h3 svg {
+  font-size: 12px;
+}
+
+.box p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.customer {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink);
+  margin: 0 0 6px !important;
+}
+
+/* ---- product table ---------------------------------------------------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 4px 0 18px;
+  font-size: 13px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 10px 12px;
+  background: var(--ink);
+  color: #f2f4f8;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.table thead th:first-child {
+  border-radius: 6px 0 0 0;
+}
+.table thead th:last-child {
+  border-radius: 0 6px 0 0;
+  text-align: right;
+}
+
+.table tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--hairline);
+  color: var(--ink);
+}
+
+.table tbody tr:nth-child(even) td {
+  background: var(--paper-dim);
+}
+
+.table tbody td:last-child,
+.table tbody td:nth-child(3),
+.table tbody td:nth-child(4) {
+  text-align: right;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.table tbody td:last-child {
+  font-weight: 600;
+}
+
+.reason {
+  padding: 12px 14px;
+  margin-bottom: 22px;
+  background: var(--accent-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  font-size: 13px;
+  color: var(--ink);
+  display: flex;
+  gap: 6px;
+}
+
+.reason b {
+  flex: none;
+  color: var(--accent);
+}
+
+/* ---- footer ------------------------------------------------------------ */
+
+.footer {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 0.9fr;
+  gap: 18px;
+  align-items: start;
+  padding-top: 18px;
+  border-top: 1px dashed var(--hairline);
+}
+
+.footer h4 {
+  margin: 0 0 8px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.footer > div > p {
+  margin: 3px 0;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.payment {
+  text-align: center;
+}
+
+.payment h4 {
+  text-align: left;
+}
+
+.qr {
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  border: 1px solid var(--hairline);
+  border-radius: 6px;
+  padding: 4px;
+  background: #fff;
+  margin-bottom: 8px;
+}
+
+.payment p {
+  text-align: left;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px !important;
+}
+
+/* total + stamp cluster */
+
+.footer > div:last-child {
+  position: relative;
+  text-align: right;
+  padding-top: 4px;
+}
+
+.footer > div:last-child h3 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.footer > div:last-child h2 {
+  margin: 4px 0 18px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.footer > div:last-child br {
+  display: none;
+}
+
+.footer > div:last-child svg {
+  display: none;
+}
+
+/* signature line + ink-stamp seal, built without touching the JSX markup */
+.footer > div:last-child {
+  padding-top: 4px;
+}
+
+.footer > div:last-child::after {
+  content: "Authorized Signatory";
+  display: block;
+  margin-top: 30px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ink-soft);
+  font-size: 10.5px;
+  color: var(--ink-soft);
+  letter-spacing: 0.03em;
+}
+
+.stamp {
+  position: absolute;
+  top: -6px;
+  right: 46px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  display: grid;
+  place-items: center;
+  text-align: center;
+  transform: rotate(-11deg);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.stamp::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border: 1px dashed var(--accent);
+  border-radius: 50%;
+}
+
+.stampText {
+  font-family: "Fraunces", serif;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  line-height: 1.25;
+  text-transform: uppercase;
+  white-space: pre-line;
+}
+
+/* ---- actions ------------------------------------------------------------ */
+
+.actions {
+  padding: 14px 22px;
+  border-top: 1px solid var(--hairline);
+  background: var(--paper-dim);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 7px;
+  background: var(--ink);
+  color: #fff;
+  font-family: "IBM Plex Sans", sans-serif;
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+.actions button:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.actions button:active {
+  transform: translateY(0);
+}
+
+.actions button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ============================= responsive ============================= */
+
+@media (max-width: 700px) {
+  .overlay {
+    padding: 0;
+  }
+
+  .modal {
+    max-width: 100%;
+    max-height: 100vh;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  .invoice {
+    padding: 26px 18px 24px 26px;
+  }
+
+  .invoice::before {
+    width: 10px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .noteTitle {
+    text-align: left;
+    min-width: 0;
+  }
+
+  .noteTitle h1 {
+    font-size: 22px;
+  }
+
+  .box {
+    width: 100%;
+    display: block;
+  }
+
+  .box:first-of-type {
+    margin-right: 0;
+  }
+
+  .table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .footer {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .footer > div:last-child {
+    text-align: left;
+  }
+
+  .footer > div:last-child h2 {
+    font-size: 24px;
+  }
+
+  .stamp {
+    top: 4px;
+    right: 4px;
+  }
+
+  .actions {
+    padding: 12px 16px;
+  }
+
+  .actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .noteTitle h1 {
+    font-size: 19px;
+  }
+  .footer > div:last-child h2 {
+    font-size: 21px;
+  }
+}
+
+/* ============================== print ================================== */
+
+@media print {
+  .overlay {
+    position: static;
+    background: none;
+    padding: 0;
+  }
+
+  .topbar,
+  .actions {
+    display: none;
+  }
+
+  .modal {
+    box-shadow: none;
+    max-height: none;
+  }
+
+  .invoice {
+    overflow: visible;
+  }
+}

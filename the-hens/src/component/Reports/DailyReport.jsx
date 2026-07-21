@@ -92,7 +92,7 @@ const DailyReport = () => {
           <div className={styles.statsGrid}>
             <div className={`${styles.statCard} ${styles.blue}`}>
               <span className={styles.cardLabel}>
-                Total Gross Sales (Revenue Only)
+                Total Net Sales (Revenue Only)
               </span>
               <h3>
                 ₹{Number(daily.summary?.totalGrossSales || 0).toLocaleString()}
@@ -119,6 +119,19 @@ const DailyReport = () => {
               <span className={styles.cardLabel}>Pending Balance</span>
               <h3>
                 ₹{Number(daily.summary?.pendingAmount || 0).toLocaleString()}
+              </h3>
+            </div>
+            <div className={`${styles.statCard} ${styles.teal}`}>
+              <span className={styles.cardLabel}>Credit Note</span>
+              <h3>
+                ₹{Number(daily.summary?.creditAmount || 0).toLocaleString()}
+              </h3>
+            </div>
+
+            <div className={`${styles.statCard} ${styles.rose}`}>
+              <span className={styles.cardLabel}>Debit Note</span>
+              <h3>
+                ₹{Number(daily.summary?.debitAmount || 0).toLocaleString()}
               </h3>
             </div>
             <div className={`${styles.statCard} ${styles.purple}`}>

@@ -377,3 +377,14 @@
     font-size: 1.5rem;
   }
 }
+.teal {
+  border-left: 4px solid #0f766e;
+  background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+  color: #0f766e;
+}
+
+.rose {
+  border-left: 4px solid #be123c;
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+  color: #be123c;
+}

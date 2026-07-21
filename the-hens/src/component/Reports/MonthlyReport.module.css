@@ -805,3 +805,28 @@
     width: 100%;
   }
 }
+.creditNoteBorder {
+  border-left: 4px solid #0f766e;
+  background: linear-gradient(135deg, #f0fdfa, #ccfbf1);
+}
+
+.creditNoteBorder .metricIcon {
+  color: #0f766e;
+}
+
+.creditNoteBorder .metricValue {
+  color: #0f766e;
+}
+
+.debitNoteBorder {
+  border-left: 4px solid #be123c;
+  background: linear-gradient(135deg, #fff1f2, #ffe4e6);
+}
+
+.debitNoteBorder .metricIcon {
+  color: #be123c;
+}
+
+.debitNoteBorder .metricValue {
+  color: #be123c;
+}

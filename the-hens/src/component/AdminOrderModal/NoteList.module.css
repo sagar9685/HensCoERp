@@ -1,0 +1,874 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap");
+
+/* ============ Tokens ============ */
+.container {
+  --ink: #14171f;
+  --ink-soft: #5b6472;
+  --ink-faint: #9aa1ae;
+  --bg: #f1f3f6;
+  --surface: #ffffff;
+  --line: #e3e6ec;
+
+  --accent: #2b4c7e;
+  --accent-soft: #e8eef6;
+  --accent-ink: #1b3050;
+
+  --credit: #157f5a;
+  --credit-soft: #e5f4ee;
+  --debit: #b0332b;
+  --debit-soft: #fbeaea;
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow-sm: 0 1px 2px rgba(20, 23, 31, 0.05);
+  --shadow-md: 0 8px 24px -12px rgba(20, 23, 31, 0.18);
+
+  --font-display: "Space Grotesk", "Segoe UI", sans-serif;
+  --font-body: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", "Courier New", monospace;
+
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 28px clamp(16px, 4vw, 40px) 60px;
+  font-family: var(--font-body);
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.container *,
+.container *::before,
+.container *::after {
+  box-sizing: border-box;
+}
+
+/* ============ Header ============ */
+.headerSection {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.pageTitle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+  color: var(--ink);
+}
+
+.titleMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-ink);
+  color: #fff;
+  font-size: 16px;
+}
+
+.pageSubtitle {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 14px;
+}
+
+.addBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent-ink);
+  color: #fff;
+  border: none;
+  padding: 11px 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.addBtn:hover {
+  background: var(--accent);
+  transform: translateY(-1px);
+}
+
+.addBtn:active {
+  transform: translateY(0);
+}
+
+/* ============ Ledger summary strip ============ */
+.ledgerStrip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.ledgerCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  overflow: hidden;
+}
+
+.ledgerCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+}
+
+.ledgerCredit::before {
+  background: var(--credit);
+}
+.ledgerDebit::before {
+  background: var(--debit);
+}
+.ledgerNet::before {
+  background: var(--accent);
+}
+
+.ledgerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.ledgerCredit .ledgerIcon {
+  background: var(--credit-soft);
+  color: var(--credit);
+}
+.ledgerDebit .ledgerIcon {
+  background: var(--debit-soft);
+  color: var(--debit);
+}
+.ledgerNet .ledgerIcon {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ledgerLabel {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  margin-bottom: 3px;
+}
+
+.ledgerValue {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--ink);
+}
+
+/* ============ Filter bar ============ */
+.filterCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+}
+
+.searchBox {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 13px;
+  color: var(--ink-faint);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 10px 34px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.clearSearch {
+  position: absolute;
+  right: 8px;
+  border: none;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+}
+
+.clearSearch:hover {
+  color: var(--ink);
+  background: var(--line);
+}
+
+.filterControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.filterSelect {
+  padding: 10px 30px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.filterSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.viewToggleBtn {
+  border: none;
+  background: var(--bg);
+  color: var(--ink-soft);
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+  display: flex;
+}
+
+.viewToggleBtn + .viewToggleBtn {
+  border-left: 1px solid var(--line);
+}
+
+.viewToggleBtn:hover {
+  color: var(--ink);
+}
+
+.activeView {
+  background: var(--accent-ink);
+  color: #fff;
+}
+
+.activeView:hover {
+  color: #fff;
+}
+
+/* ============ Table ============ */
+.tableWrapper {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  min-width: 760px;
+}
+
+.table thead th {
+  text-align: left;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  white-space: nowrap;
+}
+
+.sortableHeader {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortableHeader span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sortableHeader:hover {
+  color: var(--ink);
+}
+
+.sortIcon {
+  font-size: 11px;
+  color: var(--ink-faint);
+  opacity: 0.6;
+}
+
+.sortIconActive {
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.actionHeader {
+  text-align: right;
+}
+
+.table tbody td {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  vertical-align: middle;
+}
+
+.tableRow {
+  position: relative;
+  transition: background 0.12s ease;
+}
+
+.tableRow td:first-child {
+  border-left: 3px solid transparent;
+}
+
+.rowCredit td:first-child {
+  border-left-color: var(--credit);
+}
+
+.rowDebit td:first-child {
+  border-left-color: var(--debit);
+}
+
+.tableRow:hover {
+  background: var(--bg);
+}
+
+.tableRow:last-child td {
+  border-bottom: none;
+}
+
+/* ============ Cell content ============ */
+.noteNo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+
+.invoiceNo {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge svg {
+  font-size: 9px;
+}
+
+.badge.credit {
+  background: var(--credit-soft);
+  color: var(--credit);
+}
+
+.badge.debit {
+  background: var(--debit-soft);
+  color: var(--debit);
+}
+
+.customerCell,
+.productCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 180px;
+}
+
+.cellIcon {
+  color: var(--ink-faint);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.truncateText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qtyBadge {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.rateText {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.amountText {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.amountCredit {
+  color: var(--credit);
+}
+
+.amountDebit {
+  color: var(--debit);
+}
+
+.dateText {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.dateIcon {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+/* ============ Actions ============ */
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+.viewBtn,
+.editBtn,
+.deleteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 12.5px;
+  transition: all 0.15s ease;
+}
+
+.viewBtn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.editBtn:hover {
+  background: #fff4e0;
+  color: #9a6b00;
+  border-color: #fff4e0;
+}
+
+.deleteBtn:hover {
+  background: var(--debit-soft);
+  color: var(--debit);
+  border-color: var(--debit-soft);
+}
+
+/* ============ Skeleton / empty ============ */
+.skeletonRow td {
+  padding: 10px 16px;
+}
+
+.skeleton {
+  height: 34px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--bg) 25%, #e8eaef 37%, var(--bg) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.3s ease infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0 0;
+  }
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 20px;
+  color: var(--ink-soft);
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.emptyIcon {
+  font-size: 30px;
+  color: var(--ink-faint);
+  margin-bottom: 12px;
+}
+
+.emptyState h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 13.5px;
+}
+
+/* ============ Grid view ============ */
+.gridWrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.gridCard {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  border-left: 3px solid transparent;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.gridCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.gridCard.rowCredit {
+  border-left-color: var(--credit);
+}
+
+.gridCard.rowDebit {
+  border-left-color: var(--debit);
+}
+
+.gridCardSkeleton {
+  height: 190px;
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--bg) 25%, #e8eaef 37%, var(--bg) 63%);
+  background-size: 400% 100%;
+  animation: shimmer 1.3s ease infinite;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.cardTitle {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cardAmountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px dashed var(--line);
+  border-bottom: 1px dashed var(--line);
+  margin-bottom: 12px;
+}
+
+.cardAmount {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cardField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.fieldIcon {
+  color: var(--ink-faint);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.fieldLabel {
+  color: var(--ink-faint);
+  min-width: 56px;
+}
+
+.fieldValue {
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardReason {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reasonLabel {
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+}
+
+/* ============ Pagination ============ */
+.paginationWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.paginationInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.paginationInfo strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.perPageControl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.perPageSelect {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.paginationControls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.paginationBtn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.paginationBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.paginationBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.activePage {
+  background: var(--accent-ink);
+  border-color: var(--accent-ink);
+  color: #fff;
+}
+
+.activePage:hover {
+  color: #fff !important;
+}
+
+.paginationDots {
+  color: var(--ink-faint);
+  padding: 0 4px;
+}
+
+/* ============ Responsive ============ */
+@media (max-width: 900px) {
+  .ledgerStrip {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hideTablet {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .hideMobile {
+    display: none;
+  }
+
+  .headerSection {
+    align-items: flex-start;
+  }
+
+  .addBtn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .filterControls {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .filterSelect {
+    flex: 1;
+  }
+
+  .paginationWrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .paginationControls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+.invoiceBtn {
+  background: #0d6efd;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.invoiceBtn:hover {
+  background: #0b5ed7;
+}

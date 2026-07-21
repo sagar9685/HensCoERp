@@ -31,6 +31,7 @@ import CurrentStockInventory from "./component/ProductionDaily/CurrentStockInven
 import ChangePassword from "./component/ChangePassword";
 import AdminViewStock from "./component/AdminOrderModal/AdminViewStock";
 import HandoverReport from "./component/Reports/HandOverReport";
+import NoteList from "./component/AdminOrderModal/NoteList";
 
 function App() {
   return (
@@ -81,6 +82,15 @@ function App() {
           element={
             <ProtectedRoute adminOnly={true}>
               <ReportPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/note"
+          element={
+            <ProtectedRoute adminOnly={true}>
+              <NoteList />
             </ProtectedRoute>
           }
         />
