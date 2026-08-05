@@ -32,7 +32,7 @@ const sql = require("mssql");
 const config = {
   user: "sa", // 👈 Updated to use SQL Login
   password: "123", // 👈 The password you set in SSMS
-  server: "DESKTOP-51HB5ST",
+  server: "localhost",
   database: "hensCoErp",
   options: {
     encrypt: false, // Keep false for local development

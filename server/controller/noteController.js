@@ -7,22 +7,20 @@ exports.createNote = async (req, res) => {
       invoice_no,
       customer_id,
       customer_name,
-      product_id,
-      product_name,
-      product_type,
       note_type,
-      original_qty,
-      note_qty,
-      rate,
-      amount,
-      reason,
-      remarks,
       created_by,
+      note_date,
+      items,
     } = req.body;
 
-    const pool = await poolPromise;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No items found",
+      });
+    }
 
-    // ================= Generate Note Number =================
+    const pool = await poolPromise;
 
     const prefix = note_type === "Credit" ? "CN" : "DN";
 
@@ -43,75 +41,80 @@ exports.createNote = async (req, res) => {
       note_no = prefix + number.toString().padStart(6, "0");
     }
 
-    // ================= Insert =================
-
-    await pool
-      .request()
-      .input("note_no", sql.VarChar, note_no)
-      .input("order_id", sql.Int, order_id)
-      .input("invoice_no", sql.VarChar, invoice_no)
-      .input("customer_id", sql.Int, customer_id)
-      .input("customer_name", sql.VarChar, customer_name)
-      .input("product_id", sql.Int, product_id)
-      .input("product_name", sql.VarChar, product_name)
-      .input("product_type", sql.VarChar, product_type)
-      .input("note_type", sql.VarChar, note_type)
-      .input("original_qty", sql.Decimal(18, 2), original_qty)
-      .input("note_qty", sql.Decimal(18, 2), note_qty)
-      .input("rate", sql.Decimal(18, 2), rate)
-      .input("amount", sql.Decimal(18, 2), amount)
-      .input("reason", sql.VarChar, reason)
-      .input("remarks", sql.VarChar, remarks)
-      .input("created_by", sql.Int, created_by).query(`
-        INSERT INTO credit_debit_notes
-        (
-          note_no,
-          order_id,
-          invoice_no,
-          customer_id,
-          customer_name,
-          product_id,
-          product_name,
+    for (const item of items) {
+      await pool
+        .request()
+        .input("note_no", sql.VarChar, note_no)
+        .input("order_id", sql.Int, order_id)
+        .input("invoice_no", sql.VarChar, invoice_no)
+        .input("customer_id", sql.Int, customer_id)
+        .input("customer_name", sql.VarChar, customer_name)
+        .input("product_id", sql.Int, item.product_id || null)
+        .input("product_name", sql.VarChar, item.product_name)
+        .input("product_type", sql.VarChar, item.product_type)
+        .input("note_type", sql.VarChar, note_type)
+        .input("original_qty", sql.Decimal(18, 2), item.original_qty)
+        .input("note_qty", sql.Decimal(18, 2), item.note_qty)
+        .input("rate", sql.Decimal(18, 2), item.rate)
+        .input("amount", sql.Decimal(18, 2), item.amount)
+        .input("reason", sql.VarChar, item.reason)
+        .input("remarks", sql.VarChar, item.remarks)
+        .input("freight", sql.Decimal(18, 2), item.freight || 0)
+        .input("created_by", sql.Int, created_by)
+        .input("note_date", sql.Date, note_date).query(`
+          INSERT INTO credit_debit_notes
+          (
+            note_no,
+            order_id,
+            invoice_no,
+            customer_id,
+            customer_name,
+            product_id,
+            product_name,
             product_type,
-          note_type,
-          original_qty,
-          note_qty,
-          rate,
-          amount,
-          reason,
-          remarks,
-          created_by
-        )
-        VALUES
-        (
-          @note_no,
-          @order_id,
-          @invoice_no,
-          @customer_id,
-          @customer_name,
-          @product_id,
-          @product_name,
-          @product_type,
-          @note_type,
-          @original_qty,
-          @note_qty,
-          @rate,
-          @amount,
-          @reason,
-          @remarks,
-          @created_by
-        )
-      `);
+            note_type,
+            original_qty,
+            note_qty,
+            rate,
+            amount,
+            reason,
+            remarks,
+            freight,
+            created_by,
+            note_date
+          )
+          VALUES
+          (
+            @note_no,
+            @order_id,
+            @invoice_no,
+            @customer_id,
+            @customer_name,
+            @product_id,
+            @product_name,
+            @product_type,
+            @note_type,
+            @original_qty,
+            @note_qty,
+            @rate,
+            @amount,
+            @reason,
+            @remarks,
+            @freight,
+            @created_by,
+            @note_date
+          )
+        `);
+    }
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Note Created Successfully",
       note_no,
     });
   } catch (err) {
-    console.log(err);
-
-    res.status(500).json({
+    console.error(err);
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
@@ -134,6 +137,8 @@ exports.getNotes = async (req, res) => {
     n.product_id,
     n.product_name,
     n.product_type,
+    n.note_date,
+    n.freight,
 
     -- Product Master
     pt.DefaultWeight,
@@ -206,7 +211,7 @@ LEFT JOIN OrderItems oi
     ON oi.OrderID = n.order_id
    AND LTRIM(RTRIM(oi.ProductType)) = LTRIM(RTRIM(n.product_type))
 
-ORDER BY n.note_id DESC;
+ORDER BY n.created_at DESC, n.note_id ASC;
     `);
 
     res.json({
@@ -247,43 +252,69 @@ exports.getNoteById = async (req, res) => {
 
 exports.updateNote = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { note_type, freight, items } = req.body;
 
-    const { note_type, note_qty, rate, amount, reason, remarks, status } =
-      req.body;
+    console.log(req.body, "inside note");
+
+    if (!items || !items.length) {
+      return res.status(400).json({
+        success: false,
+        message: "No items found",
+      });
+    }
 
     const pool = await poolPromise;
+    const transaction = new sql.Transaction(pool);
 
-    await pool
-      .request()
+    await transaction.begin();
 
-      .input("id", sql.Int, id)
-      .input("note_type", sql.VarChar, note_type)
-      .input("note_qty", sql.Decimal(18, 2), note_qty)
-      .input("rate", sql.Decimal(18, 2), rate)
-      .input("amount", sql.Decimal(18, 2), amount)
-      .input("reason", sql.VarChar, reason)
-      .input("remarks", sql.VarChar, remarks)
-      .input("status", sql.VarChar, status).query(`
-        UPDATE credit_debit_notes
+    try {
+      for (const item of items) {
+        if (item.status === "Cancelled") {
+          await transaction.request().input("id", sql.Int, item.note_id).query(`
+            DELETE FROM credit_debit_notes
+            WHERE note_id=@id
+        `);
 
-        SET
+          continue;
+        }
+        const result = await transaction
+          .request()
+          .input("id", sql.Int, item.note_id)
+          .input("note_type", sql.VarChar, note_type)
+          .input("note_qty", sql.Decimal(18, 2), item.note_qty)
+          .input("rate", sql.Decimal(18, 2), item.rate)
+          .input("amount", sql.Decimal(18, 2), item.amount)
+          .input("reason", sql.VarChar, item.reason)
+          .input("remarks", sql.VarChar, item.remarks)
+          .input("freight", sql.Decimal(18, 2), freight)
+          .input("status", sql.VarChar, item.status).query(`
+      UPDATE credit_debit_notes
+      SET
+          note_type=@note_type,
+          note_qty=@note_qty,
+          rate=@rate,
+          amount=@amount,
+          reason=@reason,
+          remarks=@remarks,
+          freight=@freight,
+          status=@status
+      WHERE note_id=@id
+  `);
 
-        note_type=@note_type,
-        note_qty=@note_qty,
-        rate=@rate,
-        amount=@amount,
-        reason=@reason,
-        remarks=@remarks,
-        status=@status
+        console.log(result.rowsAffected);
+      }
 
-        WHERE note_id=@id
-      `);
+      await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "Updated Successfully",
-    });
+      res.json({
+        success: true,
+        message: "Notes updated successfully",
+      });
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   } catch (err) {
     res.status(500).json({
       success: false,

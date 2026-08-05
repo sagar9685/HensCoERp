@@ -421,9 +421,7 @@ const UserForm = () => {
                     <h4>
                       {
                         filteredAndSortedOrders.filter(
-                          (o) =>
-                            o.OrderStatus === "Pending" ||
-                            o.OrderStatus === "In Progress",
+                          (o) => o.OrderStatus === "Pending",
                         ).length
                       }
                     </h4>
@@ -883,7 +881,7 @@ const OrderTableRow = ({
             disabled={!row.AssignID}
           >
             <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
+            {/* <option value="In Progress">In Progress</option> */}
             <option value="Complete">Complete</option>
             <option value="Cancel">Cancel</option>
             <option value="RTV">RTV</option>

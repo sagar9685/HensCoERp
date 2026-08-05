@@ -172,9 +172,23 @@ const NoteInvoice = ({ noteData, onClose }) => {
     );
   }
 
+  const totalQty = orderData.products.reduce(
+    (a, b) => a + Number(b.note_qty),
+    0,
+  );
+
+  const totalAmount = orderData.products.reduce(
+    (a, b) => a + Number(b.amount),
+    0,
+  );
+
+  const totalFreight = orderData.products.reduce(
+    (a, b) => a + Number(b.freight),
+    0,
+  );
+
   const productItems = [];
   let subTotalVal = 0;
-  let totalQty = 0;
 
   console.log("Raw orderData:", orderData);
 
@@ -517,52 +531,51 @@ const NoteInvoice = ({ noteData, onClose }) => {
                   </thead>
 
                   <tbody>
-                    <tr>
-                      <td className={styles.textCenter}>1</td>
-
-                      <td>
-                        <strong>{orderData.product_name || "-"}</strong>
-                      </td>
-
-                      <td className={styles.textCenter}>
-                        {COMPANY_INFO.hsnCode}
-                      </td>
-
-                      <td className={styles.textCenter}>
-                        {orderData.note_qty || 0}
-                      </td>
-
-                      <td className={styles.textRight}>
-                        ₹{Number(orderData.OriginalRate || 0).toFixed(2)}
-                      </td>
-
-                      <td className={styles.textRight}>
-                        ₹{Number(orderData.amount || 0).toFixed(2)}
-                      </td>
-
-                      <td>{orderData.reason || "-"}</td>
-                    </tr>
+                    {orderData.products.map((item, index) => (
+                      <tr key={item.note_id}>
+                        <td className={styles.textCenter}>{index + 1}</td>
+                        <td>{item.product_name}</td>
+                        <td className={styles.textCenter}>
+                          {COMPANY_INFO.hsnCode}
+                        </td>
+                        <td className={styles.textCenter}>{item.note_qty}</td>
+                        <td className={styles.textRight}>
+                          ₹{Number(item.rate).toFixed(2)}
+                        </td>
+                        <td className={styles.textRight}>
+                          ₹{Number(item.amount).toFixed(2)}
+                        </td>
+                        <td>{item.reason}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-              <div className={styles.totalsBox}>
-                <div className={styles.totalRow}>
-                  <span>Original Qty:</span>
-                  <span>{orderData.original_qty}</span>
-                </div>
+              <div className={styles.totalRow}>
+                <span>Original Qty:</span>
+                <span>
+                  {orderData.products.reduce(
+                    (sum, p) => sum + Number(p.original_qty || 0),
+                    0,
+                  )}
+                </span>
+              </div>
 
-                <div className={styles.totalRow}>
-                  <span>Adjusted Qty:</span>
-                  <span>{orderData.note_qty}</span>
-                </div>
+              <div className={styles.totalRow}>
+                <span>Adjusted Qty:</span>
+                <span>{totalQty}</span>
+              </div>
 
-                <hr />
+              <div className={styles.totalRow}>
+                <span>Freight:</span>
+                <span>₹{totalFreight.toFixed(2)}</span>
+              </div>
 
-                <div className={styles.grandTotalRow}>
-                  <span>{orderData.note_type} Note Amount</span>
+              <hr />
 
-                  <span>₹{Number(orderData.amount || 0).toFixed(2)}</span>
-                </div>
+              <div className={styles.grandTotalRow}>
+                <span>{orderData.note_type} Note Amount</span>
+                <span>₹{totalAmount.toFixed(2)}</span>
               </div>
 
               {/* <div className={styles.footerSection}>

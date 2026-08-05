@@ -134,6 +134,12 @@ const DailyReport = () => {
                 ₹{Number(daily.summary?.debitAmount || 0).toLocaleString()}
               </h3>
             </div>
+            <div className={`${styles.statCard} ${styles.rose}`}>
+              <span className={styles.cardLabel}>Freight </span>
+              <h3>
+                ₹{Number(daily.summary?.freightAmount || 0).toLocaleString()}
+              </h3>
+            </div>
             <div className={`${styles.statCard} ${styles.purple}`}>
               <span className={styles.cardLabel}>FOC Amount</span>
               <h3>₹{Number(daily.summary?.focAmount || 0).toLocaleString()}</h3>

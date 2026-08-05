@@ -66,9 +66,9 @@ export const getNoteById = createAsyncThunk(
 
 export const updateNote = createAsyncThunk(
   "note/updateNote",
-  async ({ id, data }, { rejectWithValue }) => {
+  async (data, { rejectWithValue }) => {
     try {
-      const res = await axios.put(`${API_URL}/api/note/update/${id}`, data, {
+      const res = await axios.put(`${API_URL}/api/note/update`, data, {
         headers: {
           Authorization: `Bearer ${getToken()}`,
         },
@@ -165,10 +165,19 @@ const noteSlice = createSlice({
 
       // UPDATE
 
+      .addCase(updateNote.pending, (state) => {
+        state.loading = true;
+      })
+
       .addCase(updateNote.fulfilled, (state) => {
+        state.loading = false;
         state.success = true;
       })
 
+      .addCase(updateNote.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // DELETE
 
       .addCase(deleteNote.fulfilled, (state, action) => {

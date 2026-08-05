@@ -49,9 +49,29 @@ AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
 
     // ✅ CREDIT / DEBIT NOTE AMOUNT
     const noteRes = await request.query(`
-SELECT
-    ISNULL(SUM(CASE WHEN n.note_type = 'Credit' THEN TRY_CAST(n.amount AS DECIMAL(18,2)) ELSE 0 END),0) AS CreditAmount,
-    ISNULL(SUM(CASE WHEN n.note_type = 'Debit' THEN TRY_CAST(n.amount AS DECIMAL(18,2)) ELSE 0 END),0) AS DebitAmount
+ SELECT
+    ISNULL(SUM(
+        CASE
+            WHEN n.note_type = 'Credit'
+            THEN TRY_CAST(n.amount AS DECIMAL(18,2))
+                 - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+            ELSE 0
+        END
+    ),0) AS CreditAmount,
+
+    ISNULL(SUM(
+        CASE
+            WHEN n.note_type = 'Debit'
+            THEN TRY_CAST(n.amount AS DECIMAL(18,2))
+                 - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+            ELSE 0
+        END
+    ),0) AS DebitAmount,
+
+    ISNULL(SUM(
+        TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+    ),0) AS FreightAmount
+
 FROM credit_debit_notes n
 LEFT JOIN AssignedOrders ao
     ON ao.OrderID = n.order_id
@@ -64,6 +84,8 @@ AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
     const debitAmount = noteRes.recordset[0]?.DebitAmount || 0;
 
     const rtvAmount = rtvRes.recordset[0]?.RTVAmount || 0;
+
+    const freightAmount = noteRes.recordset[0]?.FreightAmount || 0;
 
     // ✅ 3. CANCEL ORDER AMOUNT (INFO ONLY)
     const cancelRes = await request.query(`
@@ -134,7 +156,12 @@ AND UPPER(pm.ModeName) <> 'FOC'
 
     // ✅ RTV sales se minus hoga
     const netSales =
-      totalSales - rtvAmount - focAmount - creditAmount + debitAmount;
+      totalSales -
+      rtvAmount -
+      focAmount -
+      creditAmount -
+      freightAmount +
+      debitAmount;
 
     // ✅ Outstanding bhi RTV minus ke baad niklega
     const totalOutstanding = netSales - totalReceived;
@@ -230,6 +257,7 @@ AND UPPER(pm.ModeName) <> 'FOC'
         GrossSales: totalSales,
         CreditAmount: creditAmount,
         DebitAmount: debitAmount,
+        FreightAmount: freightAmount, // ✅ Add this
         RTVAmount: rtvAmount, // info only
         FOCAmount: focAmount, // ✅ add this
         CancelOrderAmount: cancelAmount, // info only
@@ -491,13 +519,34 @@ exports.getDailyReport = async (req, res) => {
     // CREDIT / DEBIT NOTE AMOUNT
     // =====================================================
     const noteAmountResult = await request.query(`
-SELECT
-    ISNULL(SUM(CASE WHEN n.note_type = 'Credit' THEN n.amount ELSE 0 END),0) AS CreditAmount,
-    ISNULL(SUM(CASE WHEN n.note_type = 'Debit' THEN n.amount ELSE 0 END),0) AS DebitAmount
+ SELECT
+ISNULL(SUM(
+    CASE
+        WHEN n.note_type = 'Credit'
+        THEN TRY_CAST(n.amount AS DECIMAL(18,2))
+             - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+        ELSE 0
+    END
+),0) AS CreditAmount,
+
+ISNULL(SUM(
+    CASE
+        WHEN n.note_type = 'Debit'
+        THEN TRY_CAST(n.amount AS DECIMAL(18,2))
+             - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+        ELSE 0
+    END
+),0) AS DebitAmount,
+
+ISNULL(SUM(
+    TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
+),0) AS FreightAmount
+
 FROM credit_debit_notes n
+
 LEFT JOIN AssignedOrders ao
     ON ao.OrderID = n.order_id
-WHERE CAST(n.created_at AS DATE) = @targetDate
+WHERE CAST(n.note_date  AS DATE) = @targetDate
 AND ISNULL(ao.DeliveryStatus,'') != 'Cancel'
 ${boyFilter}
 `);
@@ -660,10 +709,10 @@ ${boyFilter}
 
     const creditAmount = noteAmountResult.recordset[0]?.CreditAmount || 0;
     const debitAmount = noteAmountResult.recordset[0]?.DebitAmount || 0;
-
+    const freightAmount = noteAmountResult.recordset[0]?.FreightAmount || 0;
     const totalSaleAmount = Math.max(
       0,
-      grossSales - rtvAmount - creditAmount + debitAmount,
+      grossSales - rtvAmount - creditAmount - freightAmount + debitAmount,
     );
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
@@ -693,6 +742,7 @@ ${boyFilter}
         totalGrossSales: totalSaleAmount,
         creditAmount,
         debitAmount,
+        freightAmount,
         rtvAmount: rtvAmount, // ✅ add this
         paymentCollected: totalReceived,
         totalOutstanding: totalOutstanding >= 0 ? totalOutstanding : 0,

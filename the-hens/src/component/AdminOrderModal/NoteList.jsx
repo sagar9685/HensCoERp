@@ -5,12 +5,6 @@ import {
   FaEdit,
   FaTrash,
   FaEye,
-  FaPlus,
-  FaChevronLeft,
-  FaChevronRight,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
   FaFileInvoice,
   FaUser,
   FaBox,
@@ -20,6 +14,11 @@ import {
   FaArrowUp,
   FaArrowDown,
   FaBalanceScale,
+  FaChevronLeft,
+  FaChevronRight,
+  FaSort,
+  FaSortUp,
+  FaSortDown,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -44,7 +43,7 @@ const NoteList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [viewMode, setViewMode] = useState("table"); // 'table' or 'grid'
+  const [viewMode, setViewMode] = useState("table");
   const [showEditModal, setShowEditModal] = useState(false);
   const [editNote, setEditNote] = useState(null);
 
@@ -52,23 +51,15 @@ const NoteList = () => {
     dispatch(getNotes());
   }, [dispatch]);
 
-  // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [search, typeFilter]);
 
-  // Get unique note types for filter
   const noteTypes = useMemo(() => {
     const types = new Set(notes.map((item) => item.note_type).filter(Boolean));
     return ["All", ...Array.from(types)];
   }, [notes]);
 
-  const handleView = (note) => {
-    setSelectedViewNote(note);
-    setShowViewModal(true);
-  };
-
-  // Ledger totals — credit / debit / net
   const totals = useMemo(() => {
     return notes.reduce(
       (acc, item) => {
@@ -81,19 +72,46 @@ const NoteList = () => {
     );
   }, [notes]);
 
-  // Filter and sort notes
-  const processedNotes = useMemo(() => {
+  // Group items by note_no for master-detail aggregation
+  const groupedNotes = useMemo(() => {
+    const map = {};
+
+    notes.forEach((item) => {
+      if (!map[item.note_no]) {
+        map[item.note_no] = {
+          ...item,
+          customer_name: item.customer_name || item.CustomerName || "—",
+          invoice_no: item.invoice_no || item.InvoiceNo || "—",
+          products: [],
+          totalQty: 0,
+          totalAmount: 0,
+        };
+      }
+
+      map[item.note_no].products.push(item);
+      map[item.note_no].totalQty += Number(item.note_qty || 0);
+      map[item.note_no].totalAmount += Number(item.amount || 0);
+    });
+
+    return Object.values(map);
+  }, [notes]);
+
+  // Filter and Sort Grouped Notes
+  const filteredGroupedNotes = useMemo(() => {
     const keyword = search.toLowerCase().trim();
 
-    let filtered = notes.filter((item) => {
+    let filtered = groupedNotes.filter((item) => {
       const matchesSearch =
         !keyword ||
         item.note_no?.toLowerCase().includes(keyword) ||
         item.invoice_no?.toLowerCase().includes(keyword) ||
         item.customer_name?.toLowerCase().includes(keyword) ||
-        item.product_name?.toLowerCase().includes(keyword) ||
-        item.reason?.toLowerCase().includes(keyword) ||
-        item.note_type?.toLowerCase().includes(keyword);
+        item.note_type?.toLowerCase().includes(keyword) ||
+        item.products.some(
+          (p) =>
+            p.product_name?.toLowerCase().includes(keyword) ||
+            p.reason?.toLowerCase().includes(keyword),
+        );
 
       const matchesType =
         typeFilter === "All" ? true : item.note_type === typeFilter;
@@ -105,6 +123,11 @@ const NoteList = () => {
       filtered = [...filtered].sort((a, b) => {
         let aVal = a[sortConfig.key] ?? "";
         let bVal = b[sortConfig.key] ?? "";
+
+        if (sortConfig.key === "totalAmount") {
+          aVal = a.totalAmount;
+          bVal = b.totalAmount;
+        }
 
         if (typeof aVal === "number" && typeof bVal === "number") {
           return sortConfig.direction === "asc" ? aVal - bVal : bVal - aVal;
@@ -119,18 +142,16 @@ const NoteList = () => {
     }
 
     return filtered;
-  }, [notes, search, typeFilter, sortConfig]);
+  }, [groupedNotes, search, typeFilter, sortConfig]);
 
-  // Pagination
+  // Pagination bounds
   const totalPages = Math.max(
     1,
-    Math.ceil(processedNotes.length / itemsPerPage),
+    Math.ceil(filteredGroupedNotes.length / itemsPerPage),
   );
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentNotes = processedNotes.slice(startIndex, endIndex);
-
-  console.log(currentNotes, "customer njunjnj");
+  const currentNotes = filteredGroupedNotes.slice(startIndex, endIndex);
 
   const handleSort = (key) => {
     setSortConfig((prev) => ({
@@ -139,21 +160,23 @@ const NoteList = () => {
     }));
   };
 
+  const handleView = (note) => {
+    setSelectedViewNote(note);
+    setShowViewModal(true);
+  };
+
   const handleEdit = (note) => {
     setEditNote(note);
     setShowEditModal(true);
   };
 
   const handleInvoice = (note) => {
-    console.log("invoice cliked");
     setSelectedNote(note);
     setShowInvoice(true);
   };
 
   const handleDelete = (id, noteNo) => {
-    console.log(id, noteNo);
-
-    if (window.confirm(`Delete note ${noteNo}? This can't be undone.`)) {
+    if (window.confirm(`Delete note ${noteNo}? This cannot be undone.`)) {
       dispatch(deleteNote(id));
     }
   };
@@ -184,7 +207,6 @@ const NoteList = () => {
     );
   };
 
-  // ---- Pagination controls ----
   const renderPagination = () => {
     const pageNumbers = [];
     let startPage = Math.max(1, currentPage - 2);
@@ -202,9 +224,11 @@ const NoteList = () => {
         <div className={styles.paginationInfo}>
           <span>
             Showing{" "}
-            <strong>{processedNotes.length === 0 ? 0 : startIndex + 1}</strong>–
-            <strong>{Math.min(endIndex, processedNotes.length)}</strong> of{" "}
-            <strong>{processedNotes.length}</strong>
+            <strong>
+              {filteredGroupedNotes.length === 0 ? 0 : startIndex + 1}
+            </strong>
+            –<strong>{Math.min(endIndex, filteredGroupedNotes.length)}</strong>{" "}
+            of <strong>{filteredGroupedNotes.length}</strong>
           </span>
           <div className={styles.perPageControl}>
             <label htmlFor="perPage">Rows</label>
@@ -256,7 +280,9 @@ const NoteList = () => {
               key={num}
               type="button"
               onClick={() => setCurrentPage(num)}
-              className={`${styles.paginationBtn} ${currentPage === num ? styles.activePage : ""}`}
+              className={`${styles.paginationBtn} ${
+                currentPage === num ? styles.activePage : ""
+              }`}
               aria-current={currentPage === num ? "page" : undefined}
             >
               {num}
@@ -294,7 +320,6 @@ const NoteList = () => {
     );
   };
 
-  // ---- Empty / loading states shared ----
   const renderEmpty = () => (
     <div className={styles.emptyState}>
       <FaFileInvoice className={styles.emptyIcon} aria-hidden="true" />
@@ -303,7 +328,8 @@ const NoteList = () => {
     </div>
   );
 
-  // ---- Table view ----
+  // Replace the table rendering section with this:
+
   const renderTableView = () => (
     <div className={styles.tableWrapper}>
       <table className={styles.table}>
@@ -324,9 +350,11 @@ const NoteList = () => {
             </th>
             <th>Invoice</th>
             <th>Customer</th>
-            <th className={styles.hideMobile}>Product</th>
-            <th className={styles.hideTablet}>Qty</th>
-            <th className={styles.hideTablet}>Rate</th>
+            <th className={styles.productsHeader}>
+              <span>Products</span>
+              <span className={styles.productSubHeader}>Qty × Rate</span>
+            </th>
+            <th className={styles.hideTablet}>Freight</th>
             <th
               onClick={() => handleSort("amount")}
               className={styles.sortableHeader}
@@ -342,14 +370,14 @@ const NoteList = () => {
           {loading ? (
             Array.from({ length: 6 }).map((_, idx) => (
               <tr key={idx} className={styles.skeletonRow}>
-                <td colSpan={11}>
+                <td colSpan={10}>
                   <div className={styles.skeleton}></div>
                 </td>
               </tr>
             ))
           ) : currentNotes.length === 0 ? (
             <tr>
-              <td colSpan={11}>{renderEmpty()}</td>
+              <td colSpan={10}>{renderEmpty()}</td>
             </tr>
           ) : (
             <AnimatePresence initial={false}>
@@ -402,23 +430,39 @@ const NoteList = () => {
                       </span>
                     </div>
                   </td>
-                  <td className={styles.hideMobile}>
-                    <div className={styles.productCell}>
-                      <FaBox className={styles.cellIcon} aria-hidden="true" />
-                      <span
-                        className={styles.truncateText}
-                        title={item.product_name}
-                      >
-                        {item.product_type}
-                      </span>
+                  <td>
+                    <div className={styles.productsCell}>
+                      <div className={styles.productsList}>
+                        {item.products.map((p, idx) => (
+                          <div key={p.note_id} className={styles.productItem}>
+                            <span className={styles.productName}>
+                              {p.product_name}
+                            </span>
+                            <div className={styles.productDetails}>
+                              <span className={styles.productQty}>
+                                {p.note_qty || 0}
+                              </span>
+                              <span className={styles.productSeparator}>×</span>
+                              <span className={styles.productRate}>
+                                {formatCurrency(p.rate || 0)}
+                              </span>
+                              {idx < item.products.length - 1 && (
+                                <span className={styles.productDivider}>|</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className={styles.productSummary}>
+                        <span className={styles.totalQty}>
+                          Total: {item.totalQty || 0} units
+                        </span>
+                      </div>
                     </div>
                   </td>
                   <td className={styles.hideTablet}>
-                    <span className={styles.qtyBadge}>{item.note_qty}</span>
-                  </td>
-                  <td className={styles.hideTablet}>
                     <span className={styles.rateText}>
-                      {formatCurrency(item.rate)}
+                      {formatCurrency(item.freight)}
                     </span>
                   </td>
                   <td>
@@ -430,7 +474,7 @@ const NoteList = () => {
                       }`}
                     >
                       {item.note_type === "Credit" ? "+" : "−"}
-                      {formatCurrency(item.amount)}
+                      {formatCurrency(item.totalAmount)}
                     </span>
                   </td>
                   <td className={styles.hideMobile}>
@@ -439,7 +483,7 @@ const NoteList = () => {
                         className={styles.dateIcon}
                         aria-hidden="true"
                       />
-                      {formatDate(item.created_at)}
+                      {formatDate(item.note_date)}
                     </span>
                   </td>
                   <td>
@@ -491,7 +535,6 @@ const NoteList = () => {
     </div>
   );
 
-  // ---- Grid view ----
   const renderGridView = () => {
     if (loading) {
       return (
@@ -542,7 +585,7 @@ const NoteList = () => {
                     type="button"
                     className={styles.viewBtn}
                     title="View"
-                    aria-label={`View note ${item.note_no}`}
+                    onClick={() => handleView(item)}
                   >
                     <FaEye aria-hidden="true" />
                   </button>
@@ -550,7 +593,7 @@ const NoteList = () => {
                     type="button"
                     className={styles.editBtn}
                     title="Edit"
-                    aria-label={`Edit note ${item.note_no}`}
+                    onClick={() => handleEdit(item)}
                   >
                     <FaEdit aria-hidden="true" />
                   </button>
@@ -558,10 +601,17 @@ const NoteList = () => {
                     type="button"
                     className={styles.deleteBtn}
                     title="Delete"
-                    aria-label={`Delete note ${item.note_no}`}
                     onClick={() => handleDelete(item.note_id, item.note_no)}
                   >
                     <FaTrash aria-hidden="true" />
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.invoiceBtn}
+                    title="Invoice"
+                    onClick={() => handleInvoice(item)}
+                  >
+                    <FaFileInvoice aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -575,14 +625,14 @@ const NoteList = () => {
                   }`}
                 >
                   {item.note_type === "Credit" ? "+" : "−"}
-                  {formatCurrency(item.amount)}
+                  {formatCurrency(item.totalAmount)}
                 </span>
                 <span className={styles.dateText}>
                   <FaCalendarAlt
                     className={styles.dateIcon}
                     aria-hidden="true"
                   />
-                  {formatDate(item.created_at)}
+                  {formatDate(item.note_date || item.created_at)}
                 </span>
               </div>
 
@@ -593,7 +643,7 @@ const NoteList = () => {
                     aria-hidden="true"
                   />
                   <span className={styles.fieldLabel}>Invoice</span>
-                  <span className={styles.fieldValue}>{item.InvoiceNo}</span>
+                  <span className={styles.fieldValue}>{item.invoice_no}</span>
                 </div>
                 <div className={styles.cardField}>
                   <FaUser className={styles.fieldIcon} aria-hidden="true" />
@@ -602,19 +652,34 @@ const NoteList = () => {
                     {item.customer_name}
                   </span>
                 </div>
-                <div className={styles.cardField}>
-                  <FaBox className={styles.fieldIcon} aria-hidden="true" />
-                  <span className={styles.fieldLabel}>Product</span>
-                  <span className={styles.fieldValue}>
-                    {item.product_type} × {item.note_qty}
-                  </span>
-                </div>
-                {item.reason && (
-                  <div className={styles.cardReason}>
-                    <span className={styles.reasonLabel}>Reason</span>
-                    <span>{item.reason}</span>
+
+                {/* Grid View Product Chips */}
+                <div className={styles.cardProductsSection}>
+                  <div className={styles.fieldLabel}>
+                    <FaBox className={styles.fieldIcon} />
+                    <span>Items ({item.products.length})</span>
                   </div>
-                )}
+                  <div className={styles.productPillContainer}>
+                    {item.products.slice(0, 2).map((p, idx) => (
+                      <span
+                        key={p.note_id || idx}
+                        className={styles.productBadge}
+                      >
+                        <span className={styles.productBadgeName}>
+                          {p.product_name || "Item"}
+                        </span>
+                        <span className={styles.productBadgeQty}>
+                          × {p.note_qty}
+                        </span>
+                      </span>
+                    ))}
+                    {item.products.length > 2 && (
+                      <span className={styles.moreProductsPill}>
+                        +{item.products.length - 2} more
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -627,7 +692,6 @@ const NoteList = () => {
     <>
       <Header />
       <div className={styles.container}>
-        {/* PAGE HEADER */}
         <div className={styles.headerSection}>
           <div>
             <h1 className={styles.pageTitle}>
@@ -642,7 +706,6 @@ const NoteList = () => {
           </div>
         </div>
 
-        {/* LEDGER SUMMARY */}
         <div className={styles.ledgerStrip}>
           <div className={`${styles.ledgerCard} ${styles.ledgerCredit}`}>
             <span className={styles.ledgerIcon}>
@@ -681,7 +744,6 @@ const NoteList = () => {
           </div>
         </div>
 
-        {/* FILTER BAR */}
         <div className={styles.filterCard}>
           <div className={styles.searchBox}>
             <FaSearch className={styles.searchIcon} aria-hidden="true" />
@@ -726,7 +788,9 @@ const NoteList = () => {
             >
               <button
                 type="button"
-                className={`${styles.viewToggleBtn} ${viewMode === "table" ? styles.activeView : ""}`}
+                className={`${styles.viewToggleBtn} ${
+                  viewMode === "table" ? styles.activeView : ""
+                }`}
                 onClick={() => setViewMode("table")}
                 title="Table view"
                 aria-pressed={viewMode === "table"}
@@ -735,7 +799,9 @@ const NoteList = () => {
               </button>
               <button
                 type="button"
-                className={`${styles.viewToggleBtn} ${viewMode === "grid" ? styles.activeView : ""}`}
+                className={`${styles.viewToggleBtn} ${
+                  viewMode === "grid" ? styles.activeView : ""
+                }`}
                 onClick={() => setViewMode("grid")}
                 title="Grid view"
                 aria-pressed={viewMode === "grid"}
@@ -746,11 +812,9 @@ const NoteList = () => {
           </div>
         </div>
 
-        {/* VIEW */}
         {viewMode === "table" ? renderTableView() : renderGridView()}
 
-        {/* PAGINATION */}
-        {!loading && processedNotes.length > 0 && renderPagination()}
+        {!loading && filteredGroupedNotes.length > 0 && renderPagination()}
       </div>
 
       {showInvoice && (
@@ -772,6 +836,7 @@ const NoteList = () => {
           }}
         />
       )}
+
       {showEditModal && (
         <UpdateNote
           note={editNote}

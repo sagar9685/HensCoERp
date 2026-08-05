@@ -359,13 +359,23 @@
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
 
 .filterControls {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.filterControls::-webkit-scrollbar {
+  height: 6px;
+}
+.filterControls::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 10px;
 }
 
 .searchBox {
@@ -680,20 +690,25 @@
 }
 .filterControls {
   display: flex;
-  flex-wrap: wrap; /* Yeh important hai taaki filters next line mein aa sakein */
-  gap: 10px;
   align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
   flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  padding-bottom: 4px;
 }
 
 .dateGroup {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
+  flex: 0 0 auto;
   background: #f8f9fa;
-  padding: 5px 10px;
-  border-radius: 4px;
   border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
 }
 
 .dateInput {
@@ -701,6 +716,7 @@
   background: transparent;
   outline: none;
   font-size: 13px;
+  min-width: 140px;
 }
 .statsRow {
   display: flex;
