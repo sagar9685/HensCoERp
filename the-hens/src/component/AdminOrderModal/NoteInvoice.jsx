@@ -55,7 +55,7 @@ const numberToWords = (num) => {
   const n = ("000000000" + num)
     .substr(-9)
     .match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-  if (!n) return;
+  if (!n) return "";
   let str = "";
   str +=
     n[1] != 0
@@ -155,10 +155,7 @@ const NoteInvoice = ({ noteData, onClose }) => {
           <div className={styles.modalHeader}>
             <h2>
               <FaFileInvoice style={{ color: "#fff" }} />
-              {orderData.note_type === "Credit"
-                ? "Credit Note"
-                : "Debit Note"}{" "}
-              Preview - {orderData.note_no}
+              Note Preview
             </h2>
             <button className={styles.btnClose} onClick={onClose}>
               <FaTimes />
@@ -172,168 +169,25 @@ const NoteInvoice = ({ noteData, onClose }) => {
     );
   }
 
-  const totalQty = orderData.products.reduce(
-    (a, b) => a + Number(b.note_qty),
-    0,
-  );
-
-  const totalAmount = orderData.products.reduce(
-    (a, b) => a + Number(b.amount),
-    0,
-  );
-
-  const totalFreight = orderData.products.reduce(
-    (a, b) => a + Number(b.freight),
-    0,
-  );
-
-  const productItems = [];
+  let totalQty = 0;
   let subTotalVal = 0;
-
-  console.log("Raw orderData:", orderData);
 
   if (Array.isArray(orderData.products)) {
     orderData.products.forEach((item) => {
-      if (Array.isArray(item)) {
-        const productDesc = item[1] || "N/A";
-        const weightDesc = item[2] || "-";
-
-        // Logic fix: Keywords se check karein ki UPC kiska hai
-        let upc = "N/A";
-        if (productDesc.toLowerCase().includes("egg") && item[3] !== "NULL") {
-          upc = item[3] || "N/A";
-        }
-
-        const price = parseFloat(item[4]) || 0;
-        const q = parseFloat(item[0]) || 0;
-        const r = price;
-
-        if (q <= 0) return; // skip item completely
-
-        const t = q * r;
-
-        totalQty += q;
-        subTotalVal += t;
-
-        productItems.push({
-          productName: productDesc,
-          productType: productDesc,
-          weight: weightDesc,
-          qty: q,
-          BasicCost: r.toFixed(2),
-          totalAmt: t.toFixed(2),
-          hsn: COMPANY_INFO.hsnCode,
-          gstRate: 0,
-          ProductUPC: upc,
-          MRP: parseFloat(item[5] || r).toFixed(2), // <-- directly from item[5] if available
-          Gst_No: orderData.Gst_No || "",
-          PAN_No: orderData.PAN_No || "",
-          Po_No: orderData.Po_No || "",
-          Po_Date: orderData.Po_Date || "",
-          DeliveryManName: orderData.DeliveryManName || "",
-        });
-      } else {
-        const productDesc = item.productName || item.name || "N/A";
-        let upc = "N/A";
-        // Dynamic check for UPC mapping based on product description
-        if (productDesc.toLowerCase().includes("egg")) {
-          upc = item.ProductUPC || item.upc || "N/A";
-        }
-
-        const q = Number(item.qty ?? item.Quantity ?? 0);
-
-        if (q <= 0) return;
-        const r = Number(item.rate || item.Price || 0);
-        const t = q * r;
-
-        totalQty += q;
-        subTotalVal += t;
-
-        productItems.push({
-          productName: productDesc,
-          productType: item.productType || productDesc,
-          weight: item.weight || "-",
-          qty: q,
-          BasicCost: r,
-          totalAmt: t.toFixed(2),
-          hsn: item.hsn || COMPANY_INFO.hsnCode,
-          gstRate: 0,
-          ProductUPC: upc,
-          MRP: item.mrp || r || "0",
-          Gst_No: item.Gst_No || orderData.Gst_No || "",
-          PAN_No: item.PAN_No || orderData.PAN_No || "",
-          Po_No: item.Po_No || orderData.Po_No || "",
-          Po_Date: item.Po_Date || orderData.Po_Date || "",
-          DeliveryManName:
-            item.DeliveryManName || orderData.DeliveryManName || "",
-        });
-      }
+      totalQty += Number(item.note_qty || item.qty || 0);
+      subTotalVal += Number(item.amount || item.qty * item.rate || 0);
     });
-  } else {
-    const parseAndCleanArray = (str) =>
-      str ? str.split(",").map((item) => item.trim()) : [];
-
-    const names = parseAndCleanArray(orderData.ProductNames);
-    const types = parseAndCleanArray(orderData.ProductTypes);
-    const qtys = parseAndCleanArray(orderData.Quantities).map(Number);
-    const rates = parseAndCleanArray(orderData.Rates).map(Number);
-    const weights = parseAndCleanArray(orderData.Weights);
-    const upcs = parseAndCleanArray(
-      orderData.ProductUPC || orderData.ProductUPCs || orderData.UPC,
-    );
-
-    const mrps = parseAndCleanArray(orderData.MRP || orderData.MRPs).map(
-      Number,
-    );
-
-    const productCount = Math.max(names.length, types.length, rates.length);
-    // let upcPointer = 0;
-
-    for (let i = 0; i < productCount; i++) {
-      const productType = types[i] || names[i] || "N/A";
-      const productName = names[i] || productType;
-
-      const qty = qtys[i] || 0;
-      if (qty <= 0) continue; // don't show in invoice
-      const rate = rates[i] || 0;
-      const weight = weights[i] || "-";
-      const mrp =
-        mrps[i] !== undefined && mrps[i] !== null && mrps[i] !== 0
-          ? mrps[i]
-          : rate;
-      const total = qty * rate;
-
-      const upc =
-        upcs[i] && upcs[i] !== "NULL" && upcs[i] !== "0" ? upcs[i] : "N/A";
-
-      totalQty += qty;
-      subTotalVal += total;
-
-      productItems.push({
-        productName: productName,
-        productType: productType,
-        weight: weight,
-        qty: qty,
-        BasicCost: rate.toFixed(2),
-        totalAmt: total.toFixed(2),
-        hsn: COMPANY_INFO.hsnCode,
-        gstRate: 0,
-        ProductUPC: upc,
-        MRP: mrp.toFixed(2),
-        Gst_No: orderData.Gst_No || "",
-        PAN_No: orderData.PAN_No || "",
-        Po_No: orderData.Po_No || "",
-        Po_Date: orderData.Po_Date || "",
-        DeliveryManName: orderData.DeliveryManName || "",
-      });
-    }
   }
 
-  const totalItemsCount = productItems.length;
+  const totalFreight = Array.isArray(orderData.products)
+    ? orderData.products.reduce((a, b) => a + Number(b.freight || 0), 0)
+    : 0;
+
+  const totalItemsCount = orderData.products?.length || 0;
   const deliveryChargeVal = orderData?.DeliveryCharge
     ? Number(orderData.DeliveryCharge)
     : 0;
-  const totalAmountVal = subTotalVal + deliveryChargeVal;
+  const totalAmountVal = subTotalVal + deliveryChargeVal + totalFreight;
   const amountInWords = numberToWords(Math.round(totalAmountVal));
 
   return (
@@ -355,6 +209,7 @@ const NoteInvoice = ({ noteData, onClose }) => {
         <div className={styles.invoiceWrapper}>
           <div className={styles.invoiceBody}>
             <div id="invoice-print-content" className={styles.invoiceContainer}>
+              {/* Header */}
               <div className={styles.header}>
                 <div className={styles.companyInfo}>
                   <div className={styles.logoContainer}>
@@ -371,22 +226,23 @@ const NoteInvoice = ({ noteData, onClose }) => {
                   </div>
                   <div className={styles.brandInfo}>
                     <div className={styles.companyDetails}>
-                      <p>
+                      <p className={styles.companyTitle}>
                         <strong>{COMPANY_INFO.name}</strong>
                       </p>
-                      <p>
+                      <p className={styles.companySub}>
                         <FaMapMarkerAlt /> {COMPANY_INFO.address}
                       </p>
-                      <p>
+                      <p className={styles.companySub}>
                         <FaPhone /> +91 {COMPANY_INFO.phone}
                       </p>
-                      <p>
-                        <strong>GSTIN:</strong> {COMPANY_INFO.gstin}{" "}
+                      <p className={styles.companySub}>
+                        <strong>GSTIN:</strong> {COMPANY_INFO.gstin} |{" "}
                         <strong>PAN:</strong> {COMPANY_INFO.pan}
                       </p>
                     </div>
                   </div>
                 </div>
+
                 <div className={styles.invoiceMeta}>
                   <h1>
                     {orderData.note_type === "Credit"
@@ -414,7 +270,7 @@ const NoteInvoice = ({ noteData, onClose }) => {
                       </span>
                     </p>
                     <p className={styles.invoiceRow}>
-                      <strong>Against Invoice Date</strong>
+                      <strong>Invoice Date</strong>
                       <span>
                         {orderData.InvoiceDate
                           ? new Date(orderData.InvoiceDate).toLocaleDateString(
@@ -436,6 +292,7 @@ const NoteInvoice = ({ noteData, onClose }) => {
                 </div>
               </div>
 
+              {/* Customer & Order Box */}
               <div className={styles.customerDetails}>
                 <div className={styles.detailBox}>
                   <h3>
@@ -450,15 +307,15 @@ const NoteInvoice = ({ noteData, onClose }) => {
                       {orderData.Area || "Area"}
                     </p>
                     <p className={styles.customerContact}>
-                      <FaPhone /> {orderData.ContactNo || "Contact Number"}
+                      <FaPhone /> {orderData.ContactNo || "N/A"}
                     </p>
                     <p className={styles.customerGst}>
-                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"}
-                      <br />
+                      <strong>GSTIN:</strong> {orderData.Gst_No || "N/A"} |{" "}
                       <strong>PAN:</strong> {orderData.PAN_No || "N/A"}
                     </p>
                   </div>
                 </div>
+
                 <div className={styles.detailBox}>
                   <h3>
                     <FaFileAlt /> Order Details
@@ -479,13 +336,10 @@ const NoteInvoice = ({ noteData, onClose }) => {
                       {orderData.DeliveryManName || "NA"}
                     </p>
                     <p>
-                      <strong>Order Taken By:</strong>{" "}
-                      {orderData.OrderTakenBy || "N/A"}
+                      <strong>P.O. Number:</strong> {orderData.Po_No || "N/A"}
                     </p>
                     <p>
-                      <strong>P.O. Number -:</strong> {orderData.Po_No || "N/A"}
-                      <br />
-                      <strong>P.O. Date -:</strong>{" "}
+                      <strong>P.O. Date:</strong>{" "}
                       {orderData.Po_Date
                         ? new Date(orderData.Po_Date).toLocaleDateString(
                             "en-GB",
@@ -493,29 +347,28 @@ const NoteInvoice = ({ noteData, onClose }) => {
                           )
                         : "N/A"}
                     </p>
-                    <p>
-                      <strong>Payment Terms -: 7 Days</strong>
-                    </p>
                   </div>
                 </div>
+
                 <div className={styles.detailBox}>
                   <h3>
-                    <FaFileAlt /> FSSAI
+                    <FaFileAlt /> FSSAI Registration
                   </h3>
                   <div className={styles.orderInfo}>
                     <p>
-                      <strong>FSSAI - Phoenix Poultry 11424170000122</strong>
-                      <br />
-                      <strong>
-                        FSSAI - VND Ventures Pvt. LTD. 11421170000373
-                      </strong>
-                      <br />
-                      <strong>FSSAI - The Hen's Co. 21420170000432</strong>
+                      <strong>Phoenix Poultry:</strong> 11424170000122
+                    </p>
+                    <p>
+                      <strong>VND Ventures:</strong> 11421170000373
+                    </p>
+                    <p>
+                      <strong>The Hen's Co.:</strong> 21420170000432
                     </p>
                   </div>
                 </div>
               </div>
 
+              {/* Products Table */}
               <div className={styles.tableContainer}>
                 <table className={styles.productsTable}>
                   <thead>
@@ -531,176 +384,112 @@ const NoteInvoice = ({ noteData, onClose }) => {
                   </thead>
 
                   <tbody>
-                    {orderData.products.map((item, index) => (
-                      <tr key={item.note_id}>
-                        <td className={styles.textCenter}>{index + 1}</td>
-                        <td>{item.product_name}</td>
-                        <td className={styles.textCenter}>
-                          {COMPANY_INFO.hsnCode}
-                        </td>
-                        <td className={styles.textCenter}>{item.note_qty}</td>
-                        <td className={styles.textRight}>
-                          ₹{Number(item.rate).toFixed(2)}
-                        </td>
-                        <td className={styles.textRight}>
-                          ₹{Number(item.amount).toFixed(2)}
-                        </td>
-                        <td>{item.reason}</td>
-                      </tr>
-                    ))}
+                    {Array.isArray(orderData.products) &&
+                      orderData.products.map((item, index) => (
+                        <tr key={index}>
+                          <td className={styles.textCenter}>{index + 1}</td>
+                          <td className={styles.fontMedium}>
+                            {item.product_name || item.productName || "Product"}
+                          </td>
+                          <td className={styles.textCenter}>
+                            {COMPANY_INFO.hsnCode}
+                          </td>
+                          <td className={styles.textCenter}>
+                            {item.note_qty || item.qty || 0}
+                          </td>
+                          <td className={styles.textRight}>
+                            ₹{Number(item.rate || 0).toFixed(2)}
+                          </td>
+                          <td className={styles.textRight}>
+                            ₹
+                            {Number(
+                              item.amount || item.qty * item.rate || 0,
+                            ).toFixed(2)}
+                          </td>
+                          <td>{item.reason || "-"}</td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               </div>
-              <div className={styles.totalRow}>
-                <span>Original Qty:</span>
-                <span>
-                  {orderData.products.reduce(
-                    (sum, p) => sum + Number(p.original_qty || 0),
-                    0,
-                  )}
-                </span>
-              </div>
 
-              <div className={styles.totalRow}>
-                <span>Adjusted Qty:</span>
-                <span>{totalQty}</span>
-              </div>
-
-              <div className={styles.totalRow}>
-                <span>Freight:</span>
-                <span>₹{totalFreight.toFixed(2)}</span>
-              </div>
-
-              <hr />
-
-              <div className={styles.grandTotalRow}>
-                <span>{orderData.note_type} Note Amount</span>
-                <span>₹{totalAmount.toFixed(2)}</span>
-              </div>
-
-              {/* <div className={styles.footerSection}>
-                <div className={styles.footerColumn}>
+              {/* Totals & Calculations */}
+              <div className={styles.totalsWrapper}>
+                <div className={styles.wordsBlock}>
                   <div className={styles.amountInWords}>
                     <span>
-                      <FaRupeeSign /> Amount in words
+                      <FaRupeeSign /> Amount in Words:
                     </span>
-                    <p>{amountInWords} Rupees Only</p>
-                  </div>
-                  <div className={styles.termsBox}>
-                    <h4>
-                      <FaFileAlt /> Terms & Conditions
-                    </h4>
-                    <div className={styles.qrTermContainer}>
-                      <img
-                        src="./img/qr.png"
-                        alt="Terms QR"
-                        className={styles.qrSmall}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                      <div className={styles.qrText}>
-                        <p>
-                          <strong>Scan for full</strong>
-                        </p>
-                        <p>Terms & Conditions Policy</p>
-                      </div>
-                    </div>
+                    <p>
+                      {amountInWords ? `${amountInWords} Rupees Only` : "N/A"}
+                    </p>
                   </div>
                 </div>
-                <div className={styles.footerColumn}>
-                  <div className={styles.paymentInfo}>
-                    <h4>PAYMENT DETAILS</h4>
-                    <div className={styles.payQrBox}>
-                      <img
-                        src="./img/company_pay_qr.jpg"
-                        alt="Payment QR Code"
-                        className={styles.qrPaymentImg}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                          e.target.parentElement.innerHTML = `<div class="${styles.noQrMessage}"><h4>Payment Details</h4><p>Scan QR Code Not Available</p><p>Please use bank transfer</p></div>`;
-                        }}
-                      />
-                      <div className={styles.bankDetailsText}>
-                        <p>
-                          <strong>Bank:</strong>{" "}
-                          <span>{COMPANY_INFO.bankDetails.bankName}</span>
-                        </p>
-                        <p>
-                          <strong>A/C Name:</strong>{" "}
-                          <span>{COMPANY_INFO.bankDetails.accountName}</span>
-                        </p>
-                        <p>
-                          <strong>A/C Number:</strong>{" "}
-                          <span>{COMPANY_INFO.bankDetails.accountNumber}</span>
-                        </p>
-                        <p>
-                          <strong>IFSC:</strong>{" "}
-                          <span>{COMPANY_INFO.bankDetails.ifscCode}</span>
-                        </p>
-                        <p>
-                          <strong>Branch:</strong>{" "}
-                          <span>{COMPANY_INFO.bankDetails.branch}</span>
-                        </p>
-                      </div>
-                    </div>
+
+                <div className={styles.totalsBox}>
+                  <div className={styles.totalRow}>
+                    <span>Total Items:</span>
+                    <span>{totalItemsCount}</span>
                   </div>
-                </div>
-                <div className={styles.footerColumn}>
-                  <div className={styles.totalsBox}>
-                    <div className={styles.totalRow}>
-                      <span>Total Items:</span>
-                      <span>{totalItemsCount}</span>
-                    </div>
-                    <div className={styles.totalRow}>
-                      <span>Total Quantity:</span>
-                      <span>{totalQty}</span>
-                    </div>
-                    <hr />
-                    <div className={styles.totalRow}>
-                      <span>Sub Total:</span>
-                      <span>₹{subTotalVal.toFixed(2)}</span>
-                    </div>
+                  <div className={styles.totalRow}>
+                    <span>Total Quantity:</span>
+                    <span>{totalQty}</span>
+                  </div>
+                  <div className={styles.totalRow}>
+                    <span>Sub Total:</span>
+                    <span>₹{subTotalVal.toFixed(2)}</span>
+                  </div>
+                  {deliveryChargeVal > 0 && (
                     <div className={styles.totalRow}>
                       <span>Packaging:</span>
                       <span>₹{deliveryChargeVal.toFixed(2)}</span>
                     </div>
-                    <div className={styles.grandTotalRow}>
-                      <span>GRAND TOTAL:</span>
-                      <span>₹{totalAmountVal.toFixed(2)}</span>
+                  )}
+                  {totalFreight > 0 && (
+                    <div className={styles.totalRow}>
+                      <span>Freight:</span>
+                      <span>₹{totalFreight.toFixed(2)}</span>
                     </div>
-                  </div>
-                  <div className={styles.signatureSection}>
-                    <div className={styles.signatureContainer}>
-                      <img
-                        src="./img/Aakash_lawani_sign.png"
-                        alt="Authorized Signature"
-                        className={styles.signImg}
-                        onError={(e) => {
-                          e.target.style.display = "none";
-                        }}
-                      />
-                      <div className={styles.signatureLine}></div>
-                      <span className={styles.authText}>
-                        <FaFileSignature /> Authorized Signatory
-                      </span>
-                    </div>
-                    <div className={styles.companyStamp}>
-                      <p>For {COMPANY_INFO.brand}</p>
-                      <p>({COMPANY_INFO.name})</p>
-                    </div>
+                  )}
+                  <div className={styles.grandTotalRow}>
+                    <span>GRAND TOTAL:</span>
+                    <span>₹{totalAmountVal.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
-              <div className={styles.footerNotes}>
-                <div className={styles.noteBox}>
+
+              {/* Signatures */}
+              <div className={styles.signatureSection}>
+                <div className={styles.companyStamp}>
                   <p>
-                    <strong>Declaration:</strong> "This invoice reflects the
-                    true price and accurate details of the goods and is
-                    computer-generated."
+                    For <strong>{COMPANY_INFO.brand}</strong>
                   </p>
+                  <p>({COMPANY_INFO.name})</p>
                 </div>
-              </div> */}
+                <div className={styles.signatureContainer}>
+                  <img
+                    src="./img/Aakash_lawani_sign.png"
+                    alt="Signature"
+                    className={styles.signImg}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                  <div className={styles.signatureLine}></div>
+                  <span className={styles.authText}>
+                    <FaFileSignature /> Authorized Signatory
+                  </span>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <div className={styles.footerNotes}>
+                <p>
+                  <strong>Declaration:</strong> This invoice reflects the true
+                  price and accurate details of the goods described and is
+                  computer generated.
+                </p>
+              </div>
             </div>
           </div>
         </div>
