@@ -366,8 +366,10 @@
 
 .filterControls {
   display: flex;
-  gap: 10px;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap; /* nowrap ki jagah */
+  flex: 1;
 }
 
 .filterControls::-webkit-scrollbar {
@@ -380,7 +382,9 @@
 
 .searchBox {
   position: relative;
-  min-width: 250px;
+  flex: 1;
+  min-width: 240px;
+  max-width: 320px;
 }
 
 .searchBox i {
@@ -393,11 +397,10 @@
 
 .searchBox input {
   width: 100%;
-  padding: 10px 10px 10px 40px;
+  padding: 9px 10px 9px 36px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  font-size: 14px;
-  transition: all 0.3s ease;
+  font-size: 13px;
 }
 
 .searchBox input:focus {
@@ -407,15 +410,12 @@
 }
 
 .statusFilter {
-  padding: 10px 15px;
+  width: 130px;
+  min-width: 130px;
+  padding: 8px 10px;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  background: white;
-  color: #4a5568;
-  font-size: 14px;
-  cursor: pointer;
-  min-width: 160px;
-  transition: all 0.3s ease;
+  font-size: 13px;
 }
 
 .statusFilter:hover {
@@ -688,36 +688,17 @@
     margin-bottom: 10px;
   }
 }
-.filterControls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  white-space: nowrap;
-  padding-bottom: 4px;
-}
 
 .dateGroup {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  gap: 6px;
+  padding: 5px 8px;
   background: #f8f9fa;
   border: 1px solid #ddd;
   border-radius: 6px;
-  padding: 6px 10px;
 }
 
-.dateInput {
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 13px;
-  min-width: 140px;
-}
 .statsRow {
   display: flex;
   gap: 20px;

@@ -466,7 +466,9 @@ const UserForm = () => {
                               onChange={(e) => setSearchTerm(e.target.value)}
                             />
                           </div>
-                          <div className={styles.searchBox}>
+                          <div
+                            className={`${styles.searchBox} ${styles.invoiceSearch}`}
+                          >
                             <i className="mdi mdi-file-document"></i>
                             <input
                               type="text"
