@@ -38,6 +38,11 @@ const UserSideBar = () => {
       icon: "mdi mdi-truck-delivery", // Updated professional icon
       label: "DeliveryBoy Report",
     },
+    {
+      path: "/passbook",
+      icon: "mdi mdi-book-open-page-variant",
+      label: "Delivery Passbook",
+    },
   ];
 
   const handleToggle = () => dispatch(toggleSidebar());

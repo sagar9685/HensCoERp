@@ -25,6 +25,7 @@ const demoInvoice = require("./routes/demoInvoiceRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const noteRoutes = require("./routes/noteRoutes");
+const deliveryPassbookRoutes = require("./routes/deliveryPassbookRoutes");
 dotenv.config();
 const app = express();
 
@@ -68,6 +69,8 @@ app.use("/api/production", productionRoutes);
 
 app.use("/api", aiRoutes);
 app.use("/api", notificationRoutes);
+
+app.use("/api/delivery-passbook", deliveryPassbookRoutes);
 
 app.use("/api/note", noteRoutes);
 

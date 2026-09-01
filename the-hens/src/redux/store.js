@@ -24,6 +24,8 @@ import productionReducer from "../features/productionSlice";
 import notificationReducer from "../features/notificationSlice";
 import rateReducer from "../features/rateSlice";
 import noteReducer from "../features/noteSlice";
+
+import deliveryPassbookReducer from "../features/deliveryPassbookSlice";
 const store = configureStore({
   reducer: {
     customer: customerReducer,
@@ -49,6 +51,7 @@ const store = configureStore({
     notifications: notificationReducer,
     rate: rateReducer,
     note: noteReducer,
+    deliveryPassbook: deliveryPassbookReducer,
   },
 });
 

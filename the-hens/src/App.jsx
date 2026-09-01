@@ -32,6 +32,7 @@ import ChangePassword from "./component/ChangePassword";
 import AdminViewStock from "./component/AdminOrderModal/AdminViewStock";
 import HandoverReport from "./component/Reports/HandOverReport";
 import NoteList from "./component/AdminOrderModal/NoteList";
+import DeliveryPassbook from "./component/DeliveryPassbook/DeliveryPassbook";
 
 function App() {
   return (
@@ -297,6 +298,15 @@ function App() {
           element={
             <ProtectedRoute userOnly={true}>
               <HandoverReport />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/passbook"
+          element={
+            <ProtectedRoute userOnly={true}>
+              <DeliveryPassbook />
             </ProtectedRoute>
           }
         />

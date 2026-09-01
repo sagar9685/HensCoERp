@@ -198,7 +198,7 @@ const AdminDashboard = () => {
         return styles.statusCompleted;
       case "cancel":
         return styles.statusCancelled;
-      case "processing":
+      case "in Progress":
         return styles.statusProcessing;
       case "rtv": // ✅ ADD THIS
         return styles.statusRTV;
@@ -436,8 +436,8 @@ const AdminDashboard = () => {
     if (filters.orderStatus) {
       filtered = filtered.filter(
         (item) =>
-          (item.OrderStatus || "").toLowerCase() ===
-          filters.orderStatus.toLowerCase(),
+          (item.OrderStatus || "").toLowerCase().trim() ===
+          filters.orderStatus.toLowerCase().trim(),
       );
     }
 
@@ -875,7 +875,7 @@ const AdminDashboard = () => {
             >
               <option value="">All</option>
               <option value="pending">Pending</option>
-              <option value="processing">Processing</option>
+              <option value="In Progress">In Progress</option>
               <option value="complete">Complete</option>
               <option value="cancel">Cancel</option>
             </select>
