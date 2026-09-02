@@ -26,6 +26,7 @@ const aiRoutes = require("./routes/aiRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const deliveryPassbookRoutes = require("./routes/deliveryPassbookRoutes");
+const deliveryPendingRoutes = require("./routes/deliveryPendingRoutes");
 dotenv.config();
 const app = express();
 
@@ -72,6 +73,7 @@ app.use("/api", notificationRoutes);
 
 app.use("/api/delivery-passbook", deliveryPassbookRoutes);
 
+app.use("/api/delivery-pending", deliveryPendingRoutes);
 app.use("/api/note", noteRoutes);
 
 io.on("connection", (socket) => {

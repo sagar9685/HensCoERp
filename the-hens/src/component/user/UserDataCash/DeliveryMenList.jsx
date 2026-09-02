@@ -53,6 +53,9 @@ export default function DeliveryMenList({
               >
                 Total Cash (₹) {getSortIcon("TotalCash")}
               </th>
+              <th onClick={() => handleSort("PendingAmount")}>
+                Pending Amount (₹) {getSortIcon("PendingAmount")}
+              </th>
               <th className={styles.actionHeader}>Action</th>
             </tr>
           </thead>
@@ -63,8 +66,8 @@ export default function DeliveryMenList({
                 item.TotalCash > 3000
                   ? "high"
                   : item.TotalCash > 1000
-                  ? "medium"
-                  : "low";
+                    ? "medium"
+                    : "low";
 
               return (
                 <tr
@@ -100,6 +103,18 @@ export default function DeliveryMenList({
 
                       <span className={styles.decimal}>.00</span>
                     </div>
+                  </td>
+                  <td className={styles.pendingCell}>
+                    <div className={styles.pendingAmount}>
+                      ₹{Number(item.PendingAmount || 0).toLocaleString("en-IN")}
+                    </div>
+
+                    {item.PendingOrders > 0 && (
+                      <small className={styles.pendingOrders}>
+                        {item.PendingOrders} pending order
+                        {item.PendingOrders > 1 ? "s" : ""}
+                      </small>
+                    )}
                   </td>
                   <td className={styles.actionCell}>
                     <button

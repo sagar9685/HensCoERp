@@ -43,6 +43,11 @@ const UserSideBar = () => {
       icon: "mdi mdi-book-open-page-variant",
       label: "Delivery Passbook",
     },
+    {
+      path: "/delivery-pending",
+      icon: "mdi mdi-truck-delivery",
+      label: "Delivery Pendings",
+    },
   ];
 
   const handleToggle = () => dispatch(toggleSidebar());

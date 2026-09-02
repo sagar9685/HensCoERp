@@ -17,6 +17,7 @@ import {
   fetchPendingCashOrders,
   clearPendingOrders,
 } from "../../../features/paymentModeSlice"; // <-- Redux slice
+import { fetchDeliveryPendingSummary } from "../../../features/deliveryPendingSlice";
 
 const DENOMINATIONS = [500, 200, 100, 50, 20, 10, 5, 2, 1];
 
@@ -64,6 +65,10 @@ export default function UserDataTable() {
 
   const { cashList } = useSelector((state) => state.assignedOrders);
 
+  const { summary: deliveryPendingSummary } = useSelector(
+    (state) => state.deliveryPending,
+  );
+
   // ✅ Pending cash orders from Redux
   const { list: pendingCashOrders } = useSelector(
     (state) => state.pendingCashOrders,
@@ -94,6 +99,7 @@ export default function UserDataTable() {
 
   useEffect(() => {
     dispatch(fetchCashByDeliveryMen());
+    dispatch(fetchDeliveryPendingSummary());
   }, [dispatch]);
 
   useEffect(() => {
@@ -119,24 +125,68 @@ export default function UserDataTable() {
     }
   }, [selected, dispatch]);
 
+  // const filteredAndSortedList = useMemo(() => {
+  //   let filtered = list.filter(
+  //     (item) =>
+  //       item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //       item.Area.toLowerCase().includes(searchTerm.toLowerCase()),
+  //   );
+
+  //   if (sortConfig.key) {
+  //     filtered.sort((a, b) => {
+  //       if (a[sortConfig.key] < b[sortConfig.key])
+  //         return sortConfig.direction === "asc" ? -1 : 1;
+  //       if (a[sortConfig.key] > b[sortConfig.key])
+  //         return sortConfig.direction === "asc" ? 1 : -1;
+  //       return 0;
+  //     });
+  //   }
+  //   return filtered;
+  // }, [list, searchTerm, sortConfig]);
+
   const filteredAndSortedList = useMemo(() => {
-    let filtered = list.filter(
-      (item) =>
-        item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.Area.toLowerCase().includes(searchTerm.toLowerCase()),
+    // Pending amount ko DeliveryManID ke according map karo
+    const pendingMap = new Map(
+      (deliveryPendingSummary || []).map((item) => [
+        String(item.DeliveryManID),
+        {
+          PendingAmount: Number(item.PendingAmount || 0),
+          PendingOrders: Number(item.PendingOrders || 0),
+        },
+      ]),
     );
+
+    // Existing cash list ke saath pending data merge
+    let filtered = list
+      .map((item) => {
+        const pendingData = pendingMap.get(String(item.DeliveryManID));
+
+        return {
+          ...item,
+          PendingAmount: pendingData?.PendingAmount || 0,
+          PendingOrders: pendingData?.PendingOrders || 0,
+        };
+      })
+      .filter(
+        (item) =>
+          item.Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.Area.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
 
     if (sortConfig.key) {
       filtered.sort((a, b) => {
         if (a[sortConfig.key] < b[sortConfig.key])
           return sortConfig.direction === "asc" ? -1 : 1;
+
         if (a[sortConfig.key] > b[sortConfig.key])
           return sortConfig.direction === "asc" ? 1 : -1;
+
         return 0;
       });
     }
+
     return filtered;
-  }, [list, searchTerm, sortConfig]);
+  }, [list, searchTerm, sortConfig, deliveryPendingSummary]);
 
   const handleSort = (key) => {
     setSortConfig({

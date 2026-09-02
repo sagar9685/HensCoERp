@@ -33,6 +33,7 @@ import AdminViewStock from "./component/AdminOrderModal/AdminViewStock";
 import HandoverReport from "./component/Reports/HandOverReport";
 import NoteList from "./component/AdminOrderModal/NoteList";
 import DeliveryPassbook from "./component/DeliveryPassbook/DeliveryPassbook";
+import DeliveryPending from "./component/DeliveryPending/DeliveryPending";
 
 function App() {
   return (
@@ -307,6 +308,15 @@ function App() {
           element={
             <ProtectedRoute userOnly={true}>
               <DeliveryPassbook />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/delivery-pending"
+          element={
+            <ProtectedRoute userOnly={true}>
+              <DeliveryPending />
             </ProtectedRoute>
           }
         />
