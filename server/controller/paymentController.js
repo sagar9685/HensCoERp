@@ -315,66 +315,212 @@ exports.addDenominations = async (req, res) => {
 };
 
 exports.verifyPayment = async (req, res) => {
-  const { paymentId, receivedAmount, verificationRemarks } = req.body;
+  const {
+    paymentId,
+    paymentModeId,
+    receivedAmount,
+    verificationRemarks,
+    paymentReceivedDate,
+  } = req.body;
 
-  if (!paymentId || receivedAmount == null) {
-    return res
-      .status(400)
-      .json({ message: "paymentId and receivedAmount required" });
+  if (!paymentId || !paymentModeId || receivedAmount == null) {
+    return res.status(400).json({
+      message: "paymentId, paymentModeId and receivedAmount are required",
+    });
   }
+
+  let transaction;
 
   try {
     const pool = await poolPromise;
 
-    // 1️⃣ Fetch original amount
-    const payment = await pool.request().input("paymentId", sql.Int, paymentId)
-      .query(`
-        SELECT Amount 
-        FROM OrderPayments 
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    // ------------------------------------------------
+    // 1. GET PAYMENT
+    // ------------------------------------------------
+    const paymentResult = await new sql.Request(transaction).input(
+      "paymentId",
+      sql.Int,
+      paymentId,
+    ).query(`
+        SELECT
+          PaymentID,
+          OrderID,
+          PaymentModeID,
+          Amount,
+          OriginalAmount,
+          ISNULL(CreditNoteAmount, 0) AS ExistingCreditNoteAmount
+        FROM OrderPayments
         WHERE PaymentID = @paymentId
       `);
 
-    if (payment.recordset.length === 0) {
-      return res.status(404).json({ message: "Payment not found" });
+    if (paymentResult.recordset.length === 0) {
+      await transaction.rollback();
+
+      return res.status(404).json({
+        message: "Payment not found",
+      });
     }
 
-    const originalAmount = payment.recordset[0].Amount;
+    const payment = paymentResult.recordset[0];
+    const orderId = payment.OrderID;
 
+    /*
+      First time:
+      Amount = 500
+      OriginalAmount = NULL
+
+      After verification:
+      OriginalAmount = 500
+      Amount = 400
+    */
+    const originalAmount = Number(
+      payment.OriginalAmount ?? payment.Amount ?? 0,
+    );
+
+    // ------------------------------------------------
+    // 2. GET CREDIT NOTE
+    // ------------------------------------------------
+    const creditResult = await new sql.Request(transaction).input(
+      "orderId",
+      sql.Int,
+      orderId,
+    ).query(`
+        SELECT
+          ISNULL(SUM(amount), 0) AS CreditNoteAmount
+        FROM credit_debit_notes
+        WHERE order_id = @orderId
+          AND LOWER(LTRIM(RTRIM(note_type))) IN (
+            'credit',
+            'credit note'
+          )
+          AND LOWER(ISNULL(status, 'active')) NOT IN (
+            'cancelled',
+            'canceled',
+            'rejected'
+          )
+      `);
+
+    let creditNoteAmount = Number(
+      creditResult.recordset[0]?.CreditNoteAmount || 0,
+    );
+
+    creditNoteAmount = Math.min(creditNoteAmount, originalAmount);
+
+    // ------------------------------------------------
+    // 3. NET PAYABLE
+    // ------------------------------------------------
+    const netPayable = Math.max(originalAmount - creditNoteAmount, 0);
+
+    const actualReceived = Number(receivedAmount);
+
+    if (Number.isNaN(actualReceived) || actualReceived < 0) {
+      await transaction.rollback();
+
+      return res.status(400).json({
+        message: "Invalid received amount",
+      });
+    }
+
+    if (actualReceived > netPayable) {
+      await transaction.rollback();
+
+      return res.status(400).json({
+        message: `After Credit Note ₹${creditNoteAmount}, payable amount is ₹${netPayable}.`,
+        originalAmount,
+        creditNoteAmount,
+        netPayable,
+      });
+    }
+
+    // ------------------------------------------------
+    // 4. STATUS
+    // ------------------------------------------------
     let status = "Verified";
     let shortAmount = 0;
 
-    if (receivedAmount < originalAmount) {
+    if (actualReceived < netPayable) {
       status = "Short";
-      shortAmount = originalAmount - receivedAmount;
+      shortAmount = netPayable - actualReceived;
     }
 
-    // 2️⃣ Update with remarks also
-    await pool
-      .request()
+    // ------------------------------------------------
+    // 5. UPDATE PAYMENT
+    // ------------------------------------------------
+    await new sql.Request(transaction)
       .input("paymentId", sql.Int, paymentId)
-      .input("status", sql.VarChar, status)
+      .input("paymentModeId", sql.Int, Number(paymentModeId))
+      .input("originalAmount", sql.Decimal(10, 2), originalAmount)
+      .input("creditNoteAmount", sql.Decimal(10, 2), creditNoteAmount)
+      .input("receivedAmount", sql.Decimal(10, 2), actualReceived)
+      .input("status", sql.VarChar(50), status)
       .input("shortAmount", sql.Decimal(10, 2), shortAmount)
-      .input("remarks", sql.VarChar(500), verificationRemarks ?? null).query(`
+      .input("remarks", sql.VarChar(500), verificationRemarks || null)
+      .input("paymentReceivedDate", sql.Date, paymentReceivedDate || null)
+      .query(`
         UPDATE OrderPayments
-        SET 
-            PaymentVerifyStatus = @status,
-            ShortAmount = @shortAmount,
-            VerificationRemarks = @remarks
+        SET
+          OriginalAmount =
+            ISNULL(OriginalAmount, @originalAmount),
+
+          CreditNoteAmount = @creditNoteAmount,
+
+          Amount = @receivedAmount,
+
+          PaymentModeID = @paymentModeId,
+
+          PaymentReceivedDate =
+            COALESCE(
+              @paymentReceivedDate,
+              PaymentReceivedDate
+            ),
+
+          PaymentVerifyStatus = @status,
+
+          ShortAmount = @shortAmount,
+
+          VerificationRemarks = @remarks
+
         WHERE PaymentID = @paymentId
       `);
 
+    await transaction.commit();
+
     return res.json({
-      message: "Verification updated",
+      message: "Payment verification updated successfully",
+
       paymentId,
+      orderId,
+
       originalAmount,
-      receivedAmount,
+      creditNoteAmount,
+      netPayable,
+
+      receivedAmount: actualReceived,
+      paymentModeId: Number(paymentModeId),
+
       status,
       shortAmount,
       verificationRemarks,
+      paymentReceivedDate,
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Verify payment error:", error);
+
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error("Rollback error:", rollbackError);
+      }
+    }
+
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
 
@@ -398,6 +544,96 @@ exports.markPaymentVerified = async (req, res) => {
     res.json({ message: "Payment marked as Verified" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getPaymentVerificationDetails = async (req, res) => {
+  const { orderId } = req.params;
+
+  if (!orderId) {
+    return res.status(400).json({
+      message: "OrderID required",
+    });
+  }
+
+  try {
+    const pool = await poolPromise;
+
+    // ========================================================
+    // CREDIT NOTE
+    // ========================================================
+
+    const creditResult = await pool
+      .request()
+      .input("orderId", sql.Int, Number(orderId)).query(`
+        SELECT
+          ISNULL(SUM(amount), 0) AS CreditNoteAmount
+        FROM credit_debit_notes
+        WHERE order_id = @orderId
+
+          AND LOWER(
+            LTRIM(
+              RTRIM(note_type)
+            )
+          ) IN (
+            'credit',
+            'credit note'
+          )
+
+          AND LOWER(
+            ISNULL(status, 'active')
+          ) NOT IN (
+            'cancelled',
+            'canceled',
+            'rejected'
+          )
+      `);
+
+    const creditNoteAmount = Number(
+      creditResult.recordset[0]?.CreditNoteAmount || 0,
+    );
+
+    // ========================================================
+    // PAYMENT
+    // ========================================================
+
+    const paymentResult = await pool
+      .request()
+      .input("orderId", sql.Int, Number(orderId)).query(`
+        SELECT TOP 1
+          PaymentID,
+          OrderID,
+          PaymentModeID,
+          Amount,
+          OriginalAmount,
+          ISNULL(CreditNoteAmount, 0) AS SavedCreditNoteAmount,
+          PaymentVerifyStatus,
+          PaymentReceivedDate
+
+        FROM OrderPayments
+
+        WHERE OrderID = @orderId
+
+        ORDER BY PaymentID DESC
+      `);
+
+    const payment =
+      paymentResult.recordset.length > 0 ? paymentResult.recordset[0] : null;
+
+    return res.json({
+      orderId: Number(orderId),
+
+      creditNoteAmount,
+
+      payment,
+    });
+  } catch (error) {
+    console.error("Get payment verification details error:", error);
+
+    return res.status(500).json({
+      message: "Server Error",
+      error: error.message,
+    });
   }
 };
 

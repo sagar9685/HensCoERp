@@ -5,13 +5,33 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const verifyPayment = createAsyncThunk(
   "payment/verifyPayment",
-  async ({ paymentId, receivedAmount, verificationRemarks }) => {
-    const res = await axios.post(`${API_BASE_URL}/api/users/verify`, {
+  async (
+    {
       paymentId,
+      paymentModeId,
       receivedAmount,
-      verificationRemarks, // ✅ add this
-    });
-    return res.data;
+      verificationRemarks,
+      paymentReceivedDate,
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/users/verify`, {
+        paymentId,
+        paymentModeId,
+        receivedAmount,
+        verificationRemarks,
+        paymentReceivedDate,
+      });
+
+      return res.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || {
+          message: "Payment verification failed",
+        },
+      );
+    }
   },
 );
 
@@ -28,7 +48,13 @@ export const markVerified = createAsyncThunk(
 export const verifyAdvancePayment = createAsyncThunk(
   "payment/verifyAdvancePayment",
   async (
-    { orderId, paymentModeId, receivedAmount, verificationRemarks },
+    {
+      orderId,
+      paymentModeId,
+      receivedAmount,
+      verificationRemarks,
+      paymentReceivedDate,
+    },
     { rejectWithValue },
   ) => {
     try {
@@ -39,6 +65,7 @@ export const verifyAdvancePayment = createAsyncThunk(
           paymentModeId,
           receivedAmount,
           verificationRemarks,
+          paymentReceivedDate,
         },
       );
 
@@ -68,6 +95,11 @@ const paymentSlice = createSlice({
       .addCase(verifyPayment.fulfilled, (state, action) => {
         state.loading = false;
         state.message = action.payload.message;
+      })
+      .addCase(verifyPayment.rejected, (state, action) => {
+        state.loading = false;
+        state.message =
+          action.payload?.message || "Payment verification failed";
       })
       .addCase(markVerified.pending, (state) => {
         state.loading = true;

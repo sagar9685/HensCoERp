@@ -20,34 +20,83 @@ const PaymentModal = ({
   loading = false,
 }) => {
   if (!isOpen) return null;
+
+  // ============================================================
+  // ORDER TOTAL
+  // ============================================================
+
   const totalOrderAmount =
     Number(selectedPayment?.GrandItemTotal || 0) +
     Number(selectedPayment?.DeliveryCharge || 0);
 
-  const shortAmount = totalOrderAmount - receivedAmount;
-  const isShortPayment = shortAmount > 0;
-  console.log("SUMMARY ===>", selectedPayment?.PaymentSummary);
+  // ============================================================
+  // CREDIT NOTE
+  // ============================================================
+
+  const creditNoteAmount = Math.max(
+    Number(selectedPayment?.CreditNoteAmount || 0),
+    0,
+  );
+
+  // Credit note total amount se jyada apply na ho
+  const applicableCreditNote = Math.min(creditNoteAmount, totalOrderAmount);
+
+  // Example:
+  // Total = 500
+  // Credit Note = 100
+  // Net Payable = 400
+
+  const netPayableAmount = Math.max(totalOrderAmount - applicableCreditNote, 0);
+
+  const enteredAmount = Number(receivedAmount || 0);
+
+  // ============================================================
+  // SHORT / FULL PAYMENT
+  // ============================================================
+
+  const shortAmount = Math.max(netPayableAmount - enteredAmount, 0);
+
+  const isShortPayment = enteredAmount > 0 && enteredAmount < netPayableAmount;
+
+  const isFullPayment = enteredAmount > 0 && enteredAmount === netPayableAmount;
+
+  const isOverPayment = enteredAmount > netPayableAmount;
+
+  console.log("PAYMENT SUMMARY ===>", selectedPayment?.PaymentSummary);
+  console.log("TOTAL ORDER ===>", totalOrderAmount);
+  console.log("CREDIT NOTE ===>", applicableCreditNote);
+  console.log("NET PAYABLE ===>", netPayableAmount);
+
+  // ============================================================
+  // GET ALREADY PAID ONLINE AMOUNT
+  // ============================================================
 
   const getOnlineAmount = (summaryText) => {
-    if (!summaryText || typeof summaryText !== "string") return 0;
+    if (!summaryText || typeof summaryText !== "string") {
+      return 0;
+    }
 
     let onlineTotal = 0;
 
-    // Split into each mode
     const parts = summaryText.split("|");
 
     parts.forEach((item) => {
-      const [modeName, amountText] = item.split(":").map((s) => s.trim());
+      const [modeNameRaw, amountTextRaw] = item.split(":").map((s) => s.trim());
 
-      const amount = Number(amountText);
+      if (!modeNameRaw || !amountTextRaw) {
+        return;
+      }
+
+      const modeName = modeNameRaw.toLowerCase();
+      const amount = Number(amountTextRaw) || 0;
 
       if (
-        modeName.toLowerCase().includes("upi") ||
-        modeName.toLowerCase().includes("gpay") ||
-        modeName.toLowerCase().includes("paytm") ||
-        modeName.toLowerCase().includes("online") ||
-        modeName.toLowerCase().includes("bank transfer") ||
-        modeName.toLowerCase().includes("card")
+        modeName.includes("upi") ||
+        modeName.includes("gpay") ||
+        modeName.includes("paytm") ||
+        modeName.includes("online") ||
+        modeName.includes("bank transfer") ||
+        modeName.includes("card")
       ) {
         onlineTotal += amount;
       }
@@ -56,15 +105,27 @@ const PaymentModal = ({
     return onlineTotal;
   };
 
+  const onlinePaidAmount = getOnlineAmount(selectedPayment?.PaymentSummary);
+
+  // ============================================================
+  // SUBMIT
+  // ============================================================
+
   const handleSubmit = () => {
     const selectedMode = String(paymentMode || "").trim();
+
+    const amount = Number(receivedAmount || 0);
 
     if (!selectedMode) {
       return toast.error("Please select payment mode!");
     }
 
-    if (!receivedAmount || Number(receivedAmount) <= 0) {
+    if (!amount || amount <= 0) {
       return toast.error("Please enter a valid amount!");
+    }
+
+    if (amount > netPayableAmount) {
+      return toast.error(`Maximum payable amount is ₹${netPayableAmount}`);
     }
 
     if (!paymentReceivedDate) {
@@ -77,52 +138,104 @@ const PaymentModal = ({
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
+        {/* =====================================================
+            HEADER
+        ====================================================== */}
+
         <div className={styles.modalHeader}>
           <div className={styles.headerTitle}>
             <FaRupeeSign className={styles.headerIcon} />
+
             <h3>Payment Verification</h3>
           </div>
-          <button className={styles.closeButton} onClick={onClose}>
+
+          <button
+            className={styles.closeButton}
+            onClick={onClose}
+            disabled={loading}
+          >
             <FaTimes />
           </button>
         </div>
 
-        {/* Payment Details */}
+        {/* =====================================================
+            PAYMENT DETAILS
+        ====================================================== */}
+
         <div className={styles.paymentDetails}>
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Order ID:</span>
+
             <span className={styles.detailValue}>
               #{selectedPayment?.OrderID}
             </span>
           </div>
+
           <div className={styles.detailRow}>
             <span className={styles.detailLabel}>Customer:</span>
+
             <span className={styles.detailValue}>
-              {selectedPayment?.CustomerName}
+              {selectedPayment?.CustomerName || "-"}
             </span>
           </div>
+
+          {/* =================================================
+              AMOUNT DETAILS
+          ================================================== */}
+
           <div className={styles.amountSection}>
+            {/* Total */}
+
             <div className={styles.originalAmount}>
               <span className={styles.amountLabel}>Total Amount:</span>
+
               <span className={styles.amountValue}>
-                ₹{totalOrderAmount} {/* Yahan fix kiya */}
+                ₹{totalOrderAmount.toLocaleString("en-IN")}
               </span>
             </div>
 
-            {/* Online Amount (Only if > 0) */}
-            {getOnlineAmount(selectedPayment?.PaymentSummary) > 0 && (
+            {/* Credit Note */}
+
+            {applicableCreditNote > 0 && (
+              <div className={styles.originalAmount}>
+                <span className={styles.amountLabel}>Credit Note:</span>
+
+                <span className={styles.amountValue}>
+                  - ₹{applicableCreditNote.toLocaleString("en-IN")}
+                </span>
+              </div>
+            )}
+
+            {/* Net Payable */}
+
+            {applicableCreditNote > 0 && (
+              <div className={styles.originalAmount}>
+                <span className={styles.amountLabel}>Net Payable:</span>
+
+                <span className={styles.amountValue}>
+                  ₹{netPayableAmount.toLocaleString("en-IN")}
+                </span>
+              </div>
+            )}
+
+            {/* Already Online Paid */}
+
+            {onlinePaidAmount > 0 && (
               <div className={styles.originalAmount}>
                 <span className={styles.amountLabel}>Online Paid:</span>
+
                 <span className={styles.amountValue}>
-                  ₹{getOnlineAmount(selectedPayment?.PaymentSummary)}
+                  ₹{onlinePaidAmount.toLocaleString("en-IN")}
                 </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Input Section */}
+        {/* =====================================================
+            PAYMENT MODE
+        ====================================================== */}
+
         <div className={styles.inputSection}>
           <label className={styles.inputLabel}>
             Payment Mode <span className={styles.required}>*</span>
@@ -132,16 +245,29 @@ const PaymentModal = ({
             value={paymentMode || ""}
             onChange={(e) => setPaymentMode(e.target.value)}
             className={styles.amountInput}
+            disabled={loading}
           >
             <option value="">Select Payment Mode</option>
 
             {(paymentModesList?.length > 0
               ? paymentModesList
               : [
-                  { PaymentModeID: 2, ModeName: "GPay" },
-                  { PaymentModeID: 3, ModeName: "Paytm" },
-                  { PaymentModeID: 4, ModeName: "FOC" },
-                  { PaymentModeID: 5, ModeName: "Bank Transfer" },
+                  {
+                    PaymentModeID: 2,
+                    ModeName: "GPay",
+                  },
+                  {
+                    PaymentModeID: 3,
+                    ModeName: "Paytm",
+                  },
+                  {
+                    PaymentModeID: 4,
+                    ModeName: "FOC",
+                  },
+                  {
+                    PaymentModeID: 5,
+                    ModeName: "Bank Transfer",
+                  },
                 ]
             )
               .filter((mode) => mode.ModeName?.toLowerCase() !== "cash")
@@ -155,12 +281,19 @@ const PaymentModal = ({
               ))}
           </select>
         </div>
+
+        {/* =====================================================
+            RECEIVED AMOUNT
+        ====================================================== */}
+
         <div className={styles.inputSection}>
           <label className={styles.inputLabel}>
             Received Amount <span className={styles.required}>*</span>
           </label>
+
           <div className={styles.inputContainer}>
             <FaRupeeSign className={styles.inputIcon} />
+
             <input
               type="number"
               value={receivedAmount}
@@ -171,19 +304,28 @@ const PaymentModal = ({
                   e.preventDefault();
                 }
               }}
-              placeholder="Enter received amount"
+              placeholder={`Maximum ₹${netPayableAmount}`}
               className={styles.amountInput}
               min="0"
-              max={selectedPayment?.Amount}
+              max={netPayableAmount}
+              step="0.01"
               autoFocus
+              disabled={loading}
             />
           </div>
-          {receivedAmount > selectedPayment?.Amount && (
+
+          {isOverPayment && (
             <p className={styles.warningText}>
-              Received amount cannot exceed total amount
+              Received amount cannot exceed net payable amount ₹
+              {netPayableAmount.toLocaleString("en-IN")}
             </p>
           )}
         </div>
+
+        {/* =====================================================
+            DATE
+        ====================================================== */}
+
         <div className={styles.inputSection}>
           <label className={styles.inputLabel}>
             Payment Received Date <span className={styles.required}>*</span>
@@ -194,9 +336,14 @@ const PaymentModal = ({
             value={paymentReceivedDate}
             onChange={(e) => setPaymentReceivedDate(e.target.value)}
             className={styles.amountInput}
+            disabled={loading}
           />
         </div>
-        {/* Verification Remarks */}
+
+        {/* =====================================================
+            REMARKS
+        ====================================================== */}
+
         <div className={styles.inputSection}>
           <label className={styles.inputLabel}>Verification Remarks</label>
 
@@ -206,18 +353,25 @@ const PaymentModal = ({
             value={verificationRemarks}
             onChange={(e) => setVerificationRemarks(e.target.value)}
             rows={3}
+            disabled={loading}
           />
         </div>
 
-        {/* Short Amount Warning */}
-        {isShortPayment && receivedAmount > 0 && (
+        {/* =====================================================
+            SHORT PAYMENT WARNING
+        ====================================================== */}
+
+        {isShortPayment && (
           <div className={styles.shortAmountWarning}>
             <div className={styles.warningIcon}>⚠️</div>
+
             <div className={styles.warningContent}>
               <p className={styles.warningTitle}>Short Payment</p>
+
               <p className={styles.warningAmount}>
-                Due Amount: <span>₹{shortAmount}</span>
+                Due Amount: <span>₹{shortAmount.toLocaleString("en-IN")}</span>
               </p>
+
               <p className={styles.warningNote}>
                 This will mark the payment as incomplete with due amount.
               </p>
@@ -225,15 +379,29 @@ const PaymentModal = ({
           </div>
         )}
 
-        {/* Full Payment Success */}
-        {receivedAmount == selectedPayment?.Amount && receivedAmount > 0 && (
+        {/* =====================================================
+            FULL PAYMENT SUCCESS
+        ====================================================== */}
+
+        {isFullPayment && (
           <div className={styles.fullPaymentSuccess}>
             <div className={styles.successIcon}>✓</div>
-            <p className={styles.successText}>Full payment received</p>
+
+            <p className={styles.successText}>
+              Full payment received
+              {applicableCreditNote > 0
+                ? ` after ₹${applicableCreditNote.toLocaleString(
+                    "en-IN",
+                  )} Credit Note adjustment`
+                : ""}
+            </p>
           </div>
         )}
 
-        {/* Modal Actions */}
+        {/* =====================================================
+            ACTION BUTTONS
+        ====================================================== */}
+
         <div className={styles.modalActions}>
           <button
             className={styles.cancelButton}
@@ -242,21 +410,24 @@ const PaymentModal = ({
           >
             Cancel
           </button>
+
           <button
             className={styles.submitButton}
             onClick={handleSubmit}
             disabled={
               loading ||
+              !paymentMode ||
               !receivedAmount ||
-              receivedAmount <= 0 ||
-              receivedAmount > selectedPayment?.Amount
+              enteredAmount <= 0 ||
+              enteredAmount > netPayableAmount
             }
           >
             {loading ? (
-              <div className={styles.loadingSpinner}></div>
+              <div className={styles.loadingSpinner} />
             ) : (
               <FaCheck className={styles.submitIcon} />
             )}
+
             {loading ? "Processing..." : "Verify Payment"}
           </button>
         </div>

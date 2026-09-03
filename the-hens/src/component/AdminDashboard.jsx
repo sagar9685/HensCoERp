@@ -37,6 +37,10 @@ import ViewOrderModal from "./ViewOrderModal";
 import { fetchPaymentModes } from "../features/paymentModeSlice";
 import { fetchBulkCustomerOrders } from "../features/customerAnalysisSlice";
 import { fetchArea } from "../features/cutomerSlice";
+import {
+  fetchPaymentVerificationDetails,
+  clearPaymentVerificationDetails,
+} from "../features/paymentVerificationDetailsSlice";
 
 import NoteModal from "./AdminOrderModal/NoteModal";
 
@@ -89,6 +93,10 @@ const AdminDashboard = () => {
     (state) => state.paymentMode?.list || [],
   );
 
+  const paymentDetailsLoading = useSelector(
+    (state) => state.paymentVerificationDetails?.loading || false,
+  );
+
   const handleOpenNote = (order) => {
     setSelectedNoteOrder(order);
     setIsNoteModalOpen(true);
@@ -99,8 +107,9 @@ const AdminDashboard = () => {
     new Date().toISOString().split("T")[0],
   );
 
-  console.log(paymentModesList, "list of payment mode");
-
+  const paymentVerifyLoading = useSelector(
+    (state) => state.payment?.loading || false,
+  );
   const orders = useSelector((state) => state.order.record);
   const loading = useSelector((state) => state.order.loading);
 
@@ -207,16 +216,25 @@ const AdminDashboard = () => {
     }
   };
 
-  const formatPaymentSummary = (summary) => {
-    if (!summary) return "-";
-    return summary
-      .split("|")
-      .map((item) => item.trim())
-      .filter((item) => {
-        const amount = parseFloat(item.split(":")[1]);
-        return amount > 0;
-      })
-      .join(" | ");
+  const formatPaymentSummary = (summary, creditNoteAmount = 0) => {
+    const paymentParts = summary
+      ? summary
+          .split("|")
+          .map((item) => item.trim())
+          .filter((item) => {
+            const amount = parseFloat(item.split(":")[1]);
+            return amount > 0;
+          })
+      : [];
+
+    const creditAmount = Number(creditNoteAmount || 0);
+
+    // Credit Note hai to payment ke saath add karo
+    if (creditAmount > 0) {
+      paymentParts.push(`Credit Note: ${creditAmount.toFixed(2)}`);
+    }
+
+    return paymentParts.length > 0 ? paymentParts.join(" + ") : "-";
   };
 
   const handleEditOrder = (order) => {
@@ -306,22 +324,78 @@ const AdminDashboard = () => {
     setIsChalanModalOpen(true);
   };
 
-  const handleStatusChange = (row, value) => {
-    if (value === "Verified") {
-      setSelectedPayment(row);
-      setIsPaymentModalOpen(true); // modal open karo
+  const handleStatusChange = async (row, value) => {
+    if (value !== "Verified" && value !== "Short" && value !== "Incomplete") {
+      return;
     }
 
-    if (value === "Short") {
-      setSelectedPayment(row);
+    try {
+      // ========================================================
+      // LOAD CREDIT NOTE + PAYMENT DETAILS
+      // ========================================================
+
+      const details = await dispatch(
+        fetchPaymentVerificationDetails(row.OrderID),
+      ).unwrap();
+
+      console.log("PAYMENT VERIFICATION DETAILS ===>", details);
+
+      // ========================================================
+      // MERGE API DETAILS WITH CURRENT ORDER ROW
+      // ========================================================
+
+      setSelectedPayment({
+        ...row,
+
+        // Credit Note from credit_debit_notes
+        CreditNoteAmount: Number(details?.creditNoteAmount || 0),
+
+        // Latest Payment row
+        PaymentID: details?.payment?.PaymentID ?? row.PaymentID,
+
+        PaymentModeID: details?.payment?.PaymentModeID ?? row.PaymentModeID,
+
+        Amount: details?.payment?.Amount ?? row.Amount,
+
+        OriginalAmount: details?.payment?.OriginalAmount ?? row.OriginalAmount,
+
+        SavedCreditNoteAmount: details?.payment?.SavedCreditNoteAmount ?? 0,
+
+        PaymentVerifyStatus:
+          details?.payment?.PaymentVerifyStatus ?? row.PaymentVerifyStatus,
+
+        PaymentReceivedDate:
+          details?.payment?.PaymentReceivedDate ?? row.PaymentReceivedDate,
+      });
+
+      // ========================================================
+      // EXISTING PAYMENT MODE AUTO SELECT
+      // ========================================================
+
+      if (details?.payment?.PaymentModeID) {
+        setPaymentMode(String(details.payment.PaymentModeID));
+      } else {
+        setPaymentMode("");
+      }
+
+      // Old entered amount clear
+      setReceivedAmount("");
+
+      // Modal open
       setIsPaymentModalOpen(true);
+    } catch (error) {
+      console.error("PAYMENT DETAILS ERROR ===>", error);
+
+      toast.error(error?.message || "Unable to load payment details");
     }
   };
 
   const handleVerifyPayment = (paymentReceivedDate) => {
     const status = (selectedPayment?.OrderStatus || "").toLowerCase().trim();
 
-    // ✅ Pending / Processing / N/A order = Advance Payment
+    // =========================================================
+    // PENDING / PROCESSING ORDER = ADVANCE PAYMENT
+    // =========================================================
     if (status !== "complete" && status !== "completed") {
       dispatch(
         verifyAdvancePayment({
@@ -333,7 +407,7 @@ const AdminDashboard = () => {
         }),
       )
         .unwrap()
-        .then(() => {
+        .then(async () => {
           toast.success("Advance payment verified successfully!");
 
           setIsPaymentModalOpen(false);
@@ -341,47 +415,60 @@ const AdminDashboard = () => {
           setVerificationRemarks("");
           setPaymentMode("");
 
-          dispatch(fetchOrder());
+          await dispatch(fetchOrder());
         })
         .catch((err) => {
-          toast.error(err.message || "Advance payment failed");
+          toast.error(err?.message || "Advance payment failed");
         });
 
       return;
     }
 
-    // ✅ Complete order = Old payment verify flow
+    // =========================================================
+    // COMPLETE ORDER = NORMAL PAYMENT VERIFICATION
+    // =========================================================
     dispatch(
       verifyPayment({
         paymentId: selectedPayment.PaymentID,
+
+        // ✅ YE MISSING THA
+        paymentModeId: Number(paymentMode),
+
         receivedAmount: Number(receivedAmount),
+
         verificationRemarks,
+
+        // ✅ YE BHI MISSING THA
+        paymentReceivedDate,
       }),
     )
       .unwrap()
-      .then(() => {
-        setFilteredData((prev) =>
-          prev.map((item) =>
-            item.PaymentID === selectedPayment.PaymentID
-              ? {
-                  ...item,
-                  PaymentVerifyStatus: "Verified",
-                  VerifyMark: verificationRemarks,
-                  ShortAmount: 0,
-                }
-              : item,
-          ),
-        );
+      .then(async (result) => {
+        if (result.status === "Verified") {
+          if (Number(result.creditNoteAmount || 0) > 0) {
+            toast.success(
+              `Verified: ₹${result.creditNoteAmount} Credit Note + ₹${result.receivedAmount} Payment`,
+            );
+          } else {
+            toast.success("Payment verified successfully!");
+          }
+        } else if (result.status === "Short") {
+          toast.warning(`Payment incomplete. Due ₹${result.shortAmount}`);
+        }
 
-        toast.success("Payment updated successfully!");
         setIsPaymentModalOpen(false);
         setReceivedAmount("");
         setVerificationRemarks("");
         setPaymentMode("");
+
+        // Fresh data database se
+        await dispatch(fetchOrder());
       })
-      .catch((err) =>
-        toast.error(err.message || "Payment verification failed"),
-      );
+      .catch((err) => {
+        console.error("VERIFY ERROR ===>", err);
+
+        toast.error(err?.message || "Payment verification failed");
+      });
   };
 
   const deliveryMenList = [
@@ -1249,205 +1336,260 @@ const AdminDashboard = () => {
                   <TableRowSkeleton />
                 ) : currentRecords.length > 0 ? (
                   currentRecords.map((row, index) => (
-                    <tr
-                      key={row.id || index}
-                      className={
-                        index % 2 === 0
-                          ? styles.tableRowEven
-                          : styles.tableRowOdd
-                      }
-                    >
-                      <td>
-                        <span className={styles.productId}>{row.OrderID}</span>
-                      </td>
-                      <td className={styles.productName}>{row.ProductNames}</td>
-                      <td className={styles.tableData}>{row.CustomerName}</td>
-                      {/* Address wale td ko ek extra class dein */}
-                      <td
-                        className={`${styles.tableData} ${styles.addressCell}`}
+                    <React.Fragment key={row.id || index}>
+                      {console.log("PAYMENT DATA ===>", {
+                        OrderID: row.OrderID,
+                        PaymentSummary: row.PaymentSummary,
+                        CreditNoteAmount: row.CreditNoteAmount,
+                        PaymentVerifyStatus: row.PaymentVerifyStatus,
+                      })}
+                      <tr
+                        key={row.id || index}
+                        className={
+                          index % 2 === 0
+                            ? styles.tableRowEven
+                            : styles.tableRowOdd
+                        }
                       >
-                        {row.Address}
-                      </td>
-                      <td className={styles.tableData}>{row.Area}</td>
-                      <td className={styles.tableData}>{row.ContactNo}</td>
-                      <td className={styles.tableData}>
-                        <div className={styles.productTable}>
-                          {(() => {
-                            const types = row.ProductTypes
-                              ? row.ProductTypes.split(",")
-                              : [];
-                            const weights = row.Weights
-                              ? row.Weights.split(",")
-                              : [];
-                            const quantities = row.Quantities
-                              ? row.Quantities.split(",").map((q) =>
-                                  parseFloat(q),
-                                )
-                              : [];
-                            const rates = row.Rates ? row.Rates.split(",") : [];
+                        <td>
+                          <span className={styles.productId}>
+                            {row.OrderID}
+                          </span>
+                        </td>
+                        <td className={styles.productName}>
+                          {row.ProductNames}
+                        </td>
+                        <td className={styles.tableData}>{row.CustomerName}</td>
+                        {/* Address wale td ko ek extra class dein */}
+                        <td
+                          className={`${styles.tableData} ${styles.addressCell}`}
+                        >
+                          {row.Address}
+                        </td>
+                        <td className={styles.tableData}>{row.Area}</td>
+                        <td className={styles.tableData}>{row.ContactNo}</td>
+                        <td className={styles.tableData}>
+                          <div className={styles.productTable}>
+                            {(() => {
+                              const types = row.ProductTypes
+                                ? row.ProductTypes.split(",")
+                                : [];
+                              const weights = row.Weights
+                                ? row.Weights.split(",")
+                                : [];
+                              const quantities = row.Quantities
+                                ? row.Quantities.split(",").map((q) =>
+                                    parseFloat(q),
+                                  )
+                                : [];
+                              const rates = row.Rates
+                                ? row.Rates.split(",")
+                                : [];
 
-                            return types.map((type, i) => (
-                              <div key={i} className={styles.productRow}>
-                                <span className={styles.pType}>
-                                  {type?.trim() || "-"}
-                                </span>
-                                <span className={styles.pWeight}>
-                                  {weights[i]?.trim() || "-"}
-                                </span>
+                              return types.map((type, i) => (
+                                <div key={i} className={styles.productRow}>
+                                  <span className={styles.pType}>
+                                    {type?.trim() || "-"}
+                                  </span>
+                                  <span className={styles.pWeight}>
+                                    {weights[i]?.trim() || "-"}
+                                  </span>
 
-                                <span className={styles.pQty}>
-                                  Qty:{" "}
-                                  {quantities[i]
-                                    ? quantities[i].toFixed(2)
-                                    : "-"}
-                                </span>
-                                <span className={styles.pRate}>
-                                  ₹{rates[i]?.trim() || "-"}
-                                </span>
-                              </div>
-                            ));
-                          })()}
-                        </div>
-                      </td>
-                      <td className={styles.tableData}>{row.DeliveryCharge}</td>
-                      <td className={styles.tableData}>₹{getRowTotal(row)}</td>
-                      <td className={styles.tableData}>
-                        <div>
-                          <div>
-                            {new Date(row.OrderDate).toLocaleDateString(
-                              "en-GB",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "2-digit",
-                              },
-                            )}
+                                  <span className={styles.pQty}>
+                                    Qty:{" "}
+                                    {quantities[i]
+                                      ? quantities[i].toFixed(2)
+                                      : "-"}
+                                  </span>
+                                  <span className={styles.pRate}>
+                                    ₹{rates[i]?.trim() || "-"}
+                                  </span>
+                                </div>
+                              ));
+                            })()}
                           </div>
-
-                          {row.CreatedAt && (
-                            <small style={{ color: "#666" }}>
-                              {new Date(row.CreatedAt).toLocaleTimeString(
-                                "en-IN",
+                        </td>
+                        <td className={styles.tableData}>
+                          {row.DeliveryCharge}
+                        </td>
+                        <td className={styles.tableData}>
+                          ₹{getRowTotal(row)}
+                        </td>
+                        <td className={styles.tableData}>
+                          <div>
+                            <div>
+                              {new Date(row.OrderDate).toLocaleDateString(
+                                "en-GB",
                                 {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
+                                  day: "2-digit",
+                                  month: "short",
+                                  year: "2-digit",
                                 },
                               )}
-                            </small>
-                          )}
-                        </div>
-                      </td>
-                      <td className={styles.tableData}>
-                        {new Date(row.DeliveryDate)
-                          .toLocaleDateString("en-GB", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "2-digit",
-                          })
-                          .replace(",", "")
-                          .replace(" ", "-")}
-                      </td>
-                      <td className={styles.tableData}>
-                        {row.DeliveryManName}
-                      </td>
-                      <td className={styles.tableData}>
-                        <span
-                          className={`${styles.statusBadge} ${getStatusClass(
-                            row.OrderStatus,
-                          )}`}
-                        >
-                          {row.OrderStatus || "N/A"}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={styles.paymentModeBadge}>
-                          {formatPaymentSummary(row.PaymentSummary)}
-                        </span>
-                      </td>
-                      <td className={styles.tableData}>{row.OrderTakenBy}</td>
-                      <td className={styles.tableData}>{row.Remark}</td>
-                      <td>
-                        <select
-                          value={
-                            ["cancel", "cancelled"].includes(
-                              (row.OrderStatus || "").toLowerCase().trim(),
-                            )
-                              ? "Verified"
-                              : row.PaymentVerifyStatus || "Pending"
-                          }
-                          disabled={
-                            row.PaymentVerifyStatus === "Verified" ||
-                            ["cancel", "cancelled"].includes(
-                              (row.OrderStatus || "").toLowerCase().trim(),
-                            )
-                          }
-                          onChange={(e) =>
-                            handleStatusChange(row, e.target.value)
-                          }
-                          className={styles.paymentDropdown}
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Verified">Verified</option>
-                          <option value="Incomplete">Incomplete</option>
-                        </select>
+                            </div>
 
-                        {row.ShortAmount > 0 && (
-                          <p className={styles.shortDue}>
-                            Due: ₹{row.ShortAmount}
-                          </p>
-                        )}
-                      </td>
-                      <td className={styles.actions}>
-                        <button
-                          className={styles.actionBtn}
-                          title="View Details"
-                          onClick={() => {
-                            setSelectedViewOrder(row);
-                            setIsViewModalOpen(true);
-                          }}
-                        >
-                          <FaEye />
-                        </button>
-                        <button
-                          className={styles.actionBtn}
-                          title="Edit Product"
-                          onClick={() => {
-                            console.log("Edit clicked", row);
-                            handleEditOrder(row);
-                          }}
-                        >
-                          <FaEdit />
-                        </button>
-                        <button
-                          className={styles.actionBtn}
-                          title="Generate Invoice"
-                          onClick={() => handleGenerateInvoice(row)}
-                          disabled={isFilterLoading}
-                        >
-                          <FaFileInvoiceDollar />
-                        </button>
-                        <button
-                          className={styles.actionBtn}
-                          title="Generate Chalan"
-                          onClick={() => handleGenerateChalan(row)}
-                          disabled={isFilterLoading}
-                          style={{ color: "#d35400" }} // Optional: Chalan ke liye alag color
-                        >
-                          <FaTruck />
-                        </button>
-                        <button
-                          className={styles.actionBtn}
-                          title="Debit / Credit Note"
-                          onClick={() => handleOpenNote(row)}
-                        >
-                          <FaStickyNote />
-                        </button>
-                      </td>
-                      <td className={styles.tableData}>
-                        {row.VerifyMark || "-"}
-                      </td>
-                    </tr>
+                            {row.CreatedAt && (
+                              <small style={{ color: "#666" }}>
+                                {new Date(row.CreatedAt).toLocaleTimeString(
+                                  "en-IN",
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    hour12: true,
+                                  },
+                                )}
+                              </small>
+                            )}
+                          </div>
+                        </td>
+                        <td className={styles.tableData}>
+                          {new Date(row.DeliveryDate)
+                            .toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "2-digit",
+                            })
+                            .replace(",", "")
+                            .replace(" ", "-")}
+                        </td>
+                        <td className={styles.tableData}>
+                          {row.DeliveryManName}
+                        </td>
+                        <td className={styles.tableData}>
+                          <span
+                            className={`${styles.statusBadge} ${getStatusClass(
+                              row.OrderStatus,
+                            )}`}
+                          >
+                            {row.OrderStatus || "N/A"}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={styles.paymentModeBadge}>
+                            {formatPaymentSummary(
+                              row.PaymentSummary,
+                              row.CreditNoteAmount,
+                            )}
+                          </span>
+                        </td>
+                        <td className={styles.tableData}>{row.OrderTakenBy}</td>
+                        <td className={styles.tableData}>{row.Remark}</td>
+                        <td>
+                          <select
+                            value={
+                              ["cancel", "cancelled"].includes(
+                                (row.OrderStatus || "").toLowerCase().trim(),
+                              )
+                                ? "Verified"
+                                : row.PaymentVerifyStatus || "Pending"
+                            }
+                            disabled={
+                              row.PaymentVerifyStatus === "Verified" ||
+                              ["cancel", "cancelled"].includes(
+                                (row.OrderStatus || "").toLowerCase().trim(),
+                              )
+                            }
+                            onChange={(e) =>
+                              handleStatusChange(row, e.target.value)
+                            }
+                            className={styles.paymentDropdown}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Verified">Verified</option>
+                            <option value="Incomplete">Incomplete</option>
+                          </select>
+
+                          {row.ShortAmount > 0 && (
+                            <p className={styles.shortDue}>
+                              Due: ₹{row.ShortAmount}
+                            </p>
+                          )}
+                        </td>
+                        <td className={styles.actions}>
+                          <button
+                            className={styles.actionBtn}
+                            title="View Details"
+                            onClick={() => {
+                              setSelectedViewOrder(row);
+                              setIsViewModalOpen(true);
+                            }}
+                          >
+                            <FaEye />
+                          </button>
+                          <button
+                            className={styles.actionBtn}
+                            title="Edit Product"
+                            onClick={() => {
+                              console.log("Edit clicked", row);
+                              handleEditOrder(row);
+                            }}
+                          >
+                            <FaEdit />
+                          </button>
+                          <button
+                            className={styles.actionBtn}
+                            title="Generate Invoice"
+                            onClick={() => handleGenerateInvoice(row)}
+                            disabled={isFilterLoading}
+                          >
+                            <FaFileInvoiceDollar />
+                          </button>
+                          <button
+                            className={styles.actionBtn}
+                            title="Generate Chalan"
+                            onClick={() => handleGenerateChalan(row)}
+                            disabled={isFilterLoading}
+                            style={{ color: "#d35400" }} // Optional: Chalan ke liye alag color
+                          >
+                            <FaTruck />
+                          </button>
+                          {(() => {
+                            const paymentVerified =
+                              row.PaymentVerifyStatus === "Verified";
+
+                            const orderCancelled = [
+                              "cancel",
+                              "cancelled",
+                            ].includes(
+                              (row.OrderStatus || "").toLowerCase().trim(),
+                            );
+
+                            const noteDisabled =
+                              paymentVerified || orderCancelled;
+
+                            return (
+                              <button
+                                className={styles.actionBtn}
+                                title={
+                                  noteDisabled
+                                    ? paymentVerified
+                                      ? "Payment already verified"
+                                      : "Order cancelled"
+                                    : "Debit / Credit Note"
+                                }
+                                onClick={() => {
+                                  if (!noteDisabled) {
+                                    handleOpenNote(row);
+                                  }
+                                }}
+                                disabled={noteDisabled}
+                                style={{
+                                  opacity: noteDisabled ? 0.4 : 1,
+                                  cursor: noteDisabled
+                                    ? "not-allowed"
+                                    : "pointer",
+                                }}
+                              >
+                                <FaStickyNote />
+                              </button>
+                            );
+                          })()}
+                        </td>
+                        <td className={styles.tableData}>
+                          {row.VerifyMark || "-"}
+                        </td>
+                      </tr>
+                    </React.Fragment>
                   ))
                 ) : (
                   !loading &&
@@ -1532,9 +1674,14 @@ const AdminDashboard = () => {
         isOpen={isPaymentModalOpen}
         onClose={() => {
           setIsPaymentModalOpen(false);
+
           setReceivedAmount("");
+
           setVerificationRemarks("");
+
           setPaymentMode("");
+
+          dispatch(clearPaymentVerificationDetails());
         }}
         selectedPayment={selectedPayment}
         receivedAmount={receivedAmount}
@@ -1547,8 +1694,8 @@ const AdminDashboard = () => {
         onVerifyPayment={handleVerifyPayment}
         paymentReceivedDate={paymentReceivedDate}
         setPaymentReceivedDate={setPaymentReceivedDate}
+        loading={paymentVerifyLoading}
       />
-
       {isInvoiceModalOpen && (
         <InvoiceGenerator
           orderData={selectedOrderForInvoice}

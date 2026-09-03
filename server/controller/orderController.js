@@ -113,17 +113,59 @@ exports.getAllorder = async (req, res) => {
 
     const result = await pool.request().query(`
       SELECT 
-        O.OrderID, O.CustomerName, O.ContactNo, O.Address, O.Area,
-        C.Gst_No, C.PAN_No, O.DeliveryCharge, O.OrderDate, O.OrderTakenBy,
-        O.InvoiceNo, O.Po_No, O.Po_Date, O.InvoiceDate,  O.CreatedAt, 
-        A.AssignID, A.DeliveryDate, A.DeliveryManID, DM.Name AS DeliveryManName,
-        A.Remark, A.DeliveryStatus AS OrderStatus, A.ActualDeliveryDate, A.PaymentReceivedDate,
-        Items.ItemIDs, Items.ProductNames, Items.ProductTypes, Items.ProductUPCs, Items.MRPs,
-        Items.Weights, Items.Quantities, Items.Rates, Items.ItemTotals, Items.GrandItemTotal,
-        Payments.PaymentID, Payments.PaymentSummary, Payments.TotalPaid,
-        Payments.PaymentVerifyStatus, Payments.ShortAmount,
-        Payments.VerifyMark -- ⭐ Frontend fix: Added this alias
+        O.OrderID,
+        O.CustomerName,
+        O.ContactNo,
+        O.Address,
+        O.Area,
+
+        C.Gst_No,
+        C.PAN_No,
+
+        O.DeliveryCharge,
+        O.OrderDate,
+        O.OrderTakenBy,
+        O.InvoiceNo,
+        O.Po_No,
+        O.Po_Date,
+        O.InvoiceDate,
+        O.CreatedAt,
+
+        A.AssignID,
+        A.DeliveryDate,
+        A.DeliveryManID,
+        DM.Name AS DeliveryManName,
+        A.Remark,
+        A.DeliveryStatus AS OrderStatus,
+        A.ActualDeliveryDate,
+        A.PaymentReceivedDate,
+
+        Items.ItemIDs,
+        Items.ProductNames,
+        Items.ProductTypes,
+        Items.ProductUPCs,
+        Items.MRPs,
+        Items.Weights,
+        Items.Quantities,
+        Items.Rates,
+        Items.ItemTotals,
+        Items.GrandItemTotal,
+
+        Payments.PaymentID,
+        Payments.PaymentSummary,
+        Payments.TotalPaid,
+        Payments.PaymentVerifyStatus,
+        Payments.ShortAmount,
+        Payments.VerifyMark,
+
+        -- ✅ CREDIT NOTE AMOUNT
+        ISNULL(CreditNotes.CreditNoteAmount, 0) AS CreditNoteAmount
+
       FROM OrdersTemp O WITH (NOLOCK)
+
+      -- =========================================================
+      -- CUSTOMER
+      -- =========================================================
       OUTER APPLY (
           SELECT TOP 1 *
           FROM Customers C WITH (NOLOCK)
@@ -131,69 +173,246 @@ exports.getAllorder = async (req, res) => {
             AND O.ContactNo = C.Contact_No
           ORDER BY C.CustomerID DESC
       ) C
-      LEFT JOIN AssignedOrders A WITH (NOLOCK) ON O.OrderID = A.OrderID
-      LEFT JOIN DeliveryMen DM WITH (NOLOCK) ON A.DeliveryManID = DM.DeliveryManID
 
+      LEFT JOIN AssignedOrders A WITH (NOLOCK)
+          ON O.OrderID = A.OrderID
+
+      LEFT JOIN DeliveryMen DM WITH (NOLOCK)
+          ON A.DeliveryManID = DM.DeliveryManID
+
+
+      -- =========================================================
+      -- ITEMS
+      -- =========================================================
       OUTER APPLY (
           SELECT 
-              STRING_AGG(CAST(OI.ItemID AS VARCHAR(20)), ', ') AS ItemIDs,
-              STRING_AGG(OI.ProductName, ', ') AS ProductNames,
-              STRING_AGG(PT2.ProductType, ', ') AS ProductTypes,
-              STRING_AGG(CAST(OI.Weight AS VARCHAR(10)), ', ') AS Weights,
-              STRING_AGG(CAST(OI.Quantity AS VARCHAR(10)), ', ') AS Quantities,
-              STRING_AGG(CAST(OI.Rate AS VARCHAR(10)), ', ') AS Rates,
-              STRING_AGG(CAST(OI.Total AS VARCHAR(10)), ', ') AS ItemTotals,
-              STRING_AGG(PT2.ProductUPC, ', ') AS ProductUPCs,
-              STRING_AGG(CAST(PT2.MRP AS VARCHAR(10)), ', ') AS MRPs,
+              STRING_AGG(
+                  CAST(OI.ItemID AS VARCHAR(20)),
+                  ', '
+              ) AS ItemIDs,
+
+              STRING_AGG(
+                  OI.ProductName,
+                  ', '
+              ) AS ProductNames,
+
+              STRING_AGG(
+                  PT2.ProductType,
+                  ', '
+              ) AS ProductTypes,
+
+              STRING_AGG(
+                  CAST(OI.Weight AS VARCHAR(10)),
+                  ', '
+              ) AS Weights,
+
+              STRING_AGG(
+                  CAST(OI.Quantity AS VARCHAR(10)),
+                  ', '
+              ) AS Quantities,
+
+              STRING_AGG(
+                  CAST(OI.Rate AS VARCHAR(10)),
+                  ', '
+              ) AS Rates,
+
+              STRING_AGG(
+                  CAST(OI.Total AS VARCHAR(10)),
+                  ', '
+              ) AS ItemTotals,
+
+              STRING_AGG(
+                  PT2.ProductUPC,
+                  ', '
+              ) AS ProductUPCs,
+
+              STRING_AGG(
+                  CAST(PT2.MRP AS VARCHAR(10)),
+                  ', '
+              ) AS MRPs,
+
               SUM(OI.Total) AS GrandItemTotal
+
           FROM OrderItems OI WITH (NOLOCK)
+
           LEFT JOIN (
-              SELECT DISTINCT ProductType, ProductUPC, MRP
+              SELECT DISTINCT
+                  ProductType,
+                  ProductUPC,
+                  MRP
               FROM ProductTypes WITH (NOLOCK)
-          ) PT2 ON OI.ProductType = PT2.ProductType
+          ) PT2
+              ON OI.ProductType = PT2.ProductType
+
           WHERE OI.OrderID = O.OrderID
       ) Items
 
-     OUTER APPLY (
-    SELECT
-        MAX(OP.PaymentID) AS PaymentID,
 
-        'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END),0) AS VARCHAR(20)) +
-        ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END),0) AS VARCHAR(20)) +
-        ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END),0) AS VARCHAR(20)) +
-        ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END),0) AS VARCHAR(20)) +
-        ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END),0) AS VARCHAR(20))
-        AS PaymentSummary,
+      -- =========================================================
+      -- PAYMENTS
+      -- =========================================================
+      OUTER APPLY (
+          SELECT
+              MAX(OP.PaymentID) AS PaymentID,
 
-        ISNULL(SUM(OP.Amount),0) AS TotalPaid,
+              'Cash: ' +
+              CAST(
+                  ISNULL(
+                      SUM(
+                          CASE
+                              WHEN PM.ModeName = 'Cash'
+                              THEN OP.Amount
+                          END
+                      ),
+                      0
+                  )
+                  AS VARCHAR(20)
+              )
 
-        ISNULL(SUM(OP.ShortAmount),0) AS ShortAmount,
+              + ' | GPay: ' +
+              CAST(
+                  ISNULL(
+                      SUM(
+                          CASE
+                              WHEN PM.ModeName = 'GPay'
+                              THEN OP.Amount
+                          END
+                      ),
+                      0
+                  )
+                  AS VARCHAR(20)
+              )
 
-        CASE
-            WHEN COUNT(
-                CASE
-                    WHEN OP.PaymentVerifyStatus = 'Verified'
-                    THEN 1
-                END
-            ) > 0
-            THEN 'Verified'
-            ELSE 'Pending'
-        END AS PaymentVerifyStatus,
+              + ' | Paytm: ' +
+              CAST(
+                  ISNULL(
+                      SUM(
+                          CASE
+                              WHEN PM.ModeName = 'Paytm'
+                              THEN OP.Amount
+                          END
+                      ),
+                      0
+                  )
+                  AS VARCHAR(20)
+              )
 
-        MAX(OP.VerificationRemarks) AS VerifyMark
+              + ' | FOC: ' +
+              CAST(
+                  ISNULL(
+                      SUM(
+                          CASE
+                              WHEN PM.ModeName = 'FOC'
+                              THEN OP.Amount
+                          END
+                      ),
+                      0
+                  )
+                  AS VARCHAR(20)
+              )
 
-    FROM OrderPayments OP WITH (NOLOCK)
-    LEFT JOIN PaymentModes PM WITH (NOLOCK)
-        ON OP.PaymentModeID = PM.PaymentModeID
+              + ' | Bank Transfer: ' +
+              CAST(
+                  ISNULL(
+                      SUM(
+                          CASE
+                              WHEN PM.ModeName = 'Bank Transfer'
+                              THEN OP.Amount
+                          END
+                      ),
+                      0
+                  )
+                  AS VARCHAR(20)
+              )
+              AS PaymentSummary,
 
-    WHERE OP.OrderID = O.OrderID
-) Payments
+
+              ISNULL(
+                  SUM(OP.Amount),
+                  0
+              ) AS TotalPaid,
+
+
+              ISNULL(
+                  SUM(OP.ShortAmount),
+                  0
+              ) AS ShortAmount,
+
+
+              CASE
+                  WHEN COUNT(
+                      CASE
+                          WHEN OP.PaymentVerifyStatus = 'Verified'
+                          THEN 1
+                      END
+                  ) > 0
+                  THEN 'Verified'
+
+                  ELSE 'Pending'
+              END AS PaymentVerifyStatus,
+
+
+              MAX(
+                  OP.VerificationRemarks
+              ) AS VerifyMark
+
+
+          FROM OrderPayments OP WITH (NOLOCK)
+
+          LEFT JOIN PaymentModes PM WITH (NOLOCK)
+              ON OP.PaymentModeID = PM.PaymentModeID
+
+          WHERE OP.OrderID = O.OrderID
+      ) Payments
+
+
+      -- =========================================================
+      -- ✅ CREDIT NOTES
+      -- =========================================================
+      OUTER APPLY (
+          SELECT
+              ISNULL(
+                  SUM(CDN.amount),
+                  0
+              ) AS CreditNoteAmount
+
+          FROM credit_debit_notes CDN WITH (NOLOCK)
+
+          WHERE CDN.order_id = O.OrderID
+
+            AND LOWER(
+                LTRIM(
+                    RTRIM(CDN.note_type)
+                )
+            ) IN (
+                'credit',
+                'credit note'
+            )
+
+            AND LOWER(
+                ISNULL(
+                    CDN.status,
+                    'active'
+                )
+            ) NOT IN (
+                'cancelled',
+                'canceled',
+                'rejected'
+            )
+
+      ) CreditNotes
+
+
       ORDER BY O.OrderID DESC
     `);
 
     res.status(200).json(result.recordset);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("GET ALL ORDER ERROR ===>", err);
+
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
