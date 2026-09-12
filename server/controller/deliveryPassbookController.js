@@ -400,6 +400,55 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
 
 
       -- ===================================================
+      -- LEGACY CASH ADJUSTMENTS
+      -- Used only for balance calculation.
+      -- These rows are intentionally hidden from frontend.
+      -- ===================================================
+
+      INSERT INTO #Ledger
+      (
+        TransactionType,
+        TransactionSource,
+        SourceId,
+        TransactionDate,
+        OrderID,
+        AssignID,
+        InvoiceNo,
+        CustomerName,
+        Area,
+        Debit,
+        Credit,
+        PaymentVerifyStatus,
+        VerificationRemarks,
+        IsHandovered,
+        DenominationJSON,
+        SortPriority
+      )
+      SELECT
+        dca.AdjustmentType,
+        'CASH_ADJUSTMENT',
+        dca.AdjustmentID,
+        dca.CreatedAt,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        CASE WHEN dca.AdjustmentType = 'DR' THEN dca.Amount ELSE 0 END,
+        CASE WHEN dca.AdjustmentType = 'CR' THEN dca.Amount ELSE 0 END,
+        NULL,
+        dca.Reason,
+        NULL,
+        NULL,
+        3
+      FROM DeliveryManCashAdjustments dca
+      WHERE
+        dca.DeliveryManID = @deliveryManId
+        AND dca.AdjustmentType IN ('DR', 'CR')
+        AND ISNULL(dca.Amount, 0) > 0;
+
+
+      -- ===================================================
       -- CURRENT BALANCE
       -- ===================================================
 
@@ -434,10 +483,9 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
 
 
       -- ===================================================
-      -- RECONCILIATION / LEGACY OPENING BALANCE
-      --
-      -- This makes recorded ledger reconcile with
-      -- DeliveryMenCashBalance.CurrentBalance
+      -- RECONCILIATION CHECK
+      -- Adjustments are now recorded inside #Ledger, so this
+      -- value should normally be zero and is not sent to UI.
       -- ===================================================
 
       DECLARE @ReconciliationAdjustment DECIMAL(18,2);
@@ -454,8 +502,6 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
 
       SELECT
         @OpeningBalance =
-          @ReconciliationAdjustment
-          +
           ISNULL(
             SUM(Credit - Debit),
             0
@@ -470,8 +516,7 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
 
       IF @fromDate IS NULL
       BEGIN
-        SET @OpeningBalance =
-          @ReconciliationAdjustment;
+        SET @OpeningBalance = 0;
       END;
 
 
@@ -498,7 +543,12 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
           ),
 
         @TransactionCount =
-          COUNT(*)
+          SUM(
+            CASE
+              WHEN TransactionSource <> 'CASH_ADJUSTMENT' THEN 1
+              ELSE 0
+            END
+          )
 
       FROM #Ledger
 
@@ -622,6 +672,13 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
         FROM PeriodLedger
       ),
 
+      VisibleLedger AS
+      (
+        SELECT *
+        FROM RunningLedger
+        WHERE TransactionSource <> 'CASH_ADJUSTMENT'
+      ),
+
       NumberedLedger AS
       (
         SELECT
@@ -637,7 +694,7 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
               SourceId
           ) AS RowNumber
 
-        FROM RunningLedger
+        FROM VisibleLedger
       )
 
       SELECT
@@ -753,10 +810,6 @@ exports.getDeliveryBoyPassbook = async (req, res) => {
         currentBalance: Number(summary.CurrentBalance || 0),
 
         transactionCount: totalTransactions,
-
-        rawLedgerBalance: Number(summary.RawLedgerBalance || 0),
-
-        reconciliationAdjustment: Number(summary.ReconciliationAdjustment || 0),
       },
 
       openingEntry: {

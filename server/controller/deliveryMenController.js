@@ -285,7 +285,7 @@ exports.getCashHandoverReport = async (req, res) => {
     const query = `SELECT 
           cd.TotalHandoverAmount,
           cd.DenominationJSON,
-          CAST(cd.createdAT AS DATE) AS HandOverDate,
+          CAST(cd.handoverdate AS DATE) AS HandOverDate,
           dm.Name,
           dm.Area,
           dm.MobileNo

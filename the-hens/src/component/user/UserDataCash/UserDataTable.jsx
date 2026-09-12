@@ -234,7 +234,7 @@ export default function UserDataTable() {
   };
 
   // ✅ Updated handleHandover using Redux pendingCashOrders
-  const handleHandover = () => {
+  const handleHandover = async (handoverDate) => {
     if (!selected) {
       setError("Please select a delivery man first.");
       return;
@@ -263,6 +263,7 @@ export default function UserDataTable() {
       totalHandoverAmount: Number(totalHandoverAmount),
       denominationJSON: denominationsToSend,
       orderPaymentIds: orderPaymentIds, // Khali array [] bhi jayega toh backend ab handle kar lega
+      handoverDate: handoverDate, // Selected date backend ko bhejo
     };
 
     dispatch(handoverCash(payload))

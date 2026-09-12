@@ -1321,6 +1321,7 @@ const AdminDashboard = () => {
                   <th>Total</th>
                   <th>Order Date</th>
                   <th>Delivery Date</th>
+                  <th>Payment Recieve Date</th>
                   <th>Delivery Man</th>
                   <th>Order Status</th>
                   <th>Payment Mode</th>
@@ -1329,6 +1330,7 @@ const AdminDashboard = () => {
                   <th>Payment Status</th>
                   <th>Actions</th>
                   <th>Verfication Remark</th>
+                  <th>Invoice No.</th>
                 </tr>
               </thead>
               <tbody>
@@ -1338,10 +1340,7 @@ const AdminDashboard = () => {
                   currentRecords.map((row, index) => (
                     <React.Fragment key={row.id || index}>
                       {console.log("PAYMENT DATA ===>", {
-                        OrderID: row.OrderID,
-                        PaymentSummary: row.PaymentSummary,
-                        CreditNoteAmount: row.CreditNoteAmount,
-                        PaymentVerifyStatus: row.PaymentVerifyStatus,
+                        currentRecords,
                       })}
                       <tr
                         key={row.id || index}
@@ -1444,6 +1443,16 @@ const AdminDashboard = () => {
                         </td>
                         <td className={styles.tableData}>
                           {new Date(row.DeliveryDate)
+                            .toLocaleDateString("en-GB", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "2-digit",
+                            })
+                            .replace(",", "")
+                            .replace(" ", "-")}
+                        </td>
+                        <td className={styles.tableData}>
+                          {new Date(row.PaymentVerifyDate)
                             .toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
@@ -1587,6 +1596,9 @@ const AdminDashboard = () => {
                         </td>
                         <td className={styles.tableData}>
                           {row.VerifyMark || "-"}
+                        </td>
+                        <td className={styles.tableData}>
+                          {row.InvoiceNo || "-"}
                         </td>
                       </tr>
                     </React.Fragment>

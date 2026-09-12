@@ -4,6 +4,16 @@ import { DENOMINATIONS } from "../../../features/denominationSlice";
 import { useSelector } from "react-redux";
 import OrderDetailsModal from "./UserOrderDetailsModal"; // ✅ ADD THIS
 
+const getTodayDate = () => {
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
 export default function DeliveryManDetails({
   selected,
   manualDenominations,
@@ -20,6 +30,7 @@ export default function DeliveryManDetails({
     error,
   } = useSelector((state) => state.denomination);
   const [showOrders, setShowOrders] = useState(false);
+  const [handoverDate, setHandoverDate] = useState(getTodayDate);
 
   if (!selected) {
     return (
@@ -116,6 +127,23 @@ export default function DeliveryManDetails({
               </div>
             </div>
 
+            <div className={styles.detailItem} style={{ marginBottom: "16px" }}>
+              <label htmlFor="handoverDate" className={styles.detailLabel}>
+                Handover Date
+              </label>
+
+              <input
+                id="handoverDate"
+                type="date"
+                min="2026-02-11"
+                value={handoverDate}
+                onChange={(e) => setHandoverDate(e.target.value)}
+                className={styles.noteInputField}
+                disabled={dLoading}
+                required
+              />
+            </div>
+
             {/* MANUAL DENOMINATIONS */}
             <div className={styles.denominationsInputGrid}>
               {DENOMINATIONS.map((noteValue) => (
@@ -161,10 +189,16 @@ export default function DeliveryManDetails({
             </div>
 
             {/* HANDOVER BUTTON */}
+            {/* HANDOVER BUTTON */}
             <button
               className={styles.handoverButton}
-              onClick={onHandover}
-              disabled={dLoading || totalHandoverAmount <= 0}
+              onClick={() => onHandover(handoverDate)}
+              disabled={
+                dLoading ||
+                totalHandoverAmount <= 0 ||
+                !handoverDate ||
+                handoverDate < "2026-02-11"
+              }
             >
               {dLoading
                 ? "Processing..."

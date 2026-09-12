@@ -642,13 +642,34 @@ exports.handoverCash = async (req, res) => {
     deliveryManId,
     totalHandoverAmount,
     denominationJSON,
-    orderPaymentIds, // Yeh optional ho jayega part payment ke liye
+    orderPaymentIds,
+    handoverDate,
   } = req.body;
 
   if (!deliveryManId || totalHandoverAmount <= 0) {
     return res
       .status(400)
       .json({ message: "DeliveryManID and valid Amount required!" });
+  }
+
+  const parsedDate =
+    typeof handoverDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(handoverDate)
+      ? new Date(`${handoverDate}T00:00:00.000Z`)
+      : new Date(NaN);
+
+  if (
+    Number.isNaN(parsedDate.getTime()) ||
+    parsedDate.toISOString().slice(0, 10) !== handoverDate
+  ) {
+    return res.status(400).json({
+      message: "Please select a valid handover date.",
+    });
+  }
+
+  if (handoverDate < "2026-02-11") {
+    return res.status(400).json({
+      message: "Handover date cannot be before 11 February 2026.",
+    });
   }
 
   const pool = await poolPromise;
@@ -668,6 +689,14 @@ exports.handoverCash = async (req, res) => {
       throw new Error("Balance record not found");
 
     const currentBalance = balanceResult.recordset[0].CurrentBalance;
+
+    if (currentBalance < totalHandoverAmount) {
+      await transaction.rollback();
+
+      return res.status(400).json({
+        message: `Insufficient balance. Available: ₹${currentBalance}`,
+      });
+    }
 
     // Part Payment ke liye check: Amount balance se zyada nahi honi chahiye
     if (currentBalance < totalHandoverAmount) {
@@ -693,9 +722,10 @@ exports.handoverCash = async (req, res) => {
         "DenominationJSON",
         sql.NVarChar(sql.MAX),
         JSON.stringify(denominationJSON),
-      ).query(`
-        INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt)
-        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE())
+      )
+      .input("HandoverDate", sql.Date, handoverDate).query(`
+        INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt,HandoverDate)
+        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE(), @HandoverDate)
       `);
 
     // 4️⃣ Orders ko 'IsHandovered' mark karein (Agar IDs bheji gayi hain)
@@ -715,11 +745,21 @@ exports.handoverCash = async (req, res) => {
     // 5️⃣ History Table Update
     await new sql.Request(transaction)
       .input("DeliveryManID", sql.Int, deliveryManId)
-      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount).query(`
-        INSERT INTO CashHandoverHistory (DeliveryManID, Amount, TransactionType, EntryDate)
-        VALUES (@DeliveryManID, @Amount, 'DEBIT', GETDATE())
-      `);
-
+      .input("Amount", sql.Decimal(10, 2), totalHandoverAmount)
+      .input("HandoverDate", sql.Date, handoverDate).query(`
+    INSERT INTO CashHandoverHistory (
+      DeliveryManID,
+      Amount,
+      TransactionType,
+      EntryDate
+    )
+    VALUES (
+      @DeliveryManID,
+      @Amount,
+      'DEBIT',
+      @HandoverDate
+    )
+  `);
     await transaction.commit();
     res.status(200).json({
       message: "Handover Successful!",

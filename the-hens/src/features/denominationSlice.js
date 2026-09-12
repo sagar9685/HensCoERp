@@ -23,7 +23,13 @@ export const addDenomination = createAsyncThunk(
 export const handoverCash = createAsyncThunk(
   "denomination/handover",
   async (
-    { deliveryManId, totalHandoverAmount, denominationJSON, orderPaymentIds },
+    {
+      deliveryManId,
+      totalHandoverAmount,
+      denominationJSON,
+      orderPaymentIds,
+      handoverDate,
+    },
     { rejectWithValue },
   ) => {
     try {
@@ -32,10 +38,14 @@ export const handoverCash = createAsyncThunk(
         totalHandoverAmount,
         denominationJSON,
         orderPaymentIds,
+        handoverDate,
       });
+
       return res.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message);
+      return rejectWithValue(
+        err.response?.data?.error || err.response?.data?.message || err.message,
+      );
     }
   },
 );
@@ -101,7 +111,8 @@ const denominationSlice = createSlice({
       })
       .addCase(handoverCash.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload.error || action.payload;
+        state.error =
+          action.payload || action.error.message || "Handover failed";
         state.success = "";
       })
       .addCase(fetchPendingCashOrders.pending, (state) => {

@@ -157,6 +157,8 @@ exports.getAllorder = async (req, res) => {
         Payments.PaymentVerifyStatus,
         Payments.ShortAmount,
         Payments.VerifyMark,
+        Payments.PaymentVerifyDate,
+
 
         -- ✅ CREDIT NOTE AMOUNT
         ISNULL(CreditNotes.CreditNoteAmount, 0) AS CreditNoteAmount
@@ -354,7 +356,9 @@ exports.getAllorder = async (req, res) => {
 
               MAX(
                   OP.VerificationRemarks
-              ) AS VerifyMark
+              ) AS VerifyMark,
+
+              MAX(OP.PaymentReceivedDate) AS PaymentVerifyDate
 
 
           FROM OrderPayments OP WITH (NOLOCK)
