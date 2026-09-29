@@ -1,180 +1,472 @@
-/* WeeklyReport.module.css */
-
-.container {
+.page {
+  min-height: 100vh;
   padding: 24px;
-  max-width: 1100px;
-  margin: 0 auto;
-  background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  background: #eef2f5;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #111827;
 }
 
-.header {
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-  color: #1a1a1a;
-  font-weight: 600;
-}
-
-.filters {
+.toolbar {
+  max-width: 1500px;
+  margin: 0 auto 18px;
+  padding: 18px 20px;
   display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  background: #ffffff;
+  border: 1px solid #d8dee6;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+.toolbarTitle {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.toolbarText {
+  margin: 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.filterBar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
   flex-wrap: wrap;
-  gap: 20px;
-  margin-bottom: 2rem;
-  align-items: center;
 }
 
 .filterGroup {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  min-width: 175px;
 }
 
 .filterGroup label {
-  font-weight: 600;
-  color: #333;
-  min-width: 60px;
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
 }
 
-.filterGroup select {
-  padding: 10px 14px;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
+.filterGroup input,
+.readOnlyDate {
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid #cbd5e1;
   border-radius: 6px;
-  background: white;
-  min-width: 160px;
+  background: #ffffff;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.readOnlyDate {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.getReportButton {
+  min-height: 40px;
+  padding: 0 20px;
+  border: 1px solid #1f4e78;
+  border-radius: 6px;
+  background: #1f4e78;
+  color: #ffffff;
+  font-weight: 700;
   cursor: pointer;
-  transition: border-color 0.2s;
 }
 
-.filterGroup select:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.getReportButton:hover:not(:disabled) {
+  background: #173c5d;
 }
 
-.button {
-  padding: 12px 28px;
-  font-size: 1.1rem;
-  font-weight: 500;
-  color: white;
-  background-color: #10b981;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.button:disabled {
-  background-color: #9ca3af;
+.getReportButton:disabled {
   cursor: not-allowed;
+  opacity: 0.65;
 }
 
-.button:hover:not(:disabled) {
-  background-color: #059669;
-  transform: translateY(-1px);
+.exportExcelButton {
+  min-height: 40px;
+  padding: 0 20px;
+  border: 1px solid #217346;
+  border-radius: 6px;
+  background: #217346;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.exportExcelButton:hover:not(:disabled) {
+  background: #185c37;
+}
+
+.exportExcelButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.error,
+.loadingBox,
+.emptyState {
+  max-width: 1500px;
+  margin: 0 auto 18px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #d8dee6;
 }
 
 .error {
-  color: #dc2626;
-  font-weight: 500;
-  margin: 1rem 0;
-  padding: 12px;
-  background: #fee2e2;
-  border-radius: 6px;
+  border-color: #ef9a9a;
+  background: #fff5f5;
+  color: #b42318;
 }
 
-.reportTitle {
-  margin: 2rem 0 1rem;
-  color: #111827;
-  font-size: 1.5rem;
+.loadingBox,
+.emptyState {
+  color: #475569;
+  text-align: center;
 }
 
-.tableContainer {
+.sheetScroller {
+  width: 100%;
   overflow-x: auto;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding-bottom: 20px;
 }
 
-.table {
+.sheet {
+  width: 1450px;
+  min-height: 1000px;
+  margin: 0 auto;
+  padding: 22px;
+  box-sizing: border-box;
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(#edf0f3 1px, transparent 1px),
+    linear-gradient(90deg, #edf0f3 1px, transparent 1px);
+  background-size: 74px 24px;
+  border: 1px solid #c7cdd4;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.12);
+}
+
+.mainTitle {
+  margin-bottom: 18px;
+  padding: 10px 14px;
+  border: 1px solid #505050;
+  background: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sectionGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.blockSection {
+  margin-top: 20px;
+}
+
+.sectionTitle,
+.bigSectionTitle {
+  border: 1px solid #4a4a4a;
+  padding: 6px 8px;
+  text-align: center;
+  font-weight: 700;
+  color: #111111;
+}
+
+.sectionTitle {
+  font-size: 13px;
+}
+
+.bigSectionTitle {
+  font-size: 20px;
+}
+
+.greenTitle {
+  background: #e2f0d9;
+}
+
+.blueTitle {
+  background: #d9e2f3;
+}
+
+.purpleTitle {
+  background: #d9d2e9;
+}
+
+.findingsTitle {
+  background: #ffffff;
+  text-align: left;
+  text-decoration: underline;
+}
+
+.peachCell {
+  background: #fce4d6 !important;
+}
+
+.unknownCell {
+  background: #fff2cc !important;
+}
+
+.tableScroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.excelTable {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  table-layout: fixed;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 12px;
+  color: #111111;
 }
 
-.table th,
-.table td {
-  padding: 14px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table th {
-  background: #f3f4f6;
-  font-weight: 600;
-  color: #374151;
-  position: sticky;
-  top: 0;
-}
-
-.table td {
-  color: #4b5563;
-}
-
-.table tr:hover {
-  background: #f9fafb;
-  transition: background 0.15s;
-}
-
-.rightAlign {
-  text-align: right !important;
-}
-
-.noData {
-  margin-top: 2rem;
-  color: #6b7280;
-  font-style: italic;
+.excelTable th,
+.excelTable td {
+  border: 1px solid #4a4a4a;
+  padding: 5px 7px;
   text-align: center;
-  font-size: 1.1rem;
+  vertical-align: middle;
+  line-height: 1.25;
+  word-break: break-word;
 }
 
-.chartSection {
-  margin-top: 2.5rem;
+.excelTable thead th {
+  background: #d9e2f3;
+  font-weight: 700;
 }
 
-.chartContainer {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
-  height: 360px;
+.excelTable tfoot td {
+  background: #e6edf5;
+  font-weight: 700;
 }
-.exportExcelBtn {
-  background: linear-gradient(135deg, #16a34a, #15803d);
-  color: white;
-  border: none;
-  padding: 12px 22px;
-  border-radius: 8px;
-  font-size: 14px;
+
+.leftCell {
+  text-align: left !important;
+}
+
+.noteRow {
+  padding: 8px 10px;
+  border: 1px solid #4a4a4a;
+  border-top: 0;
+  background: rgba(255, 255, 255, 0.96);
+  font-size: 12px;
   font-weight: 600;
-  cursor: pointer;
-  margin-left: 12px;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.25);
 }
 
-.exportExcelBtn:hover {
-  background: linear-gradient(135deg, #15803d, #166534);
-  transform: translateY(-2px);
+.smallText {
+  display: inline;
+  font-size: 10px;
+  font-weight: 400;
 }
 
-.exportExcelBtn:active {
-  transform: scale(0.98);
+.chickenLayout {
+  display: grid;
+  grid-template-columns: 430px 1fr;
+  gap: 18px;
+  align-items: stretch;
 }
 
-.exportExcelBtn:disabled {
-  background: #9ca3af;
-  cursor: not-allowed;
-  box-shadow: none;
-  transform: none;
+.chartBox {
+  min-width: 0;
+  border: 1px solid #7a7a7a;
+  background: rgba(255, 255, 255, 0.97);
+  padding: 12px 12px 4px;
+}
+
+.chartTitle {
+  margin-bottom: 6px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 500;
+  color: #70ad47;
+}
+
+.areaGrid {
+  display: grid;
+  grid-template-columns: 760px 1fr;
+  gap: 18px;
+  margin-top: 0;
+}
+
+.warningNote {
+  margin-top: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #8b6f00;
+  background: #fff8d8;
+  font-size: 11px;
+}
+
+.comparisonGrid {
+  display: grid;
+  grid-template-columns: 760px 1fr;
+  gap: 18px;
+}
+
+.headerDate {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.projectionHeader {
+  background: #9dc3e6 !important;
+}
+
+.projectionCell {
+  background: #9dc3e6;
+  padding: 6px !important;
+  font-weight: 700;
+}
+
+.averageGrid {
+  display: grid;
+  grid-template-columns: 820px 1fr;
+  gap: 18px;
+}
+
+.salesComparisonGrid {
+  display: grid;
+  grid-template-columns: 520px 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.rateTitle {
+  margin-top: 14px;
+}
+
+.findings {
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.findingRow {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  align-items: start;
+  border: 1px solid #4a4a4a;
+  border-top: 0;
+}
+
+.findingRow > span {
+  padding: 9px 4px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.findingRow textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  resize: vertical;
+  border: 0;
+  border-left: 1px solid #4a4a4a;
+  outline: 0;
+  padding: 8px 10px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.basisList {
+  margin: 0;
+  padding: 10px 10px 10px 32px;
+  border: 1px solid #4a4a4a;
+  border-top: 0;
+  background: rgba(255, 255, 255, 0.97);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.preparedBy {
+  width: 360px;
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  border: 1px solid #4a4a4a;
+  background: #ffffff;
+}
+
+.preparedBy strong {
+  padding: 8px;
+  border-right: 1px solid #4a4a4a;
+}
+
+.preparedBy input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  padding: 8px;
+  font: inherit;
+}
+
+@media (max-width: 900px) {
+  .page {
+    padding: 12px;
+  }
+
+  .toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filterBar {
+    width: 100%;
+  }
+
+  .filterGroup {
+    flex: 1 1 180px;
+  }
+
+  .getReportButton,
+  .exportExcelButton {
+    flex: 1 1 160px;
+  }
+}
+
+@media print {
+  .page {
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .toolbar,
+  .error,
+  .loadingBox,
+  .emptyState {
+    display: none !important;
+  }
+
+  .sheetScroller {
+    overflow: visible;
+  }
+
+  .sheet {
+    width: 100%;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .projectionCell input,
+  .findingRow textarea,
+  .preparedBy input {
+    appearance: none;
+  }
 }

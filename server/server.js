@@ -27,6 +27,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const noteRoutes = require("./routes/noteRoutes");
 const deliveryPassbookRoutes = require("./routes/deliveryPassbookRoutes");
 const deliveryPendingRoutes = require("./routes/deliveryPendingRoutes");
+const weeklyReportRoutes = require("./routes/weeklyReportRoutes");
 dotenv.config();
 const app = express();
 
@@ -57,7 +58,7 @@ app.use("/api/stock", stockRoutes);
 app.use("/api", areaRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/reports", reportRoutes);
-
+app.use("/api/reports", weeklyReportRoutes);
 app.use("/api", demoInvoice);
 
 app.use("/api/users", authRoutes);

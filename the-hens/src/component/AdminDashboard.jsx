@@ -262,6 +262,24 @@ const AdminDashboard = () => {
     return itemsTotal + Number(row.DeliveryCharge || 0);
   };
 
+  const filteredTotalAmount = filteredData.reduce((total, order) => {
+    const status = (order.OrderStatus || "").toLowerCase().trim();
+
+    if (["cancel", "cancelled"].includes(status)) {
+      return total;
+    }
+
+    return total + getRowTotal(order);
+  }, 0);
+
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+
   useEffect(() => {
     dispatch(fetchOrder());
   }, [dispatch]);
@@ -736,7 +754,7 @@ const AdminDashboard = () => {
       const quantities = (order.Quantities || "").split(",");
       const rates = (order.Rates || "").split(",");
 
-      // ✅ Actual item total from backend/database
+      // Actual item total from backend/database
       const itemTotals = (
         order.ItemTotals ||
         order.Totals ||
@@ -746,18 +764,45 @@ const AdminDashboard = () => {
 
       const deliveryCharge = Number(order.DeliveryCharge) || 0;
 
-      // ✅ Payment Summary parsing
+      // =====================================================
+      // PAYMENT SUMMARY
+      // =====================================================
       const payments = {};
+
       if (order.PaymentSummary) {
         order.PaymentSummary.split("|").forEach((item) => {
           const [mode, amt] = item.split(":");
+
           if (mode && amt) {
             payments[mode.trim().toUpperCase()] = parseFloat(amt.trim()) || 0;
           }
         });
       }
 
-      // ✅ Debug: agar product/rate/qty mismatch ho
+      // =====================================================
+      // EXTRA PAYMENT DETAILS
+      // =====================================================
+
+      // Payment receive date
+      const paymentReceiveDate =
+        order.PaymentReceivedDate || order.PaymentVerifyDate || "";
+
+      // Verification Remark
+      const verificationRemark =
+        order.VerificationRemarks ||
+        order.VerificationRemark ||
+        order.VerifyMark ||
+        "-";
+
+      // Credit Note Amount
+      const creditNoteAmount = Number(order.CreditNoteAmount) || 0;
+
+      // Invoice No
+      const invoiceNo = order.InvoiceNo || "-";
+
+      // =====================================================
+      // DEBUG PRODUCT LENGTH MISMATCH
+      // =====================================================
       if (
         productNames.length !== quantities.length ||
         productNames.length !== rates.length
@@ -770,25 +815,30 @@ const AdminDashboard = () => {
         });
       }
 
-      // ✅ Actual subtotal from backend total, fallback qty * rate
+      // =====================================================
+      // ORDER SUBTOTAL
+      // =====================================================
       const orderSubtotal = productNames.reduce((acc, _, idx) => {
         const qty = Number(quantities[idx]) || 0;
         const rate = Number(rates[idx]) || 0;
 
         const backendTotal = Number(itemTotals[idx]);
+
         const finalItemTotal =
           !isNaN(backendTotal) && backendTotal > 0 ? backendTotal : qty * rate;
 
         return acc + finalItemTotal;
       }, 0);
 
+      // =====================================================
+      // CREATE EXCEL ROWS
+      // =====================================================
       productNames.forEach((name, index) => {
         const qty = Number(quantities[index]) || 0;
         const rate = Number(rates[index]) || 0;
 
         const backendTotal = Number(itemTotals[index]);
 
-        // ✅ Product total database se aayega, nahi mila to qty * rate
         const productTotal =
           !isNaN(backendTotal) && backendTotal > 0 ? backendTotal : qty * rate;
 
@@ -796,40 +846,74 @@ const AdminDashboard = () => {
           "Sl No": index === 0 ? slNo : "",
 
           "Product Name": name.trim(),
+
           "Customer Name": order.CustomerName || "-",
+
           Address: order.Address || "-",
+
           Area: order.Area || "-",
+
           "Contact No": order.ContactNo || "-",
+
           "Product Type": productTypes[index]?.trim() || "-",
+
           "Default Weight": weights[index]?.trim() || "-",
+
           Qty: qty,
+
           Rate: rate,
+
           "Product Total": productTotal,
 
-          // ✅ Delivery charge only first row
+          // Delivery charge only first row
           "Delivery Charge": index === 0 ? deliveryCharge : 0,
 
-          // ✅ Final payable only first row
+          // Final payable only first row
           "Final Payable (Total + Delivery)":
             index === 0 ? orderSubtotal + deliveryCharge : "",
 
           "Order Date": order.OrderDate ? new Date(order.OrderDate) : "",
+
           "Delivery Date": order.DeliveryDate
             ? new Date(order.DeliveryDate)
             : "",
+
+          // ✅ NEW - Payment Receive Date
+          "Payment Receive Date":
+            index === 0 && paymentReceiveDate
+              ? new Date(paymentReceiveDate)
+              : "",
+
           "Delivery Man": order.DeliveryManName || "-",
+
           "Order Status": order.OrderStatus || "Pending",
+
           "Order Taken By": order.OrderTakenBy || "-",
 
-          // ✅ Payment amount only first row
+          // ✅ NEW - Invoice No
+          "Invoice No": index === 0 ? invoiceNo : "",
+
+          // =================================================
+          // PAYMENT AMOUNTS
+          // =================================================
           Cash: index === 0 ? payments["CASH"] || 0 : 0,
+
           GPay: index === 0 ? payments["GPAY"] || 0 : 0,
+
           Paytm: index === 0 ? payments["PAYTM"] || 0 : 0,
+
           FOC: index === 0 ? payments["FOC"] || 0 : 0,
+
           "Bank Transfer":
             index === 0
               ? payments["BANK TRANSFER"] || payments["BANK"] || 0
               : 0,
+
+          // ✅ NEW - Credit Note Amount
+          "Credit Note Amount": index === 0 ? creditNoteAmount : 0,
+
+          // ✅ NEW - Verification Remark
+          "Verification Remark": index === 0 ? verificationRemark : "",
         };
 
         exportData.push(row);
@@ -838,40 +922,60 @@ const AdminDashboard = () => {
       slNo++;
     });
 
+    // =====================================================
+    // CREATE WORKSHEET
+    // =====================================================
     const worksheet = XLSX.utils.json_to_sheet(exportData);
 
+    // =====================================================
+    // COLUMN WIDTHS
+    // =====================================================
     const wscols = [
-      { wch: 6 },
-      { wch: 20 },
-      { wch: 22 },
-      { wch: 35 },
-      { wch: 18 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 10 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 25 },
-      { wch: 15 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 15 },
-      { wch: 18 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 12 },
-      { wch: 18 },
+      { wch: 6 }, // Sl No
+      { wch: 20 }, // Product Name
+      { wch: 22 }, // Customer Name
+      { wch: 35 }, // Address
+      { wch: 18 }, // Area
+      { wch: 15 }, // Contact No
+      { wch: 18 }, // Product Type
+      { wch: 15 }, // Default Weight
+      { wch: 10 }, // Qty
+      { wch: 12 }, // Rate
+      { wch: 15 }, // Product Total
+      { wch: 16 }, // Delivery Charge
+      { wch: 25 }, // Final Payable
+      { wch: 15 }, // Order Date
+      { wch: 15 }, // Delivery Date
+
+      { wch: 20 }, // ✅ Payment Receive Date
+
+      { wch: 20 }, // Delivery Man
+      { wch: 15 }, // Order Status
+      { wch: 18 }, // Order Taken By
+
+      { wch: 18 }, // ✅ Invoice No
+
+      { wch: 12 }, // Cash
+      { wch: 12 }, // GPay
+      { wch: 12 }, // Paytm
+      { wch: 12 }, // FOC
+      { wch: 18 }, // Bank Transfer
+
+      { wch: 20 }, // ✅ Credit Note Amount
+      { wch: 35 }, // ✅ Verification Remark
     ];
 
     worksheet["!cols"] = wscols;
 
+    // =====================================================
+    // CREATE WORKBOOK
+    // =====================================================
     const workbook = XLSX.utils.book_new();
+
     XLSX.utils.book_append_sheet(workbook, worksheet, "Order_Report");
 
     const fileName = `HensCo_Sales_${filters.fromDate}_to_${filters.toDate}.xlsx`;
+
     XLSX.writeFile(workbook, fileName);
   };
 
@@ -1632,41 +1736,68 @@ const AdminDashboard = () => {
           </div>
 
           {/* PAGINATION */}
-          {filteredData.length > 0 && !isFilterLoading && (
-            <div className={styles.pagination}>
-              <button
-                className={styles.paginationBtn}
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              >
-                Previous
-              </button>
+          {/* FILTERED TOTAL + PAGINATION */}
+          {filteredData.length > 0 &&
+            !loading &&
+            !bulkLoading &&
+            !isFilterLoading && (
+              <div className={styles.tableFooter}>
+                <div className={styles.filteredSummary} aria-live="polite">
+                  <div className={styles.summaryIcon}>
+                    <FaFileInvoiceDollar />
+                  </div>
 
-              <div className={styles.paginationPages}>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <span
-                    key={i}
-                    className={
-                      currentPage === i + 1 ? styles.paginationActive : ""
-                    }
-                    onClick={() => setCurrentPage(i + 1)}
-                  >
-                    {i + 1}
+                  <div className={styles.summaryDetails}>
+                    <span className={styles.summaryLabel}>
+                      Filtered Orders Total
+                    </span>
+
+                    <strong className={styles.summaryAmount}>
+                      {formatCurrency(filteredTotalAmount)}
+                    </strong>
+
+                    <span className={styles.summaryHint}>
+                      {filteredData.length.toLocaleString("en-IN")} orders
+                      {" · "}Including delivery charges
+                    </span>
+                  </div>
+                </div>
+
+                <div className={styles.footerNavigation}>
+                  <span className={styles.pageInfo}>
+                    Showing {indexOfFirstRecord + 1}–
+                    {Math.min(indexOfLastRecord, filteredData.length)} of{" "}
+                    {filteredData.length.toLocaleString("en-IN")} orders
                   </span>
-                ))}
-              </div>
 
-              <button
-                className={styles.paginationBtn}
-                disabled={currentPage === totalPages}
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-              >
-                Next
-              </button>
-            </div>
-          )}
+                  <div className={styles.footerPagination}>
+                    <button
+                      className={styles.paginationBtn}
+                      disabled={currentPage === 1}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
+                    >
+                      Previous
+                    </button>
+
+                    <span className={styles.footerPageNumber}>
+                      Page <strong>{currentPage}</strong> of {totalPages}
+                    </span>
+
+                    <button
+                      className={styles.paginationBtn}
+                      disabled={currentPage === totalPages}
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
 

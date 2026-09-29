@@ -292,7 +292,7 @@ exports.getCashHandoverReport = async (req, res) => {
       FROM CashDepartment cd
       INNER JOIN DeliveryMen dm 
           ON cd.DeliveryManId = dm.DeliveryManID
-      ORDER BY cd.createdAT DESC`;
+      ORDER BY CAST(cd.handoverdate AS DATE) DESC`;
 
     const result = await pool.request().query(query);
 

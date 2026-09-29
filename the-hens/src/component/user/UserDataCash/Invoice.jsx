@@ -7,6 +7,7 @@ export default function Invoice({
   selected,
   manualDenominations,
   totalHandoverAmount,
+  remark,
   onClose,
 }) {
   if (!selected) return null;
@@ -323,6 +324,16 @@ export default function Invoice({
                         }</div>
                         <div><strong>Phone:</strong> ${selected.MobileNo}</div>
                         <div><strong>Area:</strong> ${selected.Area}</div>
+                        <div style="
+    margin: 10px 0 15px 0;
+    padding: 10px;
+    border: 1px solid #999;
+    font-size: 12px;
+    background-color: #f7f7f7;
+">
+    <strong>Remark:</strong>
+    ${remark?.trim() || "-"}
+</div>
                     </div>
                     
                     <div class="table-header">DENOMINATION BREAKDOWN</div>
@@ -347,7 +358,7 @@ export default function Invoice({
                         </div>
                         <div class="amount-in-words">
                             <strong>Amount in Words:</strong> ${numberToWords(
-                              totalHandoverAmount
+                              totalHandoverAmount,
                             )}
                         </div>
                     </div>
@@ -414,6 +425,11 @@ export default function Invoice({
             </div>
             <div>
               <strong>Area:</strong> {selected.Area}
+            </div>
+            <div className={styles.remarkSection}>
+              <h3 className={styles.remarkTitle}>Remark</h3>
+
+              <div className={styles.remarkText}>{remark?.trim() || "-"}</div>
             </div>
           </div>
         </div>

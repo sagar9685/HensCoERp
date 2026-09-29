@@ -36,6 +36,7 @@ export default function UserDataTable() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [showInvoice, setShowInvoice] = useState(false);
+  const [remark, setRemark] = useState("");
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [passError, setPassError] = useState("");
@@ -234,7 +235,7 @@ export default function UserDataTable() {
   };
 
   // ✅ Updated handleHandover using Redux pendingCashOrders
-  const handleHandover = async (handoverDate) => {
+  const handleHandover = async (handoverDate, remark) => {
     if (!selected) {
       setError("Please select a delivery man first.");
       return;
@@ -264,6 +265,7 @@ export default function UserDataTable() {
       denominationJSON: denominationsToSend,
       orderPaymentIds: orderPaymentIds, // Khali array [] bhi jayega toh backend ab handle kar lega
       handoverDate: handoverDate, // Selected date backend ko bhejo
+      remark: remark?.trim() || null,
     };
 
     dispatch(handoverCash(payload))
@@ -545,6 +547,8 @@ export default function UserDataTable() {
                   onClearSelection={clearSelection}
                   onGenerateInvoice={() => setShowInvoice(true)}
                   dLoading={dLoading} // <-- Add this
+                  remark={remark}
+                  setRemark={setRemark}
                 />
               </div>
 
@@ -554,6 +558,7 @@ export default function UserDataTable() {
                   selected={selected}
                   manualDenominations={manualDenominations}
                   totalHandoverAmount={totalHandoverAmount}
+                  remark={remark}
                   onClose={() => setShowInvoice(false)}
                 />
               )}

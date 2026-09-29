@@ -24,7 +24,7 @@ const UserNavbar = () => {
 
   const reduxModalOpen = useSelector((state) => state.stock?.modalOpen);
   const reduxSidebarOpen = useSelector((state) => state?.ui?.sidebarOpen);
-  const notifications = useSelector((state) => state.notifications.list);
+  // const notifications = useSelector((state) => state.notifications.list);
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
@@ -39,21 +39,21 @@ const UserNavbar = () => {
 
   const userRole = authData?.role || authData?.user?.role; // Check karein aapka structure kya hai
 
-  const handleRead = async (id) => {
-    try {
-      // 1️⃣ Backend se delete
-      await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
-        method: "DELETE",
-      });
+  // const handleRead = async (id) => {
+  //   try {
+  //     // 1️⃣ Backend se delete
+  //     await fetch(`${API_BASE_URL}/api/notifications/${id}`, {
+  //       method: "DELETE",
+  //     });
 
-      // 2️⃣ Redux se remove
-      dispatch(removeNotification(id));
+  //     // 2️⃣ Redux se remove
+  //     dispatch(removeNotification(id));
 
-      toast.success("Marked as read", { autoClose: 500 });
-    } catch (err) {
-      toast.error("Failed to clear notification");
-    }
-  };
+  //     toast.success("Marked as read", { autoClose: 500 });
+  //   } catch (err) {
+  //     toast.error("Failed to clear notification");
+  //   }
+  // };
 
   useEffect(() => {
     if (userRole) {
@@ -67,26 +67,26 @@ const UserNavbar = () => {
   }, [dispatch, user.role]);
 
   // Socket.io for realtime notifications
-  useEffect(() => {
-    const socket = io(`${API_BASE_URL}`, { transports: ["websocket"] });
+  // useEffect(() => {
+  //   const socket = io(`${API_BASE_URL}`, { transports: ["websocket"] });
 
-    socket.on("newNotification", (notification) => {
-      dispatch(addNotification(notification));
+  //   socket.on("newNotification", (notification) => {
+  //     dispatch(addNotification(notification));
 
-      // Professional Toast Alert
-      toast.info(notification.Message, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        icon: "🔔",
-      });
-    });
+  //     // Professional Toast Alert
+  //     toast.info(notification.Message, {
+  //       position: "top-right",
+  //       autoClose: 5000,
+  //       hideProgressBar: false,
+  //       closeOnClick: true,
+  //       pauseOnHover: true,
+  //       draggable: true,
+  //       icon: "🔔",
+  //     });
+  //   });
 
-    return () => socket.disconnect();
-  }, [dispatch]);
+  //   return () => socket.disconnect();
+  // }, [dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -153,14 +153,14 @@ const UserNavbar = () => {
               <span>Add Stock</span>
             </button>
 
-            <div className={styles.notificationWrapper}>
-              <button className={styles.notificationBtn}>
+            {/* <div className={styles.notificationWrapper}> */}
+            {/* <button className={styles.notificationBtn}>
                 <FaBell />
                 <span className={styles.notificationBadge}>
                   {notifications.length}
                 </span>
-              </button>
-              {/* <div className={styles.notificationList}>
+              </button> */}
+            {/* <div className={styles.notificationList}>
                 {notifications.map((n) => (
                   <div
                     key={n.NotificationID}
@@ -175,7 +175,7 @@ const UserNavbar = () => {
                   </div>
                 ))}
               </div> */}
-              <div className={styles.notificationList}>
+            {/* <div className={styles.notificationList}>
                 {notifications.map((n) => (
                   <div
                     key={n.NotificationID}
@@ -192,7 +192,7 @@ const UserNavbar = () => {
                   </div>
                 ))}
               </div>
-            </div>
+            </div> */}
 
             {/* User Profile */}
             <div className={styles.userProfile}>

@@ -19,15 +19,21 @@ export const fetchMonthlyReport = createAsyncThunk(
 
 export const fetchWeeklyReport = createAsyncThunk(
   "report/fetchWeeklyReport",
-  async ({ year, month, week }, { rejectWithValue }) => {
+  async ({ startDate }, { rejectWithValue }) => {
     try {
-      const res = await axios.get(
-        `${API_BASE_URL}/api/reports/weekly?year=${year}&month=${month}&week=${week}`, // ← full URL
+      const response = await axios.get(`${API_BASE_URL}/api/reports/weekly`, {
+        params: {
+          startDate,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || {
+          message: "Unable to fetch weekly report",
+        },
       );
-      return res.data;
-    } catch (err) {
-      console.error("Weekly API Error:", err.response?.data || err.message); // ← extra log
-      return rejectWithValue(err.response?.data || err.message);
     }
   },
 );
@@ -72,18 +78,35 @@ export const fetchCustomerReport = createAsyncThunk(
 
 export const fetchCustomerLedger = createAsyncThunk(
   "report/fetchCustomerLedger",
-  async (_, { rejectWithValue }) => {
+  async (
+    { from, to, customerGroupId = null, customerId = null },
+    { rejectWithValue },
+  ) => {
     try {
+      const params = {
+        from,
+        to,
+      };
+
+      if (customerGroupId) {
+        params.customerGroupId = customerGroupId;
+      }
+
+      if (customerId) {
+        params.customerId = customerId;
+      }
+
       const response = await axios.get(
-        `${API_BASE_URL}/api/reports/customer-ledger`,
+        `${API_BASE_URL}/api/reports/customer-ledgers`,
+        {
+          params,
+        },
       );
-      // Standardize the response to an array
-      return Array.isArray(response.data)
-        ? response.data
-        : response.data.recordset || [];
+
+      return response.data;
     } catch (err) {
       return rejectWithValue(
-        err.response?.data?.message || "Error fetching ledger",
+        err.response?.data?.message || "Error fetching customer ledger",
       );
     }
   },
@@ -178,10 +201,11 @@ const reportSlice = createSlice({
     },
 
     weekly: {
-      week: null,
-      from: null,
-      to: null,
+      year: null,
+      month: null,
+      columns: [],
       data: [],
+      totals: {},
     },
 
     daily: {
@@ -196,6 +220,15 @@ const reportSlice = createSlice({
     },
     ledger: {
       data: [],
+      summary: {
+        totalSale: 0,
+        totalPaymentReceived: 0,
+        balance: 0,
+      },
+      reportType: null,
+      reportName: "",
+      fromDate: "",
+      toDate: "",
     },
     customerDateRange: {
       data: [],
@@ -227,7 +260,13 @@ const reportSlice = createSlice({
         eggSummary: { TotalEggs: 0, TotalAmount: 0 },
       };
 
-      state.weekly = { week: null, from: null, to: null, data: [] };
+      state.weekly = {
+        year: null,
+        month: null,
+        columns: [],
+        data: [],
+        totals: {},
+      };
       state.daily = { summary: null, products: [], payments: [], date: null };
       state.customer = { data: [] };
       state.ledger = { data: [] };
@@ -271,19 +310,25 @@ const reportSlice = createSlice({
       .addCase(fetchWeeklyReport.pending, (state) => {
         state.weeklyLoading = true;
         state.error = null;
+
+        state.weekly = {
+          year: null,
+          month: null,
+          columns: [],
+          data: [],
+          totals: {},
+        };
       })
       .addCase(fetchWeeklyReport.fulfilled, (state, action) => {
         state.weeklyLoading = false;
-        state.weekly = {
-          week: action.payload.week ? String(action.payload.week).trim() : null, // ← .trim() compulsory
-          from: action.payload.from,
-          to: action.payload.to,
-          data: action.payload.data || [],
-        };
+        state.weekly = action.payload;
       })
       .addCase(fetchWeeklyReport.rejected, (state, action) => {
         state.weeklyLoading = false;
-        state.error = action.payload;
+        state.error =
+          action.payload ||
+          action.error?.message ||
+          "Weekly report fetch failed";
       })
       .addCase(fetchDailyReport.pending, (state) => {
         state.dailyLoading = true;
@@ -313,18 +358,6 @@ const reportSlice = createSlice({
       })
       .addCase(fetchCustomerReport.rejected, (state, action) => {
         state.customerLoading = false;
-        state.error = action.payload;
-      })
-      .addCase(fetchCustomerLedger.pending, (state) => {
-        state.ledgerLoading = true;
-        state.error = null;
-      })
-      .addCase(fetchCustomerLedger.fulfilled, (state, action) => {
-        state.ledgerLoading = false;
-        state.ledger.data = action.payload;
-      })
-      .addCase(fetchCustomerLedger.rejected, (state, action) => {
-        state.ledgerLoading = false;
         state.error = action.payload;
       })
       .addCase(fetchMonthlyCompare.pending, (state) => {
@@ -391,6 +424,61 @@ const reportSlice = createSlice({
       .addCase(fetchHandoverReport.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      .addCase(fetchCustomerLedger.pending, (state) => {
+        state.ledgerLoading = true;
+        state.error = null;
+
+        state.ledger = {
+          data: [],
+          summary: {
+            totalSale: 0,
+            totalPaymentReceived: 0,
+            balance: 0,
+          },
+          reportType: null,
+          reportName: "",
+          fromDate: "",
+          toDate: "",
+        };
+      })
+
+      .addCase(fetchCustomerLedger.fulfilled, (state, action) => {
+        state.ledgerLoading = false;
+
+        state.ledger = {
+          data: action.payload?.ledger || [],
+
+          summary: action.payload?.summary || {
+            totalSale: 0,
+            totalPaymentReceived: 0,
+            balance: 0,
+          },
+
+          reportType: action.payload?.reportType || null,
+          reportName: action.payload?.reportName || "",
+
+          fromDate: action.payload?.fromDate || "",
+          toDate: action.payload?.toDate || "",
+        };
+      })
+
+      .addCase(fetchCustomerLedger.rejected, (state, action) => {
+        state.ledgerLoading = false;
+        state.error = action.payload;
+
+        state.ledger = {
+          data: [],
+          summary: {
+            totalSale: 0,
+            totalPaymentReceived: 0,
+            balance: 0,
+          },
+          reportType: null,
+          reportName: "",
+          fromDate: "",
+          toDate: "",
+        };
       });
   },
 });

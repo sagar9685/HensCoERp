@@ -644,6 +644,7 @@ exports.handoverCash = async (req, res) => {
     denominationJSON,
     orderPaymentIds,
     handoverDate,
+    remark,
   } = req.body;
 
   if (!deliveryManId || totalHandoverAmount <= 0) {
@@ -723,9 +724,10 @@ exports.handoverCash = async (req, res) => {
         sql.NVarChar(sql.MAX),
         JSON.stringify(denominationJSON),
       )
-      .input("HandoverDate", sql.Date, handoverDate).query(`
-        INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt,HandoverDate)
-        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE(), @HandoverDate)
+      .input("HandoverDate", sql.Date, handoverDate)
+      .input("Remark", sql.NVarChar(500), remark?.trim() || null).query(`
+        INSERT INTO CashDepartment (DeliveryManId, TotalHandoverAmount, DenominationJSON, CreatedAt,HandoverDate,Remark)
+        VALUES (@DeliveryManID, @Amount, @DenominationJSON, GETDATE(), @HandoverDate,@Remark)
       `);
 
     // 4️⃣ Orders ko 'IsHandovered' mark karein (Agar IDs bheji gayi hain)

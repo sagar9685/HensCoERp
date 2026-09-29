@@ -6,6 +6,7 @@ import {
   FaDownload,
   FaTimes,
   FaFileInvoice,
+  FaPrint,
   FaRupeeSign,
   FaFileAlt,
   FaUser,
@@ -102,24 +103,98 @@ const COMPANY_INFO = {
 
 // --- Main Component ---
 const InvoiceGenerator = ({ orderData, onClose }) => {
-  const downloadPdf = async () => {
+  // const downloadPdf = async () => {
+  //   const element = document.getElementById("invoice-print-content");
+  //   const container = document.createElement("div");
+  //   container.style.position = "absolute";
+  //   container.style.top = "-9999px";
+  //   container.style.left = "0";
+  //   container.style.width = "1000px";
+  //   document.body.appendChild(container);
+
+  //   const clone = element.cloneNode(true);
+  //   clone.style.width = "1000px";
+  //   clone.style.margin = "0";
+  //   clone.style.padding = "20px";
+  //   clone.style.backgroundColor = "white";
+  //   container.appendChild(clone);
+
+  //   try {
+  //     await new Promise((resolve) => setTimeout(resolve, 500));
+  //     const canvas = await html2canvas(clone, {
+  //       scale: 2,
+  //       useCORS: true,
+  //       logging: false,
+  //       allowTaint: true,
+  //       backgroundColor: "#ffffff",
+  //       windowWidth: 1000,
+  //     });
+
+  //     const imgData = canvas.toDataURL("image/jpeg", 1.0);
+  //     const pdf = new jsPDF("p", "mm", "a4");
+  //     const pdfWidth = pdf.internal.pageSize.getWidth();
+  //     const imgWidth = pdfWidth - 20;
+  //     const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+  //     pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
+  //     pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
+  //   } catch (err) {
+  //     console.error("PDF Generation Error:", err);
+  //   } finally {
+  //     document.body.removeChild(container);
+  //   }
+  // };
+
+  // Common function - PDF aur Print dono same layout use karenge
+  const generateInvoiceCanvas = async () => {
     const element = document.getElementById("invoice-print-content");
+
+    if (!element) {
+      console.error("Invoice content not found");
+      return null;
+    }
+
     const container = document.createElement("div");
+
     container.style.position = "absolute";
-    container.style.top = "-9999px";
+    container.style.top = "-99999px";
     container.style.left = "0";
     container.style.width = "1000px";
+    container.style.backgroundColor = "#ffffff";
+
     document.body.appendChild(container);
 
     const clone = element.cloneNode(true);
+
     clone.style.width = "1000px";
+    clone.style.maxWidth = "1000px";
     clone.style.margin = "0";
     clone.style.padding = "20px";
-    clone.style.backgroundColor = "white";
+    clone.style.backgroundColor = "#ffffff";
+    clone.style.boxSizing = "border-box";
+
     container.appendChild(clone);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Images / QR / logo load hone ka wait
+      const images = clone.querySelectorAll("img");
+
+      await Promise.all(
+        Array.from(images).map(
+          (img) =>
+            new Promise((resolve) => {
+              if (img.complete) {
+                resolve();
+              } else {
+                img.onload = resolve;
+                img.onerror = resolve;
+              }
+            }),
+        ),
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
@@ -129,18 +204,221 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
         windowWidth: 1000,
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const imgWidth = pdfWidth - 20;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-      pdf.addImage(imgData, "JPEG", 10, 10, imgWidth, imgHeight);
-      pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
-    } catch (err) {
-      console.error("PDF Generation Error:", err);
+      return canvas;
+    } catch (error) {
+      console.error("Invoice Canvas Generation Error:", error);
+      return null;
     } finally {
       document.body.removeChild(container);
+    }
+  };
+
+  // ===============================
+  // DOWNLOAD PDF
+  // ===============================
+  const downloadPdf = async () => {
+    try {
+      const canvas = await generateInvoiceCanvas();
+
+      if (!canvas) return;
+
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const margin = 10;
+
+      const availableWidth = pdfWidth - margin * 2;
+      const availableHeight = pdfHeight - margin * 2;
+
+      const imageRatio = canvas.width / canvas.height;
+
+      let imgWidth = availableWidth;
+      let imgHeight = imgWidth / imageRatio;
+
+      // Agar height A4 se badi ho to fit karo
+      if (imgHeight > availableHeight) {
+        imgHeight = availableHeight;
+        imgWidth = imgHeight * imageRatio;
+      }
+
+      // Center align
+      const x = (pdfWidth - imgWidth) / 2;
+      const y = margin;
+
+      pdf.addImage(
+        imgData,
+        "JPEG",
+        x,
+        y,
+        imgWidth,
+        imgHeight,
+        undefined,
+        "FAST",
+      );
+
+      pdf.save(`Invoice_${orderData?.InvoiceNo || "invoice"}.pdf`);
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+    }
+  };
+
+  // ===============================
+  // DIRECT PRINT
+  // ===============================
+  const handlePrint = async () => {
+    // Popup blocker avoid karne ke liye window immediately open karo
+    const printWindow = window.open("", "_blank", "width=1000,height=800");
+
+    if (!printWindow) {
+      alert("Please allow popups to print the invoice.");
+      return;
+    }
+
+    printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>
+          Invoice ${orderData?.InvoiceNo || orderData?.OrderID || ""}
+        </title>
+
+        <style>
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+          }
+
+          body {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+          }
+
+          .loading {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            font-size: 18px;
+          }
+
+          .invoice-print-page {
+            width: 210mm;
+            min-height: 297mm;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            background: #ffffff;
+            padding: 10mm;
+          }
+
+          .invoice-print-page img {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 190mm;
+          }
+
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+
+          @media print {
+            html,
+            body {
+              width: 210mm;
+              height: 297mm;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+
+            .invoice-print-page {
+              width: 210mm;
+              height: 297mm;
+              min-height: 297mm;
+              padding: 10mm;
+              margin: 0;
+              overflow: hidden;
+              page-break-after: avoid;
+              page-break-before: avoid;
+              page-break-inside: avoid;
+            }
+
+            .invoice-print-page img {
+              width: 100%;
+              max-width: 190mm;
+              height: auto;
+              object-fit: contain;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <div class="loading">Preparing invoice...</div>
+      </body>
+    </html>
+  `);
+
+    printWindow.document.close();
+
+    try {
+      const canvas = await generateInvoiceCanvas();
+
+      if (!canvas) {
+        printWindow.close();
+        return;
+      }
+
+      // SAME canvas as PDF
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+      printWindow.document.body.innerHTML = `
+      <div class="invoice-print-page">
+        <img
+          id="invoicePrintImage"
+          src="${imgData}"
+          alt="Invoice"
+        />
+      </div>
+    `;
+
+      const image = printWindow.document.getElementById("invoicePrintImage");
+
+      const startPrint = () => {
+        printWindow.focus();
+
+        setTimeout(() => {
+          printWindow.print();
+
+          // Print dialog ke baad close
+          printWindow.onafterprint = () => {
+            printWindow.close();
+          };
+        }, 300);
+      };
+
+      if (image.complete) {
+        startPrint();
+      } else {
+        image.onload = startPrint;
+      }
+    } catch (error) {
+      console.error("Print Error:", error);
+      printWindow.close();
     }
   };
 
@@ -642,6 +920,14 @@ const InvoiceGenerator = ({ orderData, onClose }) => {
           >
             <FaDownload /> Download PDF
           </button>
+
+          <button
+            className={`${styles.btn} ${styles.btnPrint}`}
+            onClick={handlePrint}
+          >
+            <FaPrint /> Print Invoice
+          </button>
+
           <button
             className={`${styles.btn} ${styles.btnClose}`}
             onClick={onClose}

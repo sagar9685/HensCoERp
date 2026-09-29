@@ -1,165 +1,262 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCustomerReport } from "../../features/reportSlice";
-import { fetchCustomerName } from "../../features/cutomerSlice";
+
+import { fetchCustomerLedger } from "../../features/reportSlice";
+
+import {
+  fetchCustomerName,
+  fetchCustomerGroups,
+} from "../../features/cutomerSlice";
+
 import styles from "./CustomerReport.module.css";
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const CustomerReport = () => {
   const dispatch = useDispatch();
 
-  const { customer, customerLoading, error } = useSelector(
-    (state) => state.report,
+  const { ledger, ledgerLoading, error } = useSelector((state) => state.report);
+
+  const { customerName, customerGroups, groupLoading } = useSelector(
+    (state) => state.customer,
   );
 
-  console.log(customer, "report ka customer");
-  const { customerName } = useSelector((state) => state.customer);
-  const [searchText, setSearchText] = useState("");
-  const [selectedCustomers, setSelectedCustomers] = useState([]);
-  const [filteredCustomers, setFilteredCustomers] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
+  // --------------------------------------------------
+  // REPORT MODE
+  // group | customer
+  // --------------------------------------------------
+  const [reportMode, setReportMode] = useState("group");
 
+  // --------------------------------------------------
+  // DATE
+  // --------------------------------------------------
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // Pagination states
-  const [currentPage, setCurrentPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [paginatedData, setPaginatedData] = useState([]);
+  // --------------------------------------------------
+  // GROUP
+  // --------------------------------------------------
+  const [selectedGroupId, setSelectedGroupId] = useState("");
 
+  // --------------------------------------------------
+  // CUSTOMER
+  // --------------------------------------------------
+  const [customerSearch, setCustomerSearch] = useState("");
+
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  // --------------------------------------------------
+  // PAGINATION
+  // --------------------------------------------------
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+
+  // --------------------------------------------------
+  // INITIAL FETCH
+  // --------------------------------------------------
   useEffect(() => {
     dispatch(fetchCustomerName());
+    dispatch(fetchCustomerGroups());
   }, [dispatch]);
 
-  // Reset to first page when new data comes in
+  // --------------------------------------------------
+  // RESET SELECTION WHEN MODE CHANGES
+  // --------------------------------------------------
+  useEffect(() => {
+    setSelectedGroupId("");
+
+    setSelectedCustomer(null);
+    setCustomerSearch("");
+
+    setCurrentPage(1);
+  }, [reportMode]);
+
+  // --------------------------------------------------
+  // RESET PAGE WHEN DATA CHANGES
+  // --------------------------------------------------
   useEffect(() => {
     setCurrentPage(1);
-  }, [customer?.data]);
+  }, [ledger?.data]);
 
-  // Update paginated data when customer data or pagination settings change
-  useEffect(() => {
-    if (customer?.data) {
-      const startIndex = (currentPage - 1) * rowsPerPage;
-      const endIndex = startIndex + rowsPerPage;
-      setPaginatedData(customer.data.slice(startIndex, endIndex));
-    }
-  }, [customer?.data, currentPage, rowsPerPage]);
-
-  useEffect(() => {
-    if (searchText.length < 2) {
-      setFilteredCustomers([]);
-      return;
+  // --------------------------------------------------
+  // UNIQUE / FILTERED CUSTOMERS
+  // --------------------------------------------------
+  const filteredCustomers = useMemo(() => {
+    if (!Array.isArray(customerName)) {
+      return [];
     }
 
-    const filtered = customerName.filter((cust) =>
-      cust.CustomerName.toLowerCase().includes(searchText.toLowerCase()),
+    const text = customerSearch.trim().toLowerCase();
+
+    if (text.length < 2) {
+      return [];
+    }
+
+    return customerName
+      .filter((cust) => {
+        const name = cust.CustomerName?.toLowerCase() || "";
+
+        const area = cust.Area?.toLowerCase() || "";
+
+        const address = cust.Address?.toLowerCase() || "";
+
+        return (
+          name.includes(text) || area.includes(text) || address.includes(text)
+        );
+      })
+      .slice(0, 30);
+  }, [customerSearch, customerName]);
+
+  // --------------------------------------------------
+  // REPORT DATA
+  // --------------------------------------------------
+  const ledgerData = ledger?.data || [];
+
+  const summary = ledger?.summary || {
+    totalSale: 0,
+    totalPaymentReceived: 0,
+    balance: 0,
+  };
+
+  // --------------------------------------------------
+  // PAGINATION
+  // --------------------------------------------------
+  const totalItems = ledgerData.length;
+
+  const totalPages = Math.ceil(totalItems / rowsPerPage);
+
+  const startIndex = (currentPage - 1) * rowsPerPage;
+
+  const endIndex = startIndex + rowsPerPage;
+
+  const paginatedData = ledgerData.slice(startIndex, endIndex);
+
+  const startItem = totalItems === 0 ? 0 : startIndex + 1;
+
+  const endItem = Math.min(endIndex, totalItems);
+
+  // --------------------------------------------------
+  // MODE CHANGE
+  // --------------------------------------------------
+  const handleModeChange = (mode) => {
+    setReportMode(mode);
+  };
+
+  // --------------------------------------------------
+  // SELECT CUSTOMER
+  // --------------------------------------------------
+  const handleCustomerSelect = (customer) => {
+    setSelectedCustomer(customer);
+
+    setCustomerSearch(
+      `${customer.CustomerName}${customer.Area ? ` - ${customer.Area}` : ""}`,
     );
 
-    setFilteredCustomers(filtered);
-  }, [searchText, customerName]);
+    setShowCustomerDropdown(false);
+  };
 
+  // --------------------------------------------------
+  // SEARCH / GENERATE LEDGER
+  // --------------------------------------------------
   const handleSearch = () => {
     if (!from || !to) {
       alert("Please select From and To date");
       return;
     }
-    dispatch(
-      fetchCustomerReport({
-        from,
-        to,
-        customer: selectedCustomers.join(","),
-      }),
-    );
 
-    setShowDropdown(false);
-  };
-
-  const totalOrderAmt =
-    customer?.data?.reduce((sum, i) => sum + i.OrderAmount, 0) || 0;
-  const totalPaidAmt =
-    customer?.data?.reduce((sum, i) => sum + i.PaidAmount, 0) || 0;
-  const totalOutstandingAmt =
-    customer?.data?.reduce((sum, i) => sum + i.OutstandingAmount, 0) || 0;
-
-  // Pagination handlers
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const handleRowsPerPageChange = (e) => {
-    setRowsPerPage(parseInt(e.target.value, 10));
-    setCurrentPage(1);
-  };
-
-  const handleCustomerSelect = (name) => {
-    setSelectedCustomers((prev) =>
-      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
-    );
-  };
-
-  // Calculate pagination details
-  const totalItems = customer?.data?.length || 0;
-  const totalPages = Math.ceil(totalItems / rowsPerPage);
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
-  const endItem = Math.min(currentPage * rowsPerPage, totalItems);
-
-  // Generate page numbers array
-  const getPageNumbers = () => {
-    const delta = 2;
-    const range = [];
-    const rangeWithDots = [];
-    let l;
-
-    for (let i = 1; i <= totalPages; i++) {
-      if (
-        i === 1 ||
-        i === totalPages ||
-        (i >= currentPage - delta && i <= currentPage + delta)
-      ) {
-        range.push(i);
-      }
+    if (from > to) {
+      alert("From date cannot be greater than To date");
+      return;
     }
 
-    range.forEach((i) => {
-      if (l) {
-        if (i - l === 2) {
-          rangeWithDots.push(l + 1);
-        } else if (i - l !== 1) {
-          rangeWithDots.push("...");
-        }
+    // GROUP
+    if (reportMode === "group") {
+      if (!selectedGroupId) {
+        alert("Please select customer group");
+        return;
       }
-      rangeWithDots.push(i);
-      l = i;
-    });
 
-    return rangeWithDots;
+      dispatch(
+        fetchCustomerLedger({
+          from,
+          to,
+          customerGroupId: selectedGroupId,
+        }),
+      );
+
+      return;
+    }
+
+    // CUSTOMER
+    if (!selectedCustomer?.CustomerId) {
+      alert("Please select customer");
+      return;
+    }
+
+    dispatch(
+      fetchCustomerLedger({
+        from,
+        to,
+        customerId: selectedCustomer.CustomerId,
+      }),
+    );
   };
 
+  // --------------------------------------------------
+  // EXCEL DOWNLOAD
+  // --------------------------------------------------
   const downloadExcel = () => {
-    if (!customer?.data || customer.data.length === 0) {
+    if (!ledgerData.length) {
       alert("No data to export");
       return;
     }
 
-    const exportData = customer.data.map((item) => ({
-      Date: new Date(item.OrderDate).toLocaleDateString("en-GB"),
-      OrderID: item.OrderID,
-      Customer: item.CustomerName,
-      Contact: item.ContactNo,
-      Area: item.Area,
-      Items: item.ItemDetails,
-      DeliveryBoy: item.DeliveryBoyName || "N/A",
-      PaymentMode: item.PaymentModeDetails || "Pending",
-      OrderAmount: item.OrderAmount,
-      PaidAmount: item.PaidAmount,
-      OutstandingAmount: item.OutstandingAmount,
+    const exportData = ledgerData.map((item) => ({
+      "Sr.No": item.SrNo,
+
+      Date: item.Date ? new Date(item.Date).toLocaleDateString("en-GB") : "",
+
+      "Invoice No": item.InvoiceNo || "",
+
+      Narration: item.Narration || "",
+
+      "Sale Amount": Number(item.SaleAmount || 0),
+
+      Area: item.Area || "",
+
+      "Payment Received": Number(item.PaymentReceived || 0),
     }));
 
+    // Add total row
+    exportData.push({
+      "Sr.No": "",
+      Date: "",
+      "Invoice No": "",
+      Narration: "TOTAL",
+      "Sale Amount": Number(summary.totalSale || 0),
+      Area: "",
+      "Payment Received": Number(summary.totalPaymentReceived || 0),
+    });
+
     const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+    worksheet["!cols"] = [
+      { wch: 8 },
+      { wch: 14 },
+      { wch: 18 },
+      { wch: 55 },
+      { wch: 18 },
+      { wch: 20 },
+      { wch: 20 },
+    ];
+
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Customer Report");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Customer Ledger");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -170,316 +267,1248 @@ const CustomerReport = () => {
       type: "application/octet-stream",
     });
 
-    saveAs(fileData, "Customer_Report.xlsx");
+    const fileName = `${
+      ledger?.reportName || "Customer"
+    }_Ledger_${from}_to_${to}.xlsx`;
+
+    saveAs(fileData, fileName);
+  };
+
+  const handlePrint = () => {
+    if (!ledgerData.length) {
+      alert("No data to print");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank", "width=1500,height=950");
+
+    if (!printWindow) {
+      alert("Please allow popups to print the ledger");
+      return;
+    }
+
+    const formatDate = (date) => {
+      if (!date) return "-";
+
+      return new Date(date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    };
+
+    const formatAmount = (amount) => {
+      const value = Number(amount || 0);
+
+      return value > 0
+        ? `₹${value.toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}`
+        : "-";
+    };
+
+    const escapeHtml = (value) => {
+      if (value === null || value === undefined) return "";
+
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
+    // ==================================================
+    // LEDGER ROWS
+    // ==================================================
+    const rows = ledgerData
+      .map(
+        (item) => `
+        <tr>
+          <td class="srno">
+            ${escapeHtml(item.SrNo)}
+          </td>
+
+          <td class="date">
+            ${escapeHtml(formatDate(item.Date))}
+          </td>
+
+          <td class="invoice">
+            ${escapeHtml(item.InvoiceNo || "-")}
+          </td>
+
+          <td class="customer">
+            ${escapeHtml(item.CustomerName || "-")}
+          </td>
+
+          <td class="narration">
+            ${escapeHtml(item.Narration || "-")}
+          </td>
+
+          <td class="area">
+            ${escapeHtml(item.Area || "-")}
+          </td>
+
+          <td class="amount payment">
+            ${escapeHtml(formatAmount(item.PaymentReceived))}
+          </td>
+
+          <td class="amount sale">
+            ${escapeHtml(formatAmount(item.SaleAmount))}
+          </td>
+        </tr>
+      `,
+      )
+      .join("");
+
+    printWindow.document.write(`
+    <!DOCTYPE html>
+
+    <html>
+      <head>
+        <title>
+          ${escapeHtml(ledger?.reportName || "Customer")} - Customer Ledger
+        </title>
+
+        <meta charset="UTF-8" />
+
+        <style>
+          /* ===========================================
+             PAGE
+          =========================================== */
+
+          @page {
+            size: A4 landscape;
+            margin: 8mm;
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+          }
+
+          body {
+            font-family:
+              Arial,
+              Helvetica,
+              sans-serif;
+
+            color: #111827;
+
+            background: #ffffff;
+
+            font-size: 9px;
+
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          .page {
+            width: 100%;
+          }
+
+          /* ===========================================
+             REPORT HEADER
+          =========================================== */
+
+          .reportHeader {
+            width: 100%;
+
+            border-bottom: 2px solid #111827;
+
+            padding-bottom: 8px;
+
+            margin-bottom: 10px;
+          }
+
+          .title {
+            margin: 0;
+
+            text-align: center;
+
+            font-size: 19px;
+
+            font-weight: 700;
+
+            letter-spacing: 0.7px;
+
+            color: #111827;
+          }
+
+          .ledgerName {
+            text-align: center;
+
+            margin-top: 4px;
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            color: #1f2937;
+          }
+
+          .reportMeta {
+            margin-top: 9px;
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            gap: 28px;
+
+            flex-wrap: wrap;
+
+            font-size: 9px;
+
+            color: #4b5563;
+          }
+
+          .reportMeta strong {
+            color: #111827;
+          }
+
+          /* ===========================================
+             SUMMARY
+          =========================================== */
+
+          .summaryRow {
+            width: 100%;
+
+            display: flex;
+
+            justify-content: flex-end;
+
+            gap: 8px;
+
+            margin-bottom: 10px;
+          }
+
+          .summaryCard {
+            min-width: 150px;
+
+            border: 1px solid #9ca3af;
+
+            border-radius: 4px;
+
+            padding: 6px 9px;
+
+            background: #f9fafb;
+          }
+
+          .summaryLabel {
+            display: block;
+
+            font-size: 8px;
+
+            text-transform: uppercase;
+
+            color: #6b7280;
+
+            margin-bottom: 3px;
+
+            font-weight: 600;
+          }
+
+          .summaryValue {
+            display: block;
+
+            font-size: 11px;
+
+            font-weight: 700;
+
+            color: #111827;
+          }
+
+          /* ===========================================
+             TABLE
+          =========================================== */
+
+          table {
+            width: 100%;
+
+            border-collapse: collapse;
+
+            table-layout: fixed;
+
+            border: 1px solid #374151;
+          }
+
+          thead {
+            display: table-header-group;
+          }
+
+          tfoot {
+            display: table-row-group;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
+
+          th {
+            border: 1px solid #374151;
+
+            background: #e5e7eb;
+
+            color: #111827;
+
+            font-size: 8.5px;
+
+            font-weight: 700;
+
+            padding: 6px 4px;
+
+            text-align: left;
+
+            vertical-align: middle;
+
+            line-height: 1.2;
+          }
+
+          td {
+            border: 1px solid #9ca3af;
+
+            padding: 5px 4px;
+
+            vertical-align: top;
+
+            font-size: 8.5px;
+
+            line-height: 1.3;
+
+            overflow-wrap: anywhere;
+
+            word-break: break-word;
+
+            background: #ffffff;
+          }
+
+          tbody tr:nth-child(even) td {
+            background: #f9fafb;
+          }
+
+          /* ===========================================
+             EXACT COLUMN WIDTHS
+          =========================================== */
+
+          th:nth-child(1),
+          td:nth-child(1) {
+            width: 4%;
+          }
+
+          th:nth-child(2),
+          td:nth-child(2) {
+            width: 8%;
+          }
+
+          th:nth-child(3),
+          td:nth-child(3) {
+            width: 10%;
+          }
+
+          th:nth-child(4),
+          td:nth-child(4) {
+            width: 14%;
+          }
+
+          th:nth-child(5),
+          td:nth-child(5) {
+            width: 32%;
+          }
+
+          th:nth-child(6),
+          td:nth-child(6) {
+            width: 10%;
+          }
+
+          th:nth-child(7),
+          td:nth-child(7) {
+            width: 11%;
+          }
+
+          th:nth-child(8),
+          td:nth-child(8) {
+            width: 11%;
+          }
+
+          /* ===========================================
+             CELLS
+          =========================================== */
+
+          .srno {
+            text-align: center;
+
+            vertical-align: middle;
+          }
+
+          .date {
+            white-space: nowrap;
+
+            text-align: center;
+          }
+
+          .invoice {
+            font-weight: 600;
+
+            white-space: nowrap;
+          }
+
+          .customer {
+            font-weight: 600;
+
+            color: #111827;
+          }
+
+          .narration {
+            white-space: normal;
+
+            line-height: 1.35;
+
+            color: #374151;
+          }
+
+          .area {
+            font-weight: 500;
+          }
+
+          .amount {
+            text-align: right;
+
+            white-space: nowrap;
+
+            font-weight: 600;
+          }
+
+          .payment {
+            color: #166534;
+          }
+
+          .sale {
+            color: #111827;
+          }
+
+          /* ===========================================
+             GRAND TOTAL
+          =========================================== */
+
+          .totalRow td {
+            background: #e5e7eb !important;
+
+            border-top: 2px solid #111827;
+
+            font-weight: 700;
+
+            padding-top: 7px;
+
+            padding-bottom: 7px;
+          }
+
+          .totalLabel {
+            text-align: right;
+
+            font-size: 9px;
+
+            letter-spacing: 0.3px;
+          }
+
+          /* ===========================================
+             FOOTER
+          =========================================== */
+
+          .printFooter {
+            margin-top: 8px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            font-size: 7.5px;
+
+            color: #6b7280;
+          }
+
+          /* ===========================================
+             PRINT
+          =========================================== */
+
+          @media print {
+            body {
+              margin: 0;
+
+              -webkit-print-color-adjust: exact;
+
+              print-color-adjust: exact;
+            }
+
+            .page {
+              page-break-after: auto;
+            }
+
+            thead {
+              display: table-header-group;
+            }
+
+            tr {
+              page-break-inside: avoid;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+
+        <div class="page">
+
+          <!-- ===============================
+               HEADER
+          ================================ -->
+
+          <div class="reportHeader">
+
+            <h1 class="title">
+              CUSTOMER LEDGER
+            </h1>
+
+            <div class="ledgerName">
+              ${escapeHtml(ledger?.reportName || "Customer")}
+            </div>
+
+            <div class="reportMeta">
+
+              <div>
+                <strong>Ledger Type:</strong>
+
+                ${
+                  ledger?.reportType === "GROUP"
+                    ? "Group Wise"
+                    : "Customer Wise"
+                }
+              </div>
+
+              <div>
+                <strong>From:</strong>
+
+                ${escapeHtml(formatDate(from))}
+              </div>
+
+              <div>
+                <strong>To:</strong>
+
+                ${escapeHtml(formatDate(to))}
+              </div>
+
+              <div>
+                <strong>Total Entries:</strong>
+
+                ${ledgerData.length}
+              </div>
+
+            </div>
+
+          </div>
+
+
+          <!-- ===============================
+               SUMMARY
+          ================================ -->
+
+          <div class="summaryRow">
+
+            <div class="summaryCard">
+
+              <span class="summaryLabel">
+                Total Sale
+              </span>
+
+              <span class="summaryValue">
+                ₹${Number(summary.totalSale || 0).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+
+            </div>
+
+
+            <div class="summaryCard">
+
+              <span class="summaryLabel">
+                Payment Received
+              </span>
+
+              <span class="summaryValue">
+                ₹${Number(summary.totalPaymentReceived || 0).toLocaleString(
+                  "en-IN",
+                  {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  },
+                )}
+              </span>
+
+            </div>
+
+
+            <div class="summaryCard">
+
+              <span class="summaryLabel">
+                Balance
+              </span>
+
+              <span class="summaryValue">
+                ₹${Number(summary.balance || 0).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+
+            </div>
+
+          </div>
+
+
+          <!-- ===============================
+               LEDGER TABLE
+          ================================ -->
+
+          <table>
+
+            <thead>
+
+              <tr>
+
+                <th>
+                  Sr.No
+                </th>
+
+                <th>
+                  Date
+                </th>
+
+                <th>
+                  Invoice No
+                </th>
+
+                <th>
+                  Customer Name
+                </th>
+
+                <th>
+                  Narration
+                </th>
+
+                <th>
+                  Area
+                </th>
+
+                <th>
+                  Payment Received
+                </th>
+
+                <th>
+                  Sale Amount
+                </th>
+
+              </tr>
+
+            </thead>
+
+
+            <tbody>
+
+              ${rows}
+
+            </tbody>
+
+
+            <tfoot>
+
+              <tr class="totalRow">
+
+                <td
+                  colspan="6"
+                  class="totalLabel"
+                >
+                  GRAND TOTAL
+                </td>
+
+                <td class="amount payment">
+
+                  ₹${Number(summary.totalPaymentReceived || 0).toLocaleString(
+                    "en-IN",
+                    {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    },
+                  )}
+
+                </td>
+
+                <td class="amount sale">
+
+                  ₹${Number(summary.totalSale || 0).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+
+                </td>
+
+              </tr>
+
+            </tfoot>
+
+          </table>
+
+
+          <!-- ===============================
+               FOOTER
+          ================================ -->
+
+          <div class="printFooter">
+
+            <div>
+              ${
+                ledger?.reportType === "GROUP"
+                  ? `Group: ${escapeHtml(ledger?.reportName || "-")}`
+                  : `Customer: ${escapeHtml(ledger?.reportName || "-")}`
+              }
+            </div>
+
+            <div>
+              Printed on:
+              ${new Date().toLocaleString("en-IN")}
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <script>
+          window.onload = function () {
+            window.focus();
+
+            setTimeout(function () {
+              window.print();
+            }, 350);
+          };
+        </script>
+
+      </body>
+
+    </html>
+  `);
+
+    printWindow.document.close();
+  };
+
+  // --------------------------------------------------
+  // PAGE NUMBERS
+  // --------------------------------------------------
+  const getPageNumbers = () => {
+    if (totalPages <= 1) {
+      return [1];
+    }
+
+    const pages = [];
+    const delta = 2;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - delta && i <= currentPage + delta)
+      ) {
+        pages.push(i);
+      }
+    }
+
+    const result = [];
+    let previous;
+
+    pages.forEach((page) => {
+      if (previous && page - previous > 1) {
+        result.push("...");
+      }
+
+      result.push(page);
+      previous = page;
+    });
+
+    return result;
   };
 
   return (
     <div className={styles.container}>
       <div className={styles.reportCard}>
+        {/* ========================================
+            HEADER
+        ======================================== */}
         <div className={styles.header}>
-          <h2 className={styles.title}>Customer Wise Summary</h2>
-          <div className={styles.filters}>
-            <div className={styles.inputBox}>
-              <label>From Date</label>
-              <input
-                type="date"
-                value={from}
-                onChange={(e) => setFrom(e.target.value)}
-                className={styles.dateInput}
-              />
+          <div>
+            <h2 className={styles.title}>Customer Ledger</h2>
+
+            <p className={styles.subtitle}>
+              Group wise and customer wise sales & payment ledger
+            </p>
+          </div>
+
+          {ledgerData.length > 0 && (
+            <div className={styles.headerActions}>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className={styles.printBtn}
+              >
+                🖨 Print Ledger
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadExcel}
+                className={styles.excelBtn}
+              >
+                ⬇ Download Excel
+              </button>
             </div>
+          )}
+        </div>
+
+        {/* ========================================
+            MODE SELECTOR
+        ======================================== */}
+        <div className={styles.modeSelector}>
+          <button
+            type="button"
+            onClick={() => handleModeChange("group")}
+            className={`${styles.modeBtn} ${
+              reportMode === "group" ? styles.activeMode : ""
+            }`}
+          >
+            Group Wise
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleModeChange("customer")}
+            className={`${styles.modeBtn} ${
+              reportMode === "customer" ? styles.activeMode : ""
+            }`}
+          >
+            Customer Wise
+          </button>
+        </div>
+
+        {/* ========================================
+            FILTERS
+        ======================================== */}
+        <div className={styles.filters}>
+          {/* FROM */}
+          <div className={styles.inputBox}>
+            <label>From Date</label>
+
+            <input
+              type="date"
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+              className={styles.dateInput}
+            />
+          </div>
+
+          {/* TO */}
+          <div className={styles.inputBox}>
+            <label>To Date</label>
+
+            <input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              className={styles.dateInput}
+            />
+          </div>
+
+          {/* ====================================
+              GROUP MODE
+          ==================================== */}
+          {reportMode === "group" && (
             <div className={styles.inputBox}>
-              <label>To Date</label>
-              <input
-                type="date"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                className={styles.dateInput}
-              />
+              <label>Customer Group</label>
+
+              <select
+                value={selectedGroupId}
+                onChange={(e) => setSelectedGroupId(e.target.value)}
+                className={styles.selectInput}
+              >
+                <option value="">Select Group</option>
+
+                {customerGroups?.map((group) => (
+                  <option
+                    key={group.CustomerGroupID}
+                    value={group.CustomerGroupID}
+                  >
+                    {group.GroupName}
+                  </option>
+                ))}
+              </select>
+
+              {groupLoading && <small>Loading groups...</small>}
             </div>
-            <div className={styles.inputBox}>
-              <label>Search Customer</label>
+          )}
+
+          {/* ====================================
+              CUSTOMER MODE
+          ==================================== */}
+          {reportMode === "customer" && (
+            <div className={styles.customerSearchBox}>
+              <label>Customer</label>
 
               <input
                 type="text"
-                placeholder="Search customer..."
-                value={searchText}
+                value={customerSearch}
+                placeholder="Search customer, area or address..."
                 onChange={(e) => {
-                  setSearchText(e.target.value);
-                  setShowDropdown(true);
+                  setCustomerSearch(e.target.value);
+
+                  setSelectedCustomer(null);
+
+                  setShowCustomerDropdown(true);
                 }}
-                onFocus={() => setShowDropdown(true)}
+                onFocus={() => setShowCustomerDropdown(true)}
                 className={styles.selectInput}
+                autoComplete="off"
               />
 
-              <div className={styles.selectedCustomers}>
-                {selectedCustomers.map((cust, index) => (
-                  <span key={index} className={styles.customerTag}>
-                    {cust}
-                    <span
-                      className={styles.removeTag}
-                      onClick={() => handleCustomerSelect(cust)}
-                    >
-                      ✕
-                    </span>
-                  </span>
-                ))}
-              </div>
+              {showCustomerDropdown && customerSearch.length >= 2 && (
+                <div className={styles.customerDropdown}>
+                  {filteredCustomers.length > 0 ? (
+                    filteredCustomers.map((cust) => (
+                      <button
+                        type="button"
+                        key={cust.CustomerId}
+                        className={styles.customerOption}
+                        onClick={() => handleCustomerSelect(cust)}
+                      >
+                        <div className={styles.customerOptionName}>
+                          {cust.CustomerName}
+                        </div>
 
-              {searchText.length < 2 && (
-                <div className={styles.searchHint}>
-                  Type at least 2 letters to search customer
+                        <div className={styles.customerOptionDetails}>
+                          {cust.Area || "No Area"}
+
+                          {cust.Address ? ` • ${cust.Address}` : ""}
+                        </div>
+
+                        {cust.CustomerGroupID && (
+                          <span className={styles.groupBadge}>
+                            Group Customer
+                          </span>
+                        )}
+                      </button>
+                    ))
+                  ) : (
+                    <div className={styles.noCustomer}>No customer found</div>
+                  )}
                 </div>
               )}
 
-              {showDropdown && searchText.length >= 2 && (
-                <div className={styles.customerDropdown}>
-                  {filteredCustomers.map((cust) => (
-                    <label
-                      key={cust.CustomerID}
-                      className={styles.checkboxItem}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCustomers.includes(cust.CustomerName)}
-                        onChange={() => handleCustomerSelect(cust.CustomerName)}
-                      />
-                      {cust.CustomerName}
-                    </label>
-                  ))}
+              {selectedCustomer && (
+                <div className={styles.selectedCustomer}>
+                  Selected:
+                  <strong>{selectedCustomer.CustomerName}</strong>
+                  {selectedCustomer.Area && ` - ${selectedCustomer.Area}`}
                 </div>
               )}
             </div>
+          )}
 
-            <button onClick={handleSearch} className={styles.searchBtn}>
-              <span className={styles.btnIcon}>📊</span>
-              Generate Report
-            </button>
-            <button onClick={downloadExcel} className={styles.excelBtn}>
-              ⬇️ Download Excel
-            </button>
-            {(from || to || selectedCustomers.length > 0) && (
-              <div className={styles.appliedFilters}>
-                <strong>Filters:</strong>
-
-                {from && to && (
-                  <span className={styles.filterTag}>
-                    📅 {from} → {to}
-                  </span>
-                )}
-
-                {selectedCustomers.map((c, i) => (
-                  <span key={i} className={styles.filterTag}>
-                    👤 {c}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+          {/* GENERATE */}
+          <button
+            type="button"
+            onClick={handleSearch}
+            disabled={ledgerLoading}
+            className={styles.searchBtn}
+          >
+            {ledgerLoading ? "Generating..." : "Generate Ledger"}
+          </button>
         </div>
 
-        {/* Executive Summary Bar */}
-        {customer?.data?.length > 0 && (
+        {/* ========================================
+            APPLIED REPORT NAME
+        ======================================== */}
+        {ledger?.reportName && (
+          <div className={styles.reportInfo}>
+            <div>
+              <span>Ledger:</span>
+
+              <strong>{ledger.reportName}</strong>
+            </div>
+
+            <div>
+              <span>Type:</span>
+
+              <strong>
+                {ledger.reportType === "GROUP" ? "Group Wise" : "Customer Wise"}
+              </strong>
+            </div>
+
+            <div>
+              <span>Period:</span>
+
+              <strong>
+                {from} to {to}
+              </strong>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================
+            SUMMARY
+        ======================================== */}
+        {ledgerData.length > 0 && (
           <div className={styles.summaryBar}>
             <div className={styles.summaryItem}>
-              <span>Total Billed</span>
-              <h3 className={styles.blueText}>
-                <span className={styles.currencyIcon}>₹</span>
-                {totalOrderAmt.toLocaleString("en-IN")}
-              </h3>
+              <span>Total Sale</span>
+
+              <h3>₹{Number(summary.totalSale || 0).toLocaleString("en-IN")}</h3>
             </div>
+
             <div className={styles.summaryItem}>
-              <span>Total Received</span>
+              <span>Payment Received</span>
+
               <h3 className={styles.greenText}>
-                <span className={styles.currencyIcon}>₹</span>
-                {totalPaidAmt.toLocaleString("en-IN")}
+                ₹
+                {Number(summary.totalPaymentReceived || 0).toLocaleString(
+                  "en-IN",
+                )}
               </h3>
             </div>
+
             <div className={styles.summaryItem}>
-              <span>Outstanding</span>
-              <h3 className={styles.redText}>
-                <span className={styles.currencyIcon}>₹</span>
-                {totalOutstandingAmt.toLocaleString("en-IN")}
+              <span>Balance</span>
+
+              <h3
+                className={
+                  Number(summary.balance || 0) > 0
+                    ? styles.redText
+                    : styles.greenText
+                }
+              >
+                ₹{Number(summary.balance || 0).toLocaleString("en-IN")}
               </h3>
             </div>
           </div>
         )}
 
-        {customerLoading && (
+        {/* ========================================
+            LOADER
+        ======================================== */}
+        {ledgerLoading && (
           <div className={styles.loader}>
-            <div className={styles.spinner}></div>
-            <span>Syncing Report Data...</span>
+            <div className={styles.spinner} />
+
+            <span>Loading Customer Ledger...</span>
           </div>
         )}
-        {error && <div className={styles.errorBox}>⚠️ {error}</div>}
 
-        {customer?.data?.length > 0 && (
+        {/* ERROR */}
+        {error && (
+          <div className={styles.errorBox}>
+            ⚠️{" "}
+            {typeof error === "string"
+              ? error
+              : error?.message || "Something went wrong"}
+          </div>
+        )}
+
+        {/* ========================================
+            LEDGER TABLE
+        ======================================== */}
+        {!ledgerLoading && ledgerData.length > 0 && (
           <>
             <div className={styles.tableWrapper}>
-              <table className={styles.table}>
+              <table className={styles.ledgerTable}>
                 <thead>
                   <tr>
-                    <th>Date & Order ID</th>
-                    <th>Customer Details</th>
-                    <th>Items (Wt x Qty @ Rate)</th>
-                    <th>Delivery Boy</th>
-                    <th>Payment Mode</th>
-                    <th>Order Amt</th>
-                    <th>Paid</th>
-                    <th>Outstanding</th>
+                    <th>Sr.No</th>
+
+                    <th>Date</th>
+
+                    <th>Invoice No</th>
+
+                    <th>Customer Name</th>
+
+                    <th>Narration</th>
+
+                    <th>Area</th>
+
+                    <th>Payment Received</th>
+
+                    <th>Sale Amount</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {paginatedData.map((item, index) => (
-                    <tr key={item.OrderID || index} className={styles.tableRow}>
+                    <tr key={`${item.SrNo}-${index}`}>
+                      <td className={styles.centerCell}>{item.SrNo}</td>
+
                       <td className={styles.dateCell}>
-                        <div className={styles.dateDisplay}>
-                          {new Date(item.OrderDate).toLocaleDateString(
-                            "en-GB",
-                            {
+                        {item.Date
+                          ? new Date(item.Date).toLocaleDateString("en-GB", {
                               day: "2-digit",
                               month: "short",
                               year: "numeric",
-                            },
-                          )}
-                        </div>
-                        <div className={styles.orderId}>#{item.OrderID}</div>
+                            })
+                          : "-"}
                       </td>
+
+                      <td className={styles.invoiceCell}>
+                        {item.InvoiceNo || "-"}
+                      </td>
+
+                      <td className={styles.customerNameCell}>
+                        {item.CustomerName || "-"}
+                      </td>
+
+                      <td className={styles.narrationCell}>{item.Narration}</td>
+
                       <td>
-                        <div className={styles.custName}>
-                          {item.CustomerName}
-                        </div>
-                        <div className={styles.custSub}>{item.ContactNo}</div>
-                        <span className={styles.areaTag}>{item.Area}</span>
-                      </td>
-                      <td className={styles.itemCell}>
-                        {item.ItemDetails?.split(" | ").map((line, i) => (
-                          <div key={i} className={styles.itemRow}>
-                            <span className={styles.bullet}>•</span> {line}
-                          </div>
-                        ))}
-                      </td>
-                      <td className={styles.deliveryCell}>
-                        <span
-                          className={
-                            item.DeliveryBoyName
-                              ? styles.boyName
-                              : styles.naText
-                          }
-                        >
-                          {item.DeliveryBoyName || "N/A"}
+                        <span className={styles.areaBadge}>
+                          {item.Area || "-"}
                         </span>
                       </td>
-                      <td className={styles.paymentCell}>
-                        <span className={styles.paymentBadge}>
-                          {item.PaymentModeDetails || "Pending"}
-                        </span>
+
+                      <td className={styles.paymentAmount}>
+                        {Number(item.PaymentReceived || 0) > 0
+                          ? `₹${Number(item.PaymentReceived).toLocaleString(
+                              "en-IN",
+                            )}`
+                          : "-"}
                       </td>
-                      <td className={styles.boldAmount}>
-                        ₹{item.OrderAmount.toLocaleString("en-IN")}
-                      </td>
-                      <td className={styles.greenAmount}>
-                        ₹{item.PaidAmount.toLocaleString("en-IN")}
-                      </td>
-                      <td>
-                        <span
-                          className={
-                            item.OutstandingAmount > 0
-                              ? styles.pillRed
-                              : styles.pillGreen
-                          }
-                        >
-                          ₹{item.OutstandingAmount.toLocaleString("en-IN")}
-                        </span>
+
+                      <td className={styles.saleAmount}>
+                        {Number(item.SaleAmount || 0) > 0
+                          ? `₹${Number(item.SaleAmount).toLocaleString(
+                              "en-IN",
+                            )}`
+                          : "-"}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className={styles.tfoot}>
+
+                <tfoot>
                   <tr>
-                    <td colSpan="5" className={styles.footLabel}>
-                      <strong>Grand Total</strong>
+                    <td colSpan="4" className={styles.totalLabel}>
+                      GRAND TOTAL
                     </td>
-                    <td className={styles.boldAmount}>
-                      ₹{totalOrderAmt.toLocaleString("en-IN")}
+
+                    <td className={styles.saleAmount}>
+                      ₹{Number(summary.totalSale || 0).toLocaleString("en-IN")}
                     </td>
-                    <td className={styles.greenAmount}>
-                      ₹{totalPaidAmt.toLocaleString("en-IN")}
-                    </td>
-                    <td className={styles.redText}>
-                      ₹{totalOutstandingAmt.toLocaleString("en-IN")}
+
+                    <td />
+
+                    <td className={styles.paymentAmount}>
+                      ₹
+                      {Number(summary.totalPaymentReceived || 0).toLocaleString(
+                        "en-IN",
+                      )}
                     </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
 
-            {/* Pagination Section */}
+            {/* ====================================
+                  PAGINATION
+              ==================================== */}
             <div className={styles.paginationContainer}>
               <div className={styles.rowsPerPage}>
-                <label>Show</label>
+                <span>Show</span>
+
                 <select
                   value={rowsPerPage}
-                  onChange={handleRowsPerPageChange}
-                  className={styles.rowsSelect}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+
+                    setCurrentPage(1);
+                  }}
                 >
                   <option value={10}>10</option>
+
                   <option value={25}>25</option>
+
                   <option value={50}>50</option>
+
                   <option value={100}>100</option>
                 </select>
-                <label>entries</label>
+
+                <span>entries</span>
               </div>
 
               <div className={styles.paginationInfo}>
-                Showing {startItem} to {endItem} of {totalItems} entries
+                Showing {startItem} to {endItem} of {totalItems}
               </div>
 
               <div className={styles.pagination}>
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className={styles.pageBtn}
-                  aria-label="Previous page"
+                  onClick={() => setCurrentPage((prev) => prev - 1)}
                 >
-                  <span className={styles.pageIcon}>←</span>
-                  <span className={styles.pageText}>Prev</span>
+                  ← Prev
                 </button>
 
                 {getPageNumbers().map((page, index) => (
                   <button
                     key={index}
-                    onClick={() =>
-                      typeof page === "number" && handlePageChange(page)
-                    }
-                    className={`${styles.pageBtn} ${
-                      currentPage === page ? styles.activePage : ""
-                    } ${page === "..." ? styles.disabledPage : ""}`}
                     disabled={page === "..."}
+                    onClick={() => {
+                      if (typeof page === "number") {
+                        setCurrentPage(page);
+                      }
+                    }}
+                    className={currentPage === page ? styles.activePage : ""}
                   >
                     {page}
                   </button>
                 ))}
 
                 <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className={styles.pageBtn}
-                  aria-label="Next page"
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  onClick={() => setCurrentPage((prev) => prev + 1)}
                 >
-                  <span className={styles.pageText}>Next</span>
-                  <span className={styles.pageIcon}>→</span>
+                  Next →
                 </button>
               </div>
             </div>
           </>
         )}
 
-        {!customerLoading && customer?.data?.length === 0 && (
+        {/* ========================================
+            NO DATA
+        ======================================== */}
+        {!ledgerLoading && ledgerData.length === 0 && (
           <div className={styles.noData}>
-            <div className={styles.noDataIcon}>📋</div>
-            <h3>No Data Available</h3>
-            <p>Please select filters to view the summary report.</p>
+            <div className={styles.noDataIcon}>📒</div>
+
+            <h3>Customer Ledger</h3>
+
+            <p>
+              Select Group Wise or Customer Wise, choose dates and generate the
+              ledger.
+            </p>
           </div>
         )}
       </div>

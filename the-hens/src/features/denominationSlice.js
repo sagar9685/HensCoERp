@@ -29,6 +29,7 @@ export const handoverCash = createAsyncThunk(
       denominationJSON,
       orderPaymentIds,
       handoverDate,
+      remark,
     },
     { rejectWithValue },
   ) => {
@@ -39,6 +40,7 @@ export const handoverCash = createAsyncThunk(
         denominationJSON,
         orderPaymentIds,
         handoverDate,
+        remark,
       });
 
       return res.data;

@@ -297,115 +297,255 @@ AND UPPER(pm.ModeName) <> 'FOC'
 ======================= */
 exports.getWeeklyReport = async (req, res) => {
   try {
-    const { year, month, week } = req.query;
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
 
-    const yearNum = parseInt(year, 10);
-    const monthNum = parseInt(month, 10);
-    const weekNum = parseInt(week, 10);
-
-    if (isNaN(yearNum) || isNaN(monthNum) || isNaN(weekNum)) {
-      return res.status(400).json({ message: "Invalid year, month or week" });
+    if (
+      !Number.isInteger(year) ||
+      year < 1900 ||
+      year > 9998 ||
+      !Number.isInteger(month) ||
+      month < 1 ||
+      month > 12
+    ) {
+      return res.status(400).json({
+        message: "Valid year aur month required hain",
+      });
     }
 
-    const startDay = (weekNum - 1) * 7 + 1;
-    const endDay = weekNum * 7;
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+    const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+
+    const nextYear = month === 12 ? year + 1 : year;
+    const nextMonth = month === 12 ? 1 : month + 1;
+
+    const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
 
     const pool = await poolPromise;
 
-    const request = pool
+    // Orders aur master separately read kiye hain:
+    // assignment/master joins se quantities multiply nahi hongi.
+    const result = await pool
       .request()
-      .input("year", sql.Int, yearNum)
-      .input("month", sql.Int, monthNum)
-      .input("startDay", sql.Int, startDay)
-      .input("endDay", sql.Int, endDay);
+      .input("startDate", sql.Date, startDate)
+      .input("endDate", sql.Date, endDate).query(`
+        SELECT
+          DAY(o.OrderDate) AS OrderDay,
+          oi.ItemID,
+          oi.ProductType,
+          oi.Weight,
+          oi.Quantity
+        FROM OrdersTemp o
+        INNER JOIN OrderItems oi
+          ON oi.OrderID = o.OrderID
+        WHERE o.OrderDate >= @startDate
+          AND o.OrderDate < @endDate
+          AND NOT EXISTS (
+            SELECT 1
+            FROM AssignedOrders ao
+            WHERE ao.OrderID = o.OrderID
+              AND LOWER(LTRIM(RTRIM(
+                ISNULL(ao.DeliveryStatus, '')
+              ))) IN ('cancel', 'cancelled', 'canceled')
+          );
 
-    const result = await request.query(`
-      SELECT 
-        CAST(o.OrderDate AS DATE) AS OrderDate,
-
-        COUNT(DISTINCT o.OrderID) AS Orders,
-
-        ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0)
-        + ISNULL(SUM(CASE 
-            WHEN oi.RowNo = 1 THEN TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)) 
-            ELSE 0 
-          END), 0) AS GrossSales,
-
-        ISNULL(rtv.RTVAmount, 0) AS RTVAmount,
-
-        (
-          ISNULL(SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))), 0)
-          + ISNULL(SUM(CASE 
-              WHEN oi.RowNo = 1 THEN TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2)) 
-              ELSE 0 
-            END), 0)
-          - ISNULL(rtv.RTVAmount, 0)
-        ) AS TotalSales,
-
-        oi.ProductType,
-        oi.Rate,
-
-        SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))) AS QuantitySold,
-        SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))) AS ProductTotalAmount
-
-      FROM OrdersTemp o
-
-      LEFT JOIN AssignedOrders ao 
-        ON ao.OrderID = o.OrderID
-
-      JOIN (
-        SELECT 
-          OrderID,
+        SELECT
           ProductType,
-          Rate,
-          Quantity,
-          Total,
-          ROW_NUMBER() OVER(PARTITION BY OrderID ORDER BY ItemID) AS RowNo
-        FROM OrderItems
-      ) oi ON o.OrderID = oi.OrderID
+          DefaultWeight,
+          Category
+        FROM ProductTypes;
+      `);
 
-      LEFT JOIN (
-        SELECT 
-          CAST(RTVDate AS DATE) AS RTVDate,
-          SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS RTVAmount
-        FROM RTVEntries
-        WHERE YEAR(RTVDate) = @year
-          AND MONTH(RTVDate) = @month
-          AND DAY(RTVDate) BETWEEN @startDay AND @endDay
-        GROUP BY CAST(RTVDate AS DATE)
-      ) rtv ON rtv.RTVDate = CAST(o.OrderDate AS DATE)
+    const normalize = (value) =>
+      String(value ?? "")
+        .trim()
+        .toLowerCase();
 
-      WHERE 
-        YEAR(o.OrderDate) = @year
-        AND MONTH(o.OrderDate) = @month
-        AND DAY(o.OrderDate) BETWEEN @startDay AND @endDay
-        AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
+    const master = new Map();
 
-      GROUP BY 
-        CAST(o.OrderDate AS DATE),
-        oi.ProductType,
-        oi.Rate,
-        rtv.RTVAmount
+    for (const product of result.recordsets[1]) {
+      const name = normalize(product.ProductType);
 
-      ORDER BY 
-        OrderDate,
-        ProductTotalAmount DESC;
-    `);
+      if (master.has(name)) {
+        return res.status(422).json({
+          message: `ProductTypes master mein duplicate product: ${product.ProductType}`,
+        });
+      }
 
-    res.status(200).json({
-      week: weekNum,
-      from: startDay,
-      to: endDay,
-      data: result.recordset || [],
+      master.set(name, product);
+    }
+
+    const columns = [
+      { key: "tray", label: "Tray", group: "Eggs", unit: "packs" },
+      { key: "box", label: "Box", group: "Eggs", unit: "packs" },
+      { key: "kids", label: "Box (K)", group: "Eggs", unit: "packs" },
+      { key: "women", label: "Box (W)", group: "Eggs", unit: "packs" },
+
+      { key: "curryCut", label: "Currycut", group: "Chicken", unit: "kg" },
+      { key: "boneless", label: "Boneless", group: "Chicken", unit: "kg" },
+      { key: "breast", label: "Breast", group: "Chicken", unit: "kg" },
+      { key: "drumstick", label: "Drumstick", group: "Chicken", unit: "kg" },
+      { key: "tikka", label: "Tikka", group: "Chicken", unit: "kg" },
+      { key: "wings", label: "Wings", group: "Chicken", unit: "kg" },
+      { key: "wholeBird", label: "Wholebird", group: "Chicken", unit: "kg" },
+      {
+        key: "restChicken",
+        label: "Rest Chicken",
+        group: "Chicken",
+        unit: "kg",
+      },
+      { key: "lollipop", label: "Lollipop", group: "Chicken", unit: "kg" },
+    ];
+
+    const productMapping = {
+      tray: "tray",
+      box: "box",
+      "box (kids)": "kids",
+      "box (women)": "women",
+      "curry cut": "curryCut",
+      boneless: "boneless",
+      breast: "breast",
+      drumstick: "drumstick",
+      tikka: "tikka",
+      wings: "wings",
+      "whole bird": "wholeBird",
+      liver: "restChicken",
+      gizzard: "restChicken",
+      "pet food": "restChicken",
+      lollipop: "lollipop",
+    };
+
+    const parseWeightKg = (value) => {
+      const weight = normalize(value);
+
+      const match = weight.match(
+        /^(\d+(?:\.\d+)?|\.\d+)\s*(kg|kgs|kilogram|kilograms|g|gm|gms|gram|grams)$/,
+      );
+
+      if (!match) return null;
+
+      const amount = Number(match[1]);
+      if (amount <= 0) return null;
+
+      return match[2].startsWith("k") ? amount : amount / 1000;
+    };
+
+    const emptyValues = () =>
+      Object.fromEntries(columns.map(({ key }) => [key, 0]));
+
+    const data = Array.from({ length: 4 }, (_, index) => ({
+      week: index + 1,
+      from: index * 7 + 1,
+      to: index === 3 ? daysInMonth : (index + 1) * 7,
+      ...emptyValues(),
+    }));
+
+    const issues = [];
+
+    for (const item of result.recordsets[0]) {
+      const name = normalize(item.ProductType);
+      const product = master.get(name);
+      const key = productMapping[name];
+      const quantity = Number(item.Quantity);
+
+      if (
+        !product ||
+        !key ||
+        item.Quantity == null ||
+        !Number.isFinite(quantity)
+      ) {
+        issues.push({
+          ItemID: item.ItemID,
+          ProductType: item.ProductType,
+          message: "Product mapping/master ya quantity invalid hai",
+        });
+        continue;
+      }
+
+      const category = normalize(product.Category);
+      const expectedCategory =
+        columns.find((column) => column.key === key).group === "Eggs"
+          ? "egg"
+          : "chicken";
+
+      if (category !== expectedCategory) {
+        issues.push({
+          ItemID: item.ItemID,
+          ProductType: item.ProductType,
+          message: "Master category report mapping se match nahi karti",
+        });
+        continue;
+      }
+
+      let soldQuantity = quantity;
+
+      if (category === "chicken") {
+        const itemWeight = String(item.Weight ?? "").trim();
+
+        const weight = itemWeight || product.DefaultWeight;
+        const weightKg = parseWeightKg(weight);
+
+        if (weightKg === null) {
+          issues.push({
+            ItemID: item.ItemID,
+            ProductType: item.ProductType,
+            Weight: weight,
+            message: "Chicken weight Gram ya KG mein required hai",
+          });
+          continue;
+        }
+
+        soldQuantity = quantity * weightKg;
+      }
+
+      const weekIndex = Math.min(
+        Math.floor((Number(item.OrderDay) - 1) / 7),
+        3,
+      );
+
+      data[weekIndex][key] += soldQuantity;
+    }
+
+    // Invalid weights ko silently zero bana kar wrong report nahi dikhayenge.
+    if (issues.length) {
+      return res.status(422).json({
+        message:
+          "Kuch order items ki mapping/weight invalid hai. Pehle unhe correct karein.",
+        issueCount: issues.length,
+        issues: issues.slice(0, 20),
+      });
+    }
+
+    const round = (value) => Number(value.toFixed(3));
+    const totals = emptyValues();
+
+    for (const row of data) {
+      for (const { key } of columns) {
+        row[key] = round(row[key]);
+        totals[key] += row[key];
+      }
+    }
+
+    for (const { key } of columns) {
+      totals[key] = round(totals[key]);
+    }
+
+    return res.status(200).json({
+      year,
+      month,
+      columns,
+      data,
+      totals,
     });
-  } catch (err) {
-    console.error("Weekly Report Error:", err);
-    res.status(500).json({
-      message: err.message || "Internal server error in weekly report",
+  } catch (error) {
+    console.error("Weekly Report Error:", error);
+
+    return res.status(500).json({
+      message: "Weekly report fetch nahi ho saki",
     });
   }
 };
-
 /* =======================
    DAILY REPORT (By Date & Delivery Boy)
 ======================= */
@@ -717,8 +857,7 @@ ${boyFilter}
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
-    const totalOutstanding =
-      outstandingResult.recordset[0]?.OutstandingAmount || 0;
+
     const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
     const revenueOrders =
       revenueOrdersCountResult.recordset[0]?.RevenueOrders || 0;
@@ -770,15 +909,19 @@ exports.getCustomerWiseSummaryByDate = async (req, res) => {
     const { from, to, customer } = req.query;
 
     if (!from || !to) {
-      return res.status(400).json({ message: "From and To date are required" });
+      return res.status(400).json({
+        message: "From and To date are required",
+      });
     }
 
     const pool = await poolPromise;
     const request = pool.request();
+
     request.input("fromDate", from);
     request.input("toDate", to);
 
     let customerFilter = "";
+
     if (customer && customer.length > 0) {
       const names = customer.split(",");
       const params = names.map((_, i) => `@cust${i}`).join(",");
@@ -791,112 +934,180 @@ exports.getCustomerWiseSummaryByDate = async (req, res) => {
     }
 
     const query = `
-SELECT 
-    O.OrderID,
-    O.OrderDate,
-    O.CustomerName,
-    O.ContactNo,
-    O.Area,
-    O.Address,
-    ISNULL(DB.Name, A.OtherDeliveryManName) AS DeliveryBoyName,
-    
-    -- Product Details
-    STRING_AGG(
-        CAST(CONCAT(OI.ProductType, ' [', OI.Weight, ' x ', OI.Quantity, ' @ ', OI.Rate, ']') AS VARCHAR(MAX)),
-        ' | '
-    ) AS ItemDetails,
-    
-    -- Payment Mode Details
-    ISNULL((
-        SELECT STRING_AGG(CONCAT(PM.ModeName, ': ', OP_Sub.Amount), ', ')
-        FROM OrderPayments OP_Sub
-        JOIN PaymentModes PM ON OP_Sub.PaymentModeID = PM.PaymentModeID
-        WHERE OP_Sub.OrderID = O.OrderID
-    ), 'No Payment') AS PaymentModeDetails,
+      SELECT 
+          O.OrderID,
+          O.OrderDate,
+          O.CustomerName,
+          O.ContactNo,
+          O.Area,
+          O.Address,
 
-    -- ✅ OrderAmount (FOC Excluded)
-    CASE 
-    WHEN EXISTS (
-        SELECT 1
-        FROM OrderPayments OP
-        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-        WHERE OP.OrderID = O.OrderID
-        AND (OP.PaymentModeID = 4 OR PM.IsRevenue = 0)
-    )
-    THEN 0
-    ELSE
-    (
-        ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
-        + ISNULL(MAX(O.DeliveryCharge), 0)
-    )
-    END AS OrderAmount,
+          ISNULL(DB.Name, A.OtherDeliveryManName) AS DeliveryBoyName,
 
-    -- ✅ PaidAmount (FOC Excluded)
-    ISNULL((
-        SELECT SUM(OP.Amount)
-        FROM OrderPayments OP
-        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-        WHERE OP.OrderID = O.OrderID
-        AND OP.PaymentModeID != 4
-        AND PM.IsRevenue = 1
-    ), 0) AS PaidAmount,
+          -- Product Details
+          STRING_AGG(
+              CAST(
+                  CONCAT(
+                      OI.ProductType,
+                      ' [',
+                      OI.Weight,
+                      ' x ',
+                      OI.Quantity,
+                      ' @ ',
+                      OI.Rate,
+                      ']'
+                  ) AS VARCHAR(MAX)
+              ),
+              ' | '
+          ) AS ItemDetails,
 
-    ISNULL((SELECT SUM(ShortAmount) FROM OrderPayments WHERE OrderID = O.OrderID), 0) AS ShortAmount,
+          -- Payment Mode Details
+          ISNULL((
+              SELECT STRING_AGG(
+                  CONCAT(PM.ModeName, ': ', OP_Sub.Amount),
+                  ', '
+              )
+              FROM OrderPayments OP_Sub
+              JOIN PaymentModes PM
+                  ON OP_Sub.PaymentModeID = PM.PaymentModeID
+              WHERE OP_Sub.OrderID = O.OrderID
+          ), 'No Payment') AS PaymentModeDetails,
 
-    -- ✅ OutstandingAmount (Updated Logic)
-    (
-        CASE 
-        WHEN EXISTS (
+          -- Order Amount / Total Billed
+          -- FOC excluded
+          CASE 
+              WHEN EXISTS (
+                  SELECT 1
+                  FROM OrderPayments OP
+                  JOIN PaymentModes PM
+                      ON OP.PaymentModeID = PM.PaymentModeID
+                  WHERE OP.OrderID = O.OrderID
+                    AND (
+                        OP.PaymentModeID = 4
+                        OR PM.IsRevenue = 0
+                    )
+              )
+              THEN 0
+
+              ELSE (
+                  ISNULL((
+                      SELECT SUM(Total)
+                      FROM OrderItems
+                      WHERE OrderID = O.OrderID
+                  ), 0)
+                  +
+                  ISNULL(MAX(O.DeliveryCharge), 0)
+              )
+          END AS OrderAmount,
+
+          -- Paid Amount
+          -- FOC excluded
+          ISNULL((
+              SELECT SUM(OP.Amount)
+              FROM OrderPayments OP
+              JOIN PaymentModes PM
+                  ON OP.PaymentModeID = PM.PaymentModeID
+              WHERE OP.OrderID = O.OrderID
+                AND OP.PaymentModeID != 4
+                AND PM.IsRevenue = 1
+          ), 0) AS PaidAmount,
+
+          -- Short Amount
+          ISNULL((
+              SELECT SUM(ShortAmount)
+              FROM OrderPayments
+              WHERE OrderID = O.OrderID
+          ), 0) AS ShortAmount,
+
+          -- Outstanding Amount
+          (
+              CASE 
+                  WHEN EXISTS (
+                      SELECT 1
+                      FROM OrderPayments OP
+                      JOIN PaymentModes PM
+                          ON OP.PaymentModeID = PM.PaymentModeID
+                      WHERE OP.OrderID = O.OrderID
+                        AND (
+                            OP.PaymentModeID = 4
+                            OR PM.IsRevenue = 0
+                        )
+                  )
+                  THEN 0
+
+                  ELSE (
+                      ISNULL((
+                          SELECT SUM(Total)
+                          FROM OrderItems
+                          WHERE OrderID = O.OrderID
+                      ), 0)
+                      +
+                      ISNULL(MAX(O.DeliveryCharge), 0)
+                  )
+              END
+          )
+          -
+          ISNULL((
+              SELECT SUM(OP.Amount)
+              FROM OrderPayments OP
+              JOIN PaymentModes PM
+                  ON OP.PaymentModeID = PM.PaymentModeID
+              WHERE OP.OrderID = O.OrderID
+                AND OP.PaymentModeID != 4
+                AND PM.IsRevenue = 1
+          ), 0) AS OutstandingAmount
+
+      FROM OrdersTemp O WITH (NOLOCK)
+
+      LEFT JOIN OrderItems OI WITH (NOLOCK)
+          ON O.OrderID = OI.OrderID
+
+      LEFT JOIN AssignedOrders A WITH (NOLOCK)
+          ON O.OrderID = A.OrderID
+
+      LEFT JOIN DeliveryMen DB WITH (NOLOCK)
+          ON A.DeliveryManID = DB.DeliveryManID
+
+      WHERE O.OrderDate BETWEEN @fromDate AND @toDate
+
+        -- CANCELLED ORDERS COMPLETELY EXCLUDED
+        AND NOT EXISTS (
             SELECT 1
-            FROM OrderPayments OP
-            JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-            WHERE OP.OrderID = O.OrderID
-            AND (OP.PaymentModeID = 4 OR PM.IsRevenue = 0)
+            FROM AssignedOrders CA
+            WHERE CA.OrderID = O.OrderID
+              AND LOWER(
+                  LTRIM(
+                      RTRIM(
+                          ISNULL(CA.DeliveryStatus, '')
+                      )
+                  )
+              ) IN ('cancel', 'cancelled', 'canceled')
         )
-        THEN 0
-        ELSE
-        (
-            ISNULL((SELECT SUM(Total) FROM OrderItems WHERE OrderID = O.OrderID), 0)
-            + ISNULL(MAX(O.DeliveryCharge), 0)
-        )
-        END
-    )
-    -
-    ISNULL((
-        SELECT SUM(OP.Amount)
-        FROM OrderPayments OP
-        JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-        WHERE OP.OrderID = O.OrderID
-        AND OP.PaymentModeID != 4
-        AND PM.IsRevenue = 1
-    ), 0)
-    AS OutstandingAmount
 
-FROM OrdersTemp O WITH (NOLOCK)
-LEFT JOIN OrderItems OI WITH (NOLOCK) ON O.OrderID = OI.OrderID
-LEFT JOIN AssignedOrders A WITH (NOLOCK) ON O.OrderID = A.OrderID
-LEFT JOIN DeliveryMen DB WITH (NOLOCK) ON A.DeliveryManID = DB.DeliveryManID
+        ${customerFilter}
 
-WHERE O.OrderDate BETWEEN @fromDate AND @toDate
-${customerFilter}
+      GROUP BY 
+          O.OrderID,
+          O.OrderDate,
+          O.CustomerName,
+          O.ContactNo,
+          O.Area,
+          O.Address,
+          DB.Name,
+          A.OtherDeliveryManName
 
-GROUP BY 
-    O.OrderID, 
-    O.OrderDate, 
-    O.CustomerName, 
-    O.ContactNo, 
-    O.Area, 
-    O.Address,
-    DB.Name,
-    A.OtherDeliveryManName
-ORDER BY O.OrderDate DESC
-`;
+      ORDER BY O.OrderDate DESC
+    `;
 
     const result = await request.query(query);
-    res.status(200).json(result.recordset);
+
+    return res.status(200).json(result.recordset);
   } catch (err) {
     console.error("SQL Error:", err.message);
-    res.status(500).json({ message: err.message });
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
 
@@ -2508,5 +2719,515 @@ ORDER BY OrderDate
     console.log("Stack:", err.stack);
 
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getCustomerLedgerByDate = async (req, res) => {
+  try {
+    const { from, to, customerGroupId, customerId, customer } = req.query;
+
+    // ----------------------------------------------------
+    // VALIDATION
+    // ----------------------------------------------------
+    if (!from || !to) {
+      return res.status(400).json({
+        success: false,
+        message: "From and To date are required",
+      });
+    }
+
+    if (!customerGroupId && !customerId && !customer) {
+      return res.status(400).json({
+        success: false,
+        message: "customerGroupId, customerId or customer is required",
+      });
+    }
+
+    const pool = await poolPromise;
+    const request = pool.request();
+
+    request.input("fromDate", from);
+    request.input("toDate", to);
+
+    let customerFilter = "";
+    let reportType = "";
+    let reportName = "";
+
+    // ====================================================
+    // GROUP WISE LEDGER
+    // ====================================================
+    if (customerGroupId) {
+      const groupId = Number(customerGroupId);
+
+      if (!Number.isInteger(groupId) || groupId <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid customerGroupId",
+        });
+      }
+
+      const groupResult = await pool.request().input("groupId", groupId).query(`
+          SELECT
+            CustomerGroupID,
+            GroupName
+          FROM CustomerGroupMaster
+          WHERE CustomerGroupID = @groupId
+            AND IsActive = 1
+        `);
+
+      if (groupResult.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer group not found",
+        });
+      }
+
+      request.input("customerGroupId", groupId);
+
+      customerFilter = `
+        EXISTS (
+          SELECT 1
+          FROM Customers C
+          WHERE C.CustomerGroupID = @customerGroupId
+            AND LTRIM(RTRIM(C.CustomerName))
+                = LTRIM(RTRIM(O.CustomerName))
+        )
+      `;
+
+      reportType = "GROUP";
+      reportName = groupResult.recordset[0].GroupName;
+    }
+
+    // ====================================================
+    // INDIVIDUAL CUSTOMER BY ID
+    // ====================================================
+    else if (customerId) {
+      const id = Number(customerId);
+
+      if (!Number.isInteger(id) || id <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid customerId",
+        });
+      }
+
+      const customerResult = await pool.request().input("customerId", id)
+        .query(`
+          SELECT
+            CustomerId,
+            CustomerName,
+            Area,
+            Address,
+            CustomerGroupID
+          FROM Customers
+          WHERE CustomerId = @customerId
+        `);
+
+      if (customerResult.recordset.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Customer not found",
+        });
+      }
+
+      const selectedCustomer = customerResult.recordset[0];
+
+      request.input("customerId", id);
+
+      // OrdersTemp me CustomerId nahi hai,
+      // isliye Name + Area + Address se individual location match kar rahe hain.
+      customerFilter = `
+        EXISTS (
+          SELECT 1
+          FROM Customers C
+          WHERE C.CustomerId = @customerId
+
+            AND LTRIM(RTRIM(C.CustomerName))
+                = LTRIM(RTRIM(O.CustomerName))
+
+            AND LTRIM(RTRIM(ISNULL(C.Area, '')))
+                = LTRIM(RTRIM(ISNULL(O.Area, '')))
+
+            AND LTRIM(RTRIM(ISNULL(C.Address, '')))
+                = LTRIM(RTRIM(ISNULL(O.Address, '')))
+        )
+      `;
+
+      reportType = "CUSTOMER";
+
+      reportName =
+        selectedCustomer.CustomerName +
+        (selectedCustomer.Area ? ` - ${selectedCustomer.Area}` : "");
+    }
+
+    // ====================================================
+    // OLD CUSTOMER NAME MODE
+    // ====================================================
+    else {
+      request.input("customer", customer.trim());
+
+      customerFilter = `
+        LTRIM(RTRIM(O.CustomerName))
+        =
+        LTRIM(RTRIM(@customer))
+      `;
+
+      reportType = "CUSTOMER_NAME";
+      reportName = customer.trim();
+    }
+
+    // ====================================================
+    // MAIN LEDGER QUERY
+    // ====================================================
+    const query = `
+      ;WITH LedgerEntries AS (
+
+        -- -------------------------------------------------
+        -- SALE ENTRIES
+        -- Date = OrderDate
+        -- -------------------------------------------------
+        SELECT
+            O.CustomerName,
+
+            O.OrderID,
+
+            CAST(O.OrderDate AS DATE) AS LedgerDate,
+
+            O.InvoiceNo,
+
+            -- =============================================
+            -- SALE NARRATION WITH ORDER ITEMS
+            -- =============================================
+            CAST(
+              CONCAT(
+                'Sale',
+
+                CASE
+                  WHEN O.Address IS NOT NULL
+                       AND LTRIM(RTRIM(O.Address)) <> ''
+                  THEN ' - ' + O.Address
+                  ELSE ''
+                END,
+
+                CASE
+                  WHEN EXISTS (
+                    SELECT 1
+                    FROM OrderItems OI
+                    WHERE OI.OrderID = O.OrderID
+                  )
+                  THEN
+                    ' | Items: ' +
+                    ISNULL(
+                      (
+                        SELECT STRING_AGG(
+                          CAST(
+                            CONCAT(
+                              ISNULL(OI2.ProductName, ''),
+
+                              CASE
+                                WHEN OI2.ProductType IS NOT NULL
+                                     AND LTRIM(RTRIM(OI2.ProductType)) <> ''
+                                THEN ' - ' + OI2.ProductType
+                                ELSE ''
+                              END,
+
+                              ' [',
+
+                              CASE
+                                WHEN OI2.Weight IS NOT NULL
+                                     AND LTRIM(RTRIM(OI2.Weight)) <> ''
+                                THEN OI2.Weight + ' x '
+                                ELSE ''
+                              END,
+
+                              CAST(
+                                ISNULL(OI2.Quantity, 0)
+                                AS VARCHAR(30)
+                              ),
+
+                              ' @ ',
+
+                              CAST(
+                                ISNULL(OI2.Rate, 0)
+                                AS VARCHAR(30)
+                              ),
+
+                              ']'
+                            )
+                            AS VARCHAR(MAX)
+                          ),
+                          ' | '
+                        )
+                        FROM OrderItems OI2
+                        WHERE OI2.OrderID = O.OrderID
+                      ),
+                      ''
+                    )
+                  ELSE ''
+                END
+              )
+              AS VARCHAR(MAX)
+            ) AS Narration,
+
+            CAST(
+              CASE
+
+                -- FOC / NON REVENUE ORDER
+                WHEN EXISTS (
+                  SELECT 1
+                  FROM OrderPayments FP
+
+                  INNER JOIN PaymentModes FPM
+                    ON FP.PaymentModeID = FPM.PaymentModeID
+
+                  WHERE FP.OrderID = O.OrderID
+
+                    AND (
+                      FP.PaymentModeID = 4
+                      OR FPM.IsRevenue = 0
+                    )
+                )
+                THEN 0
+
+                ELSE
+                  ISNULL(
+                    (
+                      SELECT SUM(OI2.Total)
+                      FROM OrderItems OI2
+                      WHERE OI2.OrderID = O.OrderID
+                    ),
+                    0
+                  )
+                  +
+                  ISNULL(O.DeliveryCharge, 0)
+
+              END
+              AS DECIMAL(18,2)
+            ) AS SaleAmount,
+
+            O.Area,
+
+            CAST(
+              0 AS DECIMAL(18,2)
+            ) AS PaymentReceived,
+
+            1 AS EntryOrder
+
+        FROM OrdersTemp O WITH (NOLOCK)
+
+        WHERE
+            ${customerFilter}
+
+            AND O.OrderDate >= @fromDate
+
+            AND O.OrderDate <
+              DATEADD(
+                DAY,
+                1,
+                CAST(@toDate AS DATE)
+              )
+
+            -- CANCELLED ORDERS EXCLUDED
+            AND NOT EXISTS (
+              SELECT 1
+              FROM AssignedOrders CA
+
+              WHERE CA.OrderID = O.OrderID
+
+                AND LOWER(
+                  LTRIM(
+                    RTRIM(
+                      ISNULL(CA.DeliveryStatus, '')
+                    )
+                  )
+                ) IN (
+                  'cancel',
+                  'cancelled',
+                  'canceled'
+                )
+            )
+
+
+        UNION ALL
+
+
+        -- -------------------------------------------------
+        -- PAYMENT RECEIVED ENTRIES
+        -- Date = PaymentReceivedDate
+        -- -------------------------------------------------
+        SELECT
+            O.CustomerName,
+
+            O.OrderID,
+
+            CAST(
+              OP.PaymentReceivedDate AS DATE
+            ) AS LedgerDate,
+
+            O.InvoiceNo,
+
+            CAST(
+              CONCAT(
+                'Payment Received - ',
+                PM.ModeName,
+
+                CASE
+                  WHEN O.InvoiceNo IS NOT NULL
+                       AND LTRIM(RTRIM(O.InvoiceNo)) <> ''
+                  THEN
+                    ' Against Invoice ' + O.InvoiceNo
+                  ELSE ''
+                END
+              )
+              AS VARCHAR(MAX)
+            ) AS Narration,
+
+            CAST(
+              0 AS DECIMAL(18,2)
+            ) AS SaleAmount,
+
+            O.Area,
+
+            CAST(
+              SUM(ISNULL(OP.Amount, 0))
+              AS DECIMAL(18,2)
+            ) AS PaymentReceived,
+
+            2 AS EntryOrder
+
+        FROM OrderPayments OP WITH (NOLOCK)
+
+        INNER JOIN OrdersTemp O WITH (NOLOCK)
+          ON OP.OrderID = O.OrderID
+
+        INNER JOIN PaymentModes PM WITH (NOLOCK)
+          ON OP.PaymentModeID = PM.PaymentModeID
+
+        WHERE
+            ${customerFilter}
+
+            AND OP.PaymentReceivedDate IS NOT NULL
+
+            AND OP.PaymentReceivedDate >= @fromDate
+
+            AND OP.PaymentReceivedDate <
+              DATEADD(
+                DAY,
+                1,
+                CAST(@toDate AS DATE)
+              )
+
+            -- FOC / NON REVENUE PAYMENT EXCLUDED
+            AND OP.PaymentModeID != 4
+
+            AND PM.IsRevenue = 1
+
+            -- CANCELLED ORDERS EXCLUDED
+            AND NOT EXISTS (
+              SELECT 1
+              FROM AssignedOrders CA
+
+              WHERE CA.OrderID = O.OrderID
+
+                AND LOWER(
+                  LTRIM(
+                    RTRIM(
+                      ISNULL(CA.DeliveryStatus, '')
+                    )
+                  )
+                ) IN (
+                  'cancel',
+                  'cancelled',
+                  'canceled'
+                )
+            )
+
+        GROUP BY
+            O.CustomerName,
+            O.OrderID,
+            CAST(OP.PaymentReceivedDate AS DATE),
+            O.InvoiceNo,
+            O.Area,
+            PM.ModeName
+      )
+
+      -- ---------------------------------------------------
+      -- FINAL CUSTOMER LEDGER
+      -- ---------------------------------------------------
+      SELECT
+          ROW_NUMBER() OVER (
+            ORDER BY
+              LedgerDate ASC,
+              EntryOrder ASC,
+              OrderID ASC
+          ) AS SrNo,
+
+          CustomerName,
+
+          LedgerDate AS Date,
+
+          InvoiceNo,
+
+          Narration,
+
+          SaleAmount,
+
+          Area,
+
+          PaymentReceived
+
+      FROM LedgerEntries
+
+      ORDER BY
+          LedgerDate ASC,
+          EntryOrder ASC,
+          OrderID ASC;
+    `;
+
+    const result = await request.query(query);
+
+    // ----------------------------------------------------
+    // TOTALS
+    // ----------------------------------------------------
+    const totalSale = result.recordset.reduce(
+      (sum, row) => sum + Number(row.SaleAmount || 0),
+      0,
+    );
+
+    const totalPaymentReceived = result.recordset.reduce(
+      (sum, row) => sum + Number(row.PaymentReceived || 0),
+      0,
+    );
+
+    const balance = totalSale - totalPaymentReceived;
+
+    return res.status(200).json({
+      success: true,
+
+      reportType,
+      reportName,
+
+      customerGroupId: customerGroupId ? Number(customerGroupId) : null,
+
+      customerId: customerId ? Number(customerId) : null,
+
+      fromDate: from,
+      toDate: to,
+
+      summary: {
+        totalSale,
+        totalPaymentReceived,
+        balance,
+      },
+
+      ledger: result.recordset,
+    });
+  } catch (err) {
+    console.error("Customer Ledger SQL Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

@@ -172,3 +172,30 @@ exports.updateCustomer = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+exports.getCustomerGroups = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request().query(`
+      SELECT
+        CustomerGroupID,
+        GroupName
+      FROM CustomerGroupMaster
+      WHERE IsActive = 1
+      ORDER BY GroupName ASC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      data: result.recordset,
+    });
+  } catch (err) {
+    console.error("Customer Group Fetch Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

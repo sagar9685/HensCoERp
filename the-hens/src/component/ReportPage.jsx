@@ -50,13 +50,6 @@ const ReportPage = () => {
           </button>
 
           <button
-            className={activeTab === "ledger" ? styles.active : ""}
-            onClick={() => setActiveTab("ledger")}
-          >
-            Customer Ledger
-          </button>
-
-          <button
             className={activeTab === "monthlycompare" ? styles.active : ""}
             onClick={() => setActiveTab("monthlycompare")}
           >
@@ -84,7 +77,7 @@ const ReportPage = () => {
           {activeTab === "weekly" && <WeeklyReport />}
           {activeTab == "daily" && <DailyReport />}
           {activeTab == "customer" && <CustomerReport />}
-          {activeTab == "ledger" && <CustomerLedger />}
+
           {activeTab == "monthlycompare" && <MonthlyCompareReport />}
           {activeTab == "weeklycompare" && <WeeklyCompare />}
           {activeTab == "customerreport" && <CustomerDateRangeReport />}

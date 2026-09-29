@@ -23,6 +23,8 @@ export default function DeliveryManDetails({
   onClearSelection,
   onHandover,
   onGenerateInvoice,
+  remark,
+  setRemark,
 }) {
   const {
     loading: dLoading,
@@ -144,6 +146,23 @@ export default function DeliveryManDetails({
               />
             </div>
 
+            <div className={styles.detailItem} style={{ marginBottom: "16px" }}>
+              <label htmlFor="remark" className={styles.detailLabel}>
+                Remark
+              </label>
+
+              <textarea
+                id="remark"
+                value={remark}
+                onChange={(e) => setRemark(e.target.value)}
+                placeholder="Enter cash handover remark..."
+                className={styles.noteInputField}
+                rows={3}
+                maxLength={500}
+                disabled={dLoading}
+              />
+            </div>
+
             {/* MANUAL DENOMINATIONS */}
             <div className={styles.denominationsInputGrid}>
               {DENOMINATIONS.map((noteValue) => (
@@ -192,7 +211,7 @@ export default function DeliveryManDetails({
             {/* HANDOVER BUTTON */}
             <button
               className={styles.handoverButton}
-              onClick={() => onHandover(handoverDate)}
+              onClick={() => onHandover(handoverDate, remark)}
               disabled={
                 dLoading ||
                 totalHandoverAmount <= 0 ||
@@ -212,15 +231,15 @@ export default function DeliveryManDetails({
 
           {/* ACTIONS */}
           <div className={styles.cardActions}>
-            <button
+            {/* <button
               className={styles.secondaryButton}
               onClick={() => setShowOrders(true)}
             >
               Order Details
-            </button>
+            </button> */}
             <button
-              className={styles.generateInvoiceButton}
-              onClick={() => onGenerateInvoice()}
+              className={styles.secondaryButton}
+              onClick={() => onGenerateInvoice(remark)}
               disabled={totalHandoverAmount <= 0}
             >
               🧾 Generate Invoice

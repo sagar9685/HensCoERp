@@ -9,6 +9,8 @@ const initialState = {
   areaData: [],
   customerSuggestions: null,
   customerName: [],
+  customerGroups: [],
+  groupLoading: false,
   error: "",
 };
 
@@ -25,6 +27,21 @@ export const addCustomerData = createAsyncThunk(
     } catch (err) {
       return thunkAPI.rejectWithValue(
         err.response?.data || "Something went wrong",
+      );
+    }
+  },
+);
+
+export const fetchCustomerGroups = createAsyncThunk(
+  "customer/fetchCustomerGroups",
+  async (_, thunkAPI) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/customers/groups`);
+
+      return res.data.data || [];
+    } catch (err) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to fetch customer groups",
       );
     }
   },
@@ -165,6 +182,18 @@ const customerSlice = createSlice({
 
       .addCase(updateCustomer.rejected, (state, action) => {
         state.isLoading = false;
+        state.error = action.payload;
+      });
+    builder
+      .addCase(fetchCustomerGroups.pending, (state) => {
+        state.groupLoading = true;
+      })
+      .addCase(fetchCustomerGroups.fulfilled, (state, action) => {
+        state.groupLoading = false;
+        state.customerGroups = action.payload || [];
+      })
+      .addCase(fetchCustomerGroups.rejected, (state, action) => {
+        state.groupLoading = false;
         state.error = action.payload;
       });
   },
