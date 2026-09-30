@@ -260,10 +260,32 @@ const MonthlyReport = () => {
               </div>
               <div className={`${styles.metricCard} ${styles.blueBorder}`}>
                 <div className={styles.metricIcon}>💰</div>
+
                 <div className={styles.metricContent}>
-                  <span className={styles.metricLabel}>Total Sales</span>
+                  <span className={styles.metricLabel}>Gross Sales</span>
+
+                  <span className={styles.metricValue}>
+                    {formatINR(monthly.summary.GrossSales)}
+                  </span>
+
+                  <span className={styles.metricSubtext}>
+                    Before adjustments
+                  </span>
+                </div>
+              </div>
+
+              <div className={`${styles.metricCard} ${styles.greenBorder}`}>
+                <div className={styles.metricIcon}>📈</div>
+
+                <div className={styles.metricContent}>
+                  <span className={styles.metricLabel}>Net Sales</span>
+
                   <span className={styles.metricValue}>
                     {formatINR(monthly.summary.TotalSales)}
+                  </span>
+
+                  <span className={styles.metricSubtext}>
+                    After FOC & credit adjustments
                   </span>
                 </div>
               </div>
@@ -330,10 +352,32 @@ const MonthlyReport = () => {
               </div>
               <div className={`${styles.metricCard} ${styles.orangeBorder}`}>
                 <div className={styles.metricIcon}>🚚</div>
+
                 <div className={styles.metricContent}>
                   <span className={styles.metricLabel}>Freight Amount</span>
+
                   <span className={styles.metricValue}>
                     {formatINR(monthly.summary.FreightAmount)}
+                  </span>
+
+                  <span className={styles.metricSubtext}>
+                    Freight adjustment
+                  </span>
+                </div>
+              </div>
+
+              <div className={`${styles.metricCard} ${styles.purpleBorder}`}>
+                <div className={styles.metricIcon}>🎁</div>
+
+                <div className={styles.metricContent}>
+                  <span className={styles.metricLabel}>FOC Amount</span>
+
+                  <span className={styles.metricValue}>
+                    {formatINR(monthly.summary.FOCAmount)}
+                  </span>
+
+                  <span className={styles.metricSubtext}>
+                    Free of cost amount
                   </span>
                 </div>
               </div>

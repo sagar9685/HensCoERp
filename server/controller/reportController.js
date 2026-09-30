@@ -10,151 +10,304 @@ exports.getMonthlyReport = async (req, res) => {
     const { year, month } = req.query;
 
     if (!year || !month) {
-      return res.status(400).json({ message: "Year and Month are required" });
+      return res.status(400).json({
+        message: "Year and Month are required",
+      });
     }
 
     const pool = await poolPromise;
+
     const request = pool
       .request()
-      .input("year", sql.Int, year)
-      .input("month", sql.Int, month);
+      .input("year", sql.Int, parseInt(year))
+      .input("month", sql.Int, parseInt(month));
 
-    // ✅ 1. SALES + ORDERS
+    // ============================================================
+    // 1. GROSS SALES + TOTAL ORDERS
+    // Pending + Complete included
+    // Cancel / Cancelled excluded
+    // Unassigned orders also included
+    // ============================================================
     const salesRes = await request.query(`
-      SELECT 
-  ISNULL(SUM(oi.ItemTotal),0) + ISNULL(SUM(o.DeliveryCharge),0) AS TotalSales,
-  COUNT(DISTINCT o.OrderID) AS TotalOrders
-FROM OrdersTemp o
-LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-LEFT JOIN (
-  SELECT OrderID, SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS ItemTotal
-  FROM OrderItems
-  GROUP BY OrderID
-) oi ON oi.OrderID = o.OrderID
-WHERE YEAR(o.OrderDate) = @year 
-AND MONTH(o.OrderDate) = @month
-AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
-    `);
+      SELECT
+        ISNULL(SUM(ISNULL(oi.ItemTotal, 0)), 0)
+        +
+        ISNULL(SUM(
+          TRY_CAST(ISNULL(o.DeliveryCharge, 0) AS DECIMAL(18,2))
+        ), 0) AS TotalSales,
 
-    const totalSales = salesRes.recordset[0]?.TotalSales || 0;
-    const totalOrders = salesRes.recordset[0]?.TotalOrders || 0;
+        COUNT(DISTINCT o.OrderID) AS TotalOrders
 
-    // ✅ 2. RTV (INFO ONLY - NOT used in sales)
-    const rtvRes = await request.query(`
-      SELECT ISNULL(SUM(TRY_CAST(Total AS DECIMAL(18,2))),0) AS RTVAmount
-      FROM RTVEntries
-      WHERE YEAR(RTVDate) = @year 
-      AND MONTH(RTVDate) = @month
-    `);
-
-    // ✅ CREDIT / DEBIT NOTE AMOUNT
-    const noteRes = await request.query(`
- SELECT
-    ISNULL(SUM(
-        CASE
-            WHEN n.note_type = 'Credit'
-            THEN TRY_CAST(n.amount AS DECIMAL(18,2))
-                 - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
-            ELSE 0
-        END
-    ),0) AS CreditAmount,
-
-    ISNULL(SUM(
-        CASE
-            WHEN n.note_type = 'Debit'
-            THEN TRY_CAST(n.amount AS DECIMAL(18,2))
-                 - TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
-            ELSE 0
-        END
-    ),0) AS DebitAmount,
-
-    ISNULL(SUM(
-        TRY_CAST(ISNULL(n.freight,0) AS DECIMAL(18,2))
-    ),0) AS FreightAmount
-
-FROM credit_debit_notes n
-LEFT JOIN AssignedOrders ao
-    ON ao.OrderID = n.order_id
-WHERE YEAR(n.created_at) = @year
-AND MONTH(n.created_at) = @month
-AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
-`);
-
-    const creditAmount = noteRes.recordset[0]?.CreditAmount || 0;
-    const debitAmount = noteRes.recordset[0]?.DebitAmount || 0;
-
-    const rtvAmount = rtvRes.recordset[0]?.RTVAmount || 0;
-
-    const freightAmount = noteRes.recordset[0]?.FreightAmount || 0;
-
-    // ✅ 3. CANCEL ORDER AMOUNT (INFO ONLY)
-    const cancelRes = await request.query(`
-      SELECT 
-        ISNULL(SUM(oi.ItemTotal),0) AS CancelOrderAmount
       FROM OrdersTemp o
-      JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
 
       LEFT JOIN (
-        SELECT OrderID, SUM(TRY_CAST(Total AS DECIMAL(18,2))) AS ItemTotal
+        SELECT
+          OrderID,
+          SUM(
+            TRY_CAST(ISNULL(Total, 0) AS DECIMAL(18,2))
+          ) AS ItemTotal
         FROM OrderItems
         GROUP BY OrderID
-      ) oi ON oi.OrderID = o.OrderID
+      ) oi
+        ON oi.OrderID = o.OrderID
 
-      WHERE ao.DeliveryStatus = 'cancel'
-      AND YEAR(o.OrderDate) = @year 
-      AND MONTH(o.OrderDate) = @month
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
     `);
 
-    const cancelAmount = cancelRes.recordset[0]?.CancelOrderAmount || 0;
+    const totalSales = Number(salesRes.recordset[0]?.TotalSales) || 0;
 
-    // ✅ 4. PAYMENTS
+    const totalOrders = Number(salesRes.recordset[0]?.TotalOrders) || 0;
+
+    // ============================================================
+    // 2. RTV
+    // ============================================================
+    const rtvRes = await request.query(`
+      SELECT
+        ISNULL(
+          SUM(
+            TRY_CAST(ISNULL(Total, 0) AS DECIMAL(18,2))
+          ),
+          0
+        ) AS RTVAmount
+
+      FROM RTVEntries
+
+      WHERE YEAR(RTVDate) = @year
+        AND MONTH(RTVDate) = @month
+    `);
+
+    const rtvAmount = Number(rtvRes.recordset[0]?.RTVAmount) || 0;
+
+    // ============================================================
+    // 3. CREDIT / DEBIT NOTES
+    // Order month based
+    // ============================================================
+    const noteRes = await request.query(`
+      SELECT
+
+        ISNULL(
+          SUM(
+            CASE
+              WHEN LOWER(LTRIM(RTRIM(n.note_type))) = 'credit'
+              THEN
+                TRY_CAST(ISNULL(n.amount, 0) AS DECIMAL(18,2))
+                -
+                TRY_CAST(ISNULL(n.freight, 0) AS DECIMAL(18,2))
+              ELSE 0
+            END
+          ),
+          0
+        ) AS CreditAmount,
+
+        ISNULL(
+          SUM(
+            CASE
+              WHEN LOWER(LTRIM(RTRIM(n.note_type))) = 'debit'
+              THEN
+                TRY_CAST(ISNULL(n.amount, 0) AS DECIMAL(18,2))
+                -
+                TRY_CAST(ISNULL(n.freight, 0) AS DECIMAL(18,2))
+              ELSE 0
+            END
+          ),
+          0
+        ) AS DebitAmount,
+
+        ISNULL(
+          SUM(
+            TRY_CAST(ISNULL(n.freight, 0) AS DECIMAL(18,2))
+          ),
+          0
+        ) AS FreightAmount
+
+      FROM credit_debit_notes n
+
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = n.order_id
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(n.status, 'active')))
+        ) <> 'cancelled'
+    `);
+
+    const creditAmount = Number(noteRes.recordset[0]?.CreditAmount) || 0;
+
+    const debitAmount = Number(noteRes.recordset[0]?.DebitAmount) || 0;
+
+    const freightAmount = Number(noteRes.recordset[0]?.FreightAmount) || 0;
+
+    // ============================================================
+    // 4. CANCEL ORDER AMOUNT
+    // ============================================================
+    const cancelRes = await request.query(`
+      SELECT
+        ISNULL(
+          SUM(ISNULL(oi.ItemTotal, 0)),
+          0
+        ) AS CancelOrderAmount
+
+      FROM OrdersTemp o
+
+      INNER JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      LEFT JOIN (
+        SELECT
+          OrderID,
+          SUM(
+            TRY_CAST(ISNULL(Total, 0) AS DECIMAL(18,2))
+          ) AS ItemTotal
+        FROM OrderItems
+        GROUP BY OrderID
+      ) oi
+        ON oi.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) IN ('cancel', 'cancelled')
+    `);
+
+    const cancelAmount = Number(cancelRes.recordset[0]?.CancelOrderAmount) || 0;
+
+    // ============================================================
+    // 5. PAYMENT MODE SUMMARY
+    // ============================================================
     const paymentsRes = await request.query(`
-   SELECT 
-  pm.ModeName, 
-  ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS Amount
-FROM OrderPayments op
-JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-JOIN OrdersTemp o ON o.OrderID = op.OrderID
-LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-WHERE YEAR(o.OrderDate) = @year 
-AND MONTH(o.OrderDate) = @month
-AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
-AND UPPER(pm.ModeName) <> 'FOC'
-GROUP BY pm.ModeName
+      SELECT
+        pm.ModeName,
+
+        ISNULL(
+          SUM(
+            TRY_CAST(ISNULL(op.Amount, 0) AS DECIMAL(18,2))
+          ),
+          0
+        ) AS Amount
+
+      FROM OrderPayments op
+
+      INNER JOIN PaymentModes pm
+        ON pm.PaymentModeID = op.PaymentModeID
+
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = op.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+
+        AND UPPER(
+          LTRIM(RTRIM(ISNULL(pm.ModeName, '')))
+        ) <> 'FOC'
+
+      GROUP BY pm.ModeName
+
+      ORDER BY pm.ModeName
     `);
 
-    // ✅ 5. TOTAL RECEIVED
+    // ============================================================
+    // 6. TOTAL RECEIVED
+    // ============================================================
     const receivedRes = await request.query(`
-     SELECT 
-  ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS TotalReceived
-FROM OrderPayments op
-JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-JOIN OrdersTemp o ON o.OrderID = op.OrderID
-LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-WHERE YEAR(o.OrderDate) = @year 
-AND MONTH(o.OrderDate) = @month
-AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
-AND UPPER(pm.ModeName) <> 'FOC'
+      SELECT
+        ISNULL(
+          SUM(
+            TRY_CAST(ISNULL(op.Amount, 0) AS DECIMAL(18,2))
+          ),
+          0
+        ) AS TotalReceived
+
+      FROM OrderPayments op
+
+      INNER JOIN PaymentModes pm
+        ON pm.PaymentModeID = op.PaymentModeID
+
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = op.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+
+        AND UPPER(
+          LTRIM(RTRIM(ISNULL(pm.ModeName, '')))
+        ) <> 'FOC'
     `);
 
+    const totalReceived = Number(receivedRes.recordset[0]?.TotalReceived) || 0;
+
+    // ============================================================
+    // 7. FOC
+    // ============================================================
     const focRes = await request.query(`
-  SELECT 
-    ISNULL(SUM(TRY_CAST(op.Amount AS DECIMAL(18,2))),0) AS FOCAmount
-  FROM OrderPayments op
-  JOIN PaymentModes pm ON pm.PaymentModeID = op.PaymentModeID
-  JOIN OrdersTemp o ON o.OrderID = op.OrderID
-  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-  WHERE YEAR(o.OrderDate) = @year 
-  AND MONTH(o.OrderDate) = @month
-  AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
-  AND UPPER(pm.ModeName) = 'FOC'
-`);
+      SELECT
+        ISNULL(
+          SUM(
+            TRY_CAST(ISNULL(op.Amount, 0) AS DECIMAL(18,2))
+          ),
+          0
+        ) AS FOCAmount
 
-    const focAmount = focRes.recordset[0]?.FOCAmount || 0;
+      FROM OrderPayments op
 
-    const totalReceived = receivedRes.recordset[0]?.TotalReceived || 0;
+      INNER JOIN PaymentModes pm
+        ON pm.PaymentModeID = op.PaymentModeID
 
-    // ✅ RTV sales se minus hoga
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = op.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+
+        AND UPPER(
+          LTRIM(RTRIM(ISNULL(pm.ModeName, '')))
+        ) = 'FOC'
+    `);
+
+    const focAmount = Number(focRes.recordset[0]?.FOCAmount) || 0;
+
+    // ============================================================
+    // 8. NET SALES
+    // ============================================================
     const netSales =
       totalSales -
       rtvAmount -
@@ -163,132 +316,311 @@ AND UPPER(pm.ModeName) <> 'FOC'
       freightAmount +
       debitAmount;
 
-    // ✅ Outstanding bhi RTV minus ke baad niklega
+    // ============================================================
+    // 9. OUTSTANDING
+    // ============================================================
     const totalOutstanding = netSales - totalReceived;
-    // ✅ 6. CHICKEN & EGG SUMMARY
 
+    // ============================================================
+    // 10. CHICKEN + EGG SUMMARY
+    // ============================================================
     const categoryRes = await request.query(`
-  SELECT 
+      SELECT
 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
-      THEN 
-        CASE 
-          WHEN oi.Weight LIKE '%Gram%' 
-            THEN TRY_CAST(REPLACE(oi.Weight,' Gram','') AS DECIMAL(18,2)) / 1000
-          WHEN oi.Weight LIKE '%Kg%' 
-            THEN TRY_CAST(REPLACE(oi.Weight,' Kg','') AS DECIMAL(18,2))
-          ELSE 0 
-        END * TRY_CAST(oi.Quantity AS DECIMAL(18,2))
-      ELSE 0 
-    END
-  ),0) AS ChickenKG,
+        ISNULL(
+          SUM(
+            CASE
+              WHEN oi.ProductType NOT IN (
+                'Tray',
+                'Box',
+                'Box (Kids)',
+                'Box (Women)'
+              )
+              THEN
+                CASE
 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.ProductType NOT IN ('Tray','Box','Box (Kids)','Box (Women)')
-      THEN TRY_CAST(oi.Total AS DECIMAL(18,2))
-      ELSE 0 
-    END
-  ),0) AS ChickenAmount,
+                  WHEN oi.Weight LIKE '%Gram%'
+                  THEN
+                    TRY_CAST(
+                      REPLACE(oi.Weight, ' Gram', '')
+                      AS DECIMAL(18,3)
+                    ) / 1000
 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.ProductType='Tray' THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) * 30
-      WHEN oi.ProductType='Box' THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) * 6
-      WHEN oi.ProductType IN ('Box (Kids)','Box (Women)') THEN TRY_CAST(oi.Quantity AS DECIMAL(18,2)) * 10
-      ELSE 0 
-    END
-  ),0) AS TotalEggs,
+                  WHEN oi.Weight LIKE '%Kg%'
+                  THEN
+                    TRY_CAST(
+                      REPLACE(oi.Weight, ' Kg', '')
+                      AS DECIMAL(18,3)
+                    )
 
-  ISNULL(SUM(
-    CASE 
-      WHEN oi.ProductType IN ('Tray','Box','Box (Kids)','Box (Women)')
-      THEN TRY_CAST(oi.Total AS DECIMAL(18,2))
-      ELSE 0 
-    END
-  ),0) AS EggAmount
+                  ELSE 0
+                END
+                *
+                TRY_CAST(
+                  ISNULL(oi.Quantity, 0)
+                  AS DECIMAL(18,3)
+                )
 
-  FROM OrderItems oi
-  JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
+              ELSE 0
+            END
+          ),
+          0
+        ) AS ChickenKG,
 
-  WHERE YEAR(o.OrderDate) = @year 
-  AND MONTH(o.OrderDate) = @month
-  AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
-`);
+        ISNULL(
+          SUM(
+            CASE
+              WHEN oi.ProductType NOT IN (
+                'Tray',
+                'Box',
+                'Box (Kids)',
+                'Box (Women)'
+              )
+              THEN
+                TRY_CAST(
+                  ISNULL(oi.Total, 0)
+                  AS DECIMAL(18,2)
+                )
 
-    const cats = categoryRes.recordset[0] || {}; // ✅ YE LINE ADD KARO
+              ELSE 0
+            END
+          ),
+          0
+        ) AS ChickenAmount,
 
-    // ✅ DELIVERY CHARGE (SEPARATE)
+        ISNULL(
+          SUM(
+            CASE
+
+              WHEN oi.ProductType = 'Tray'
+              THEN
+                TRY_CAST(
+                  ISNULL(oi.Quantity, 0)
+                  AS DECIMAL(18,2)
+                ) * 30
+
+              WHEN oi.ProductType = 'Box'
+              THEN
+                TRY_CAST(
+                  ISNULL(oi.Quantity, 0)
+                  AS DECIMAL(18,2)
+                ) * 6
+
+              WHEN oi.ProductType IN (
+                'Box (Kids)',
+                'Box (Women)'
+              )
+              THEN
+                TRY_CAST(
+                  ISNULL(oi.Quantity, 0)
+                  AS DECIMAL(18,2)
+                ) * 10
+
+              ELSE 0
+            END
+          ),
+          0
+        ) AS TotalEggs,
+
+        ISNULL(
+          SUM(
+            CASE
+
+              WHEN oi.ProductType IN (
+                'Tray',
+                'Box',
+                'Box (Kids)',
+                'Box (Women)'
+              )
+              THEN
+                TRY_CAST(
+                  ISNULL(oi.Total, 0)
+                  AS DECIMAL(18,2)
+                )
+
+              ELSE 0
+            END
+          ),
+          0
+        ) AS EggAmount
+
+      FROM OrderItems oi
+
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = oi.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+    `);
+
+    const cats = categoryRes.recordset[0] || {};
+
+    // ============================================================
+    // 11. DELIVERY CHARGE
+    // ============================================================
     const deliveryRes = await request.query(`
-  SELECT 
-    ISNULL(SUM(TRY_CAST(o.DeliveryCharge AS DECIMAL(18,2))),0) AS DeliveryCharge
-  FROM OrdersTemp o
-  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-  WHERE YEAR(o.OrderDate) = @year 
-  AND MONTH(o.OrderDate) = @month
-  AND ISNULL(ao.DeliveryStatus, '') != 'cancel'
-`);
+      SELECT
+        ISNULL(
+          SUM(
+            TRY_CAST(
+              ISNULL(o.DeliveryCharge, 0)
+              AS DECIMAL(18,2)
+            )
+          ),
+          0
+        ) AS DeliveryCharge
 
-    const deliveryCharge = deliveryRes.recordset[0]?.DeliveryCharge || 0;
+      FROM OrdersTemp o
 
-    // ✅ 7. PRODUCT TYPE SUMMARY
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+    `);
+
+    const deliveryCharge =
+      Number(deliveryRes.recordset[0]?.DeliveryCharge) || 0;
+
+    // ============================================================
+    // 12. PRODUCT TYPE SUMMARY
+    // ============================================================
     const productTypeRes = await request.query(`
-  SELECT 
-    oi.ProductType,
-    SUM(TRY_CAST(oi.Quantity AS DECIMAL(18,2))) AS TotalQty,
-    SUM(TRY_CAST(oi.Total AS DECIMAL(18,2))) AS TotalAmount,
-    AVG(TRY_CAST(oi.Rate AS DECIMAL(18,2))) AS AvgRate
-  FROM OrderItems oi
-  JOIN OrdersTemp o ON o.OrderID = oi.OrderID
-  LEFT JOIN AssignedOrders ao ON ao.OrderID = o.OrderID
-  WHERE YEAR(o.OrderDate) = @year 
-  AND MONTH(o.OrderDate) = @month
-  AND LOWER(ISNULL(ao.DeliveryStatus,'')) NOT IN ('cancel','cancelled')
-  GROUP BY oi.ProductType
-`);
-    // ✅ FINAL RESPONSE
-    res.status(200).json({
+      SELECT
+        oi.ProductType,
+
+        ISNULL(
+          SUM(
+            TRY_CAST(
+              ISNULL(oi.Quantity, 0)
+              AS DECIMAL(18,2)
+            )
+          ),
+          0
+        ) AS TotalQty,
+
+        ISNULL(
+          SUM(
+            TRY_CAST(
+              ISNULL(oi.Total, 0)
+              AS DECIMAL(18,2)
+            )
+          ),
+          0
+        ) AS TotalAmount,
+
+        ISNULL(
+          AVG(
+            TRY_CAST(
+              ISNULL(oi.Rate, 0)
+              AS DECIMAL(18,6)
+            )
+          ),
+          0
+        ) AS AvgRate
+
+      FROM OrderItems oi
+
+      INNER JOIN OrdersTemp o
+        ON o.OrderID = oi.OrderID
+
+      LEFT JOIN AssignedOrders ao
+        ON ao.OrderID = o.OrderID
+
+      WHERE YEAR(o.OrderDate) = @year
+        AND MONTH(o.OrderDate) = @month
+
+        AND LOWER(
+          LTRIM(RTRIM(ISNULL(ao.DeliveryStatus, '')))
+        ) NOT IN ('cancel', 'cancelled')
+
+      GROUP BY oi.ProductType
+
+      ORDER BY oi.ProductType
+    `);
+
+    // ============================================================
+    // 13. SALES CHECK
+    // ============================================================
+    const salesCheck =
+      Number(cats.ChickenAmount || 0) +
+      Number(cats.EggAmount || 0) +
+      Number(deliveryCharge || 0);
+
+    // ============================================================
+    // 14. DIFFERENCE
+    // ============================================================
+    const difference = netSales - (totalReceived + totalOutstanding);
+
+    // ============================================================
+    // FINAL RESPONSE
+    // ============================================================
+    return res.status(200).json({
       summary: {
         TotalOrders: totalOrders,
-        TotalSales: netSales,
-        GrossSales: totalSales,
-        CreditAmount: creditAmount,
-        DebitAmount: debitAmount,
-        FreightAmount: freightAmount, // ✅ Add this
-        RTVAmount: rtvAmount, // info only
-        FOCAmount: focAmount, // ✅ add this
-        CancelOrderAmount: cancelAmount, // info only
-        TotalReceived: totalReceived,
-        TotalOutstanding: totalOutstanding,
-        Difference: totalSales - (totalReceived + totalOutstanding),
-        SalesCheck:
-          (cats.ChickenAmount || 0) +
-          (cats.EggAmount || 0) +
-          (deliveryCharge || 0) -
-          (rtvAmount || 0),
+
+        TotalSales: Number(netSales.toFixed(2)),
+
+        GrossSales: Number(totalSales.toFixed(2)),
+
+        CreditAmount: Number(creditAmount.toFixed(2)),
+
+        DebitAmount: Number(debitAmount.toFixed(2)),
+
+        FreightAmount: Number(freightAmount.toFixed(2)),
+
+        RTVAmount: Number(rtvAmount.toFixed(2)),
+
+        FOCAmount: Number(focAmount.toFixed(2)),
+
+        CancelOrderAmount: Number(cancelAmount.toFixed(2)),
+
+        TotalReceived: Number(totalReceived.toFixed(2)),
+
+        TotalOutstanding: Number(totalOutstanding.toFixed(2)),
+
+        Difference: Number(difference.toFixed(2)),
+
+        SalesCheck: Number(salesCheck.toFixed(2)),
       },
+
       payment: paymentsRes.recordset,
+
       productTypeSummary: productTypeRes.recordset,
+
       chickenSummary: {
-        TotalKG: cats.ChickenKG,
-        TotalAmount: cats.ChickenAmount,
+        TotalKG: Number(cats.ChickenKG || 0),
+        TotalAmount: Number(cats.ChickenAmount || 0),
       },
+
       eggSummary: {
-        TotalEggs: cats.TotalEggs,
-        TotalAmount: cats.EggAmount,
+        TotalEggs: Number(cats.TotalEggs || 0),
+        TotalAmount: Number(cats.EggAmount || 0),
       },
+
       deliverySummary: {
-        TotalDeliveryCharge: deliveryCharge,
+        TotalDeliveryCharge: Number(deliveryCharge.toFixed(2)),
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Monthly Report Error:", err);
+
+    return res.status(500).json({
+      message: err.message,
+    });
   }
 };
-
 /* =======================
    WEEKLY REPORT
 ======================= */
@@ -857,6 +1189,8 @@ ${boyFilter}
     const totalReceived =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
+
+    const totalOutstanding = Math.max(0, totalSaleAmount - totalReceived);
 
     const totalOrders = ordersCountResult.recordset[0]?.TotalOrders || 0;
     const revenueOrders =
