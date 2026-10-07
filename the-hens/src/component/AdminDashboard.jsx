@@ -36,13 +36,15 @@ import { fetchProductTypes } from "../features/productTypeSlice";
 import ViewOrderModal from "./ViewOrderModal";
 import { fetchPaymentModes } from "../features/paymentModeSlice";
 import { fetchBulkCustomerOrders } from "../features/customerAnalysisSlice";
-import { fetchArea } from "../features/cutomerSlice";
+import { fetchArea, fetchCustomerGroups } from "../features/cutomerSlice";
 import {
   fetchPaymentVerificationDetails,
   clearPaymentVerificationDetails,
 } from "../features/paymentVerificationDetailsSlice";
 
 import NoteModal from "./AdminOrderModal/NoteModal";
+
+import axios from "axios";
 
 const AdminDashboard = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -65,6 +67,7 @@ const AdminDashboard = () => {
           area: "", // ✅ new
           bulkCustomer: "", // ✅ new
           paymentModes: [], // ✅ VERY IMPORTANT
+          customerGroup: "",
         };
   });
 
@@ -122,6 +125,14 @@ const AdminDashboard = () => {
 
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedViewOrder, setSelectedViewOrder] = useState(null);
+
+  const customerGroups = useSelector(
+    (state) => state.customer.customerGroups || [],
+  );
+
+  const groupLoading = useSelector(
+    (state) => state.customer.groupLoading || false,
+  );
 
   // Fix: Proper date comparison function
   const isDateInRange = (orderDate, fromDate, toDate) => {
@@ -318,6 +329,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     dispatch(fetchArea());
+    dispatch(fetchCustomerGroups());
   }, [dispatch]);
 
   const handleChange = (e) => {
@@ -512,6 +524,7 @@ const AdminDashboard = () => {
       paymentModes: [], // ✅ next feature
       area: "",
       bulkCustomer: "",
+      customerGroup: "",
     };
 
     setFilters(resetFilters);
@@ -607,6 +620,13 @@ const AdminDashboard = () => {
       filtered = filtered.filter(
         (item) =>
           item.Area?.trim().toLowerCase() === filters.area.trim().toLowerCase(),
+      );
+    }
+
+    if (filters.customerGroup) {
+      filtered = filtered.filter(
+        (item) =>
+          Number(item.CustomerGroupID) === Number(filters.customerGroup),
       );
     }
 
@@ -1265,6 +1285,28 @@ const AdminDashboard = () => {
               <option value="">All</option>
               <option value="bulk">Bulk Customer</option>
               <option value="normal">Normal Customer</option>
+            </select>
+          </div>
+
+          <div className={styles.inputGroup}>
+            <label>CUSTOMER GROUP</label>
+
+            <select
+              name="customerGroup"
+              value={filters.customerGroup}
+              onChange={handleChange}
+              disabled={groupLoading}
+            >
+              <option value="">{groupLoading ? "Loading..." : "All"}</option>
+
+              {customerGroups.map((group) => (
+                <option
+                  key={group.CustomerGroupID}
+                  value={group.CustomerGroupID}
+                >
+                  {group.GroupName}
+                </option>
+              ))}
             </select>
           </div>
         </div>

@@ -122,6 +122,10 @@ exports.getAllorder = async (req, res) => {
         C.Gst_No,
         C.PAN_No,
 
+         C.CustomerGroupID,
+        CG.GroupName AS CustomerGroupName,
+
+
         O.DeliveryCharge,
         O.OrderDate,
         O.OrderTakenBy,
@@ -175,6 +179,9 @@ exports.getAllorder = async (req, res) => {
             AND O.ContactNo = C.Contact_No
           ORDER BY C.CustomerID DESC
       ) C
+
+            LEFT JOIN CustomerGroupMaster CG WITH (NOLOCK)
+          ON C.CustomerGroupID = CG.CustomerGroupID
 
       LEFT JOIN AssignedOrders A WITH (NOLOCK)
           ON O.OrderID = A.OrderID
