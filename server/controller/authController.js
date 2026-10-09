@@ -34,41 +34,115 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { username, password } = req.body;
+
+    // =====================================================
+    // BASIC VALIDATION
+    // =====================================================
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Username and password are required",
+      });
+    }
+
     const pool = await poolPromise;
 
+    // =====================================================
+    // GET USER
+    // =====================================================
     const result = await pool
       .request()
-      .input("Username", sql.NVarChar, username)
-      .query("SELECT * FROM Users WHERE Username=@Username");
+      .input("Username", sql.NVarChar, username.trim()).query(`
+        SELECT
+          UserID,
+          Username,
+          Password,
+          Role,
+          IsActive,
+          ISNULL(tokenVersion, 0) AS tokenVersion
+        FROM Users
+        WHERE Username = @Username
+      `);
 
-    if (result.recordset.length === 0)
-      return res.status(400).json({ message: "User not found" });
+    if (result.recordset.length === 0) {
+      return res.status(400).json({
+        success: false,
+        code: "USER_NOT_FOUND",
+        message: "User not found",
+      });
+    }
 
     const user = result.recordset[0];
-    console.log("User object from DB:", user); // 👈 ye print karega sab fields
 
+    // =====================================================
+    // ACCOUNT ACTIVE CHECK
+    // =====================================================
+    if (
+      user.IsActive === false ||
+      user.IsActive === 0 ||
+      user.IsActive === null
+    ) {
+      return res.status(403).json({
+        success: false,
+        code: "ACCOUNT_INACTIVE",
+        message:
+          "Your account has been deactivated. Please contact the administrator.",
+      });
+    }
+
+    // =====================================================
+    // PASSWORD CHECK
+    // =====================================================
     const isMatch = await bcrypt.compare(password, user.Password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        code: "INVALID_PASSWORD",
+        message: "Invalid password",
+      });
+    }
+
+    // =====================================================
+    // TOKEN VERSION
+    // =====================================================
+    const tokenVersion = Number(user.tokenVersion || 0);
+
+    // =====================================================
+    // GENERATE JWT
+    // =====================================================
     const token = jwt.sign(
       {
         userId: user.UserID,
         role: user.Role,
-        tokenVersion: user.tokenVersion || 0, // ✅ IMPORTANT
+        tokenVersion,
       },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || "1d" },
+      {
+        expiresIn: process.env.JWT_EXPIRES_IN || "1d",
+      },
     );
 
-    res.json({
+    // =====================================================
+    // LOGIN SUCCESS
+    // =====================================================
+    return res.status(200).json({
+      success: true,
+      message: "Login successful",
+
       token,
       role: user.Role,
       name: user.Username,
-      userId: user.UserID, // ✅ FIX
+      userId: user.UserID,
+      tokenVersion,
     });
   } catch (err) {
     console.error("Login error:", err);
-    res.status(500).json({ message: "Server error, please try again later" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error, please try again later",
+    });
   }
 };
 
@@ -115,4 +189,12 @@ exports.changePassword = async (req, res) => {
     console.error("Change Password Error:", err);
     res.status(500).json({ message: "Server error" });
   }
+};
+
+exports.checkSession = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Session active",
+    user: req.user,
+  });
 };

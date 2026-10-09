@@ -34,8 +34,43 @@ import HandoverReport from "./component/Reports/HandOverReport";
 import NoteList from "./component/AdminOrderModal/NoteList";
 import DeliveryPassbook from "./component/DeliveryPassbook/DeliveryPassbook";
 import DeliveryPending from "./component/DeliveryPending/DeliveryPending";
+import { useEffect } from "react";
+import axios from "axios";
 
 function App() {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  useEffect(() => {
+    const checkSession = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        return;
+      }
+
+      try {
+        await axios.get(`${API_BASE_URL}/api/users/session-check`);
+      } catch (error) {
+        console.log(
+          "Session check:",
+          error.response?.data?.code || error.message,
+        );
+
+        // Yahan logout manually nahi karna.
+        // main.jsx interceptor already handle karega.
+      }
+    };
+
+    // App load hote hi check
+    checkSession();
+
+    // Har 5 sec check
+    const interval = setInterval(checkSession, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <Router>
       <ToastContainer position="top-right" autoClose={2000} />

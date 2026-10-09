@@ -204,12 +204,13 @@ const AssignOrderModal = ({ isOpen, onClose, order, onSubmit }) => {
                 </label>
                 <input
                   type="date"
-                  id="deliveryDate"
-                  name="deliveryDate"
-                  value={formData.deliveryDate}
-                  onChange={handleInputChange}
-                  className={styles.formInput}
-                  required
+                  value={
+                    order?.OrderDate
+                      ? String(order.OrderDate).split("T")[0]
+                      : ""
+                  }
+                  disabled
+                  className="form-control"
                 />
               </div>
 

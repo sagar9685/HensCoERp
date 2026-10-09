@@ -4,46 +4,136 @@ exports.addOrder = async (req, res) => {
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
+  let transactionStarted = false;
+
   try {
     const { Items, OrderDate } = req.body;
 
+    if (!OrderDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Order date is required.",
+      });
+    }
+
+    if (!Array.isArray(Items) || Items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one order item is required.",
+      });
+    }
+
+    // ============================================================
+    // START TRANSACTION
+    // ============================================================
+
     await transaction.begin();
-    const request = new sql.Request(transaction);
+    transactionStarted = true;
 
-    // ===============================
-    // 1️⃣ Invoice Number Generate
-    // ===============================
+    // ============================================================
+    // 1. ORDER DATE VALIDATION
+    //
+    // IMPORTANT:
+    // Date comes from SQL Server, NOT user's computer/browser.
+    //
+    // Example:
+    // Server Date = 08-Oct-2026
+    // Allowed     = 05, 06, 07, 08 Oct
+    // ============================================================
 
-    const orderDt = new Date(OrderDate);
-    const year = orderDt.getFullYear();
-    const month = orderDt.getMonth() + 1;
+    const dateCheckRequest = new sql.Request(transaction);
+
+    dateCheckRequest.input("OrderDate", sql.Date, OrderDate);
+
+    const dateCheckResult = await dateCheckRequest.query(`
+      DECLARE @Today DATE =
+        CAST(
+          SYSDATETIMEOFFSET() AT TIME ZONE 'India Standard Time'
+          AS DATE
+        );
+
+      DECLARE @MinAllowedDate DATE =
+        DATEADD(DAY, -3, @Today);
+
+      SELECT
+        CONVERT(VARCHAR(10), @Today, 23) AS Today,
+        CONVERT(VARCHAR(10), @MinAllowedDate, 23) AS MinAllowedDate,
+        CASE
+          WHEN @OrderDate >= @MinAllowedDate
+           AND @OrderDate <= @Today
+          THEN 1
+          ELSE 0
+        END AS IsAllowed;
+    `);
+
+    const { Today, MinAllowedDate, IsAllowed } = dateCheckResult.recordset[0];
+
+    if (!IsAllowed) {
+      await transaction.rollback();
+      transactionStarted = false;
+
+      return res.status(400).json({
+        success: false,
+        message: `Order date must be between ${MinAllowedDate} and ${Today}. Back-date entry older than 3 days or future-date entry is not allowed.`,
+        allowedRange: {
+          minDate: MinAllowedDate,
+          maxDate: Today,
+        },
+      });
+    }
+
+    // ============================================================
+    // 2. FINANCIAL YEAR
+    // Do not use new Date(OrderDate)
+    // YYYY-MM-DD ko directly parse karo
+    // ============================================================
+
+    const [year, month] = OrderDate.split("-").map(Number);
 
     const fyStart = month >= 4 ? year : year - 1;
     const fyEnd = fyStart + 1;
+
     const fyString = `${fyStart % 100}-${fyEnd % 100}`;
 
-    const lastInvoiceResult = await request.query(`
-      SELECT TOP 1 InvoiceNo 
-      FROM OrdersTemp 
-      WHERE InvoiceNo LIKE '${fyString}/%'
-      ORDER BY 
-      CAST(SUBSTRING(InvoiceNo, CHARINDEX('/', InvoiceNo) + 1, 10) AS INT) DESC
+    // ============================================================
+    // 3. INVOICE NUMBER GENERATE
+    // ============================================================
+
+    const invoiceRequest = new sql.Request(transaction);
+
+    invoiceRequest.input("InvoicePattern", sql.NVarChar, `${fyString}/%`);
+
+    const lastInvoiceResult = await invoiceRequest.query(`
+      SELECT TOP 1 InvoiceNo
+      FROM OrdersTemp
+      WHERE InvoiceNo LIKE @InvoicePattern
+      ORDER BY
+        CAST(
+          SUBSTRING(
+            InvoiceNo,
+            CHARINDEX('/', InvoiceNo) + 1,
+            10
+          ) AS INT
+        ) DESC;
     `);
 
     let nextSeq = 1;
 
     if (lastInvoiceResult.recordset.length > 0) {
       const parts = lastInvoiceResult.recordset[0].InvoiceNo.split("/");
-      nextSeq = (parseInt(parts[1]) || 0) + 1;
+
+      nextSeq = (parseInt(parts[1], 10) || 0) + 1;
     }
 
     const invoiceNo = `${fyString}/${nextSeq}`;
 
-    // ===============================
-    // 2️⃣ Insert Order Header
-    // ===============================
+    // ============================================================
+    // 4. INSERT ORDER HEADER
+    // ============================================================
 
-    const orderInsert = await request
+    const orderRequest = new sql.Request(transaction);
+
+    const orderInsert = await orderRequest
       .input("CustomerName", sql.NVarChar, req.body.CustomerName)
       .input("Address", sql.NVarChar, req.body.Address)
       .input("Area", sql.NVarChar, req.body.Area)
@@ -54,55 +144,114 @@ exports.addOrder = async (req, res) => {
       .input("InvoiceNo", sql.NVarChar, invoiceNo)
       .input("Po_No", sql.NVarChar, req.body.Po_No || null)
       .input("Po_Date", sql.Date, req.body.Po_Date || null)
-      .input("InvoiceDate", sql.Date, req.body.InvoiceDate)
-      .input("CreatedAt", sql.DateTime2, new Date()).query(`
+      .input("InvoiceDate", sql.Date, req.body.InvoiceDate || OrderDate).query(`
         INSERT INTO OrdersTemp
-        (CustomerName, Address, Area, ContactNo, DeliveryCharge, OrderDate, OrderTakenBy, InvoiceNo, Po_No, Po_Date, InvoiceDate, CreatedAt)
+        (
+          CustomerName,
+          Address,
+          Area,
+          ContactNo,
+          DeliveryCharge,
+          OrderDate,
+          OrderTakenBy,
+          InvoiceNo,
+          Po_No,
+          Po_Date,
+          InvoiceDate,
+          CreatedAt
+        )
         OUTPUT INSERTED.OrderID
         VALUES
-        (@CustomerName, @Address, @Area, @ContactNo, @DeliveryCharge, @OrderDate, @OrderTakenBy, @InvoiceNo, @Po_No, @Po_Date, @InvoiceDate, @CreatedAt)
+        (
+          @CustomerName,
+          @Address,
+          @Area,
+          @ContactNo,
+          @DeliveryCharge,
+          @OrderDate,
+          @OrderTakenBy,
+          @InvoiceNo,
+          @Po_No,
+          @Po_Date,
+          @InvoiceDate,
+
+          CAST(
+            SYSDATETIMEOFFSET()
+            AT TIME ZONE 'India Standard Time'
+            AS DATETIME2
+          )
+        );
       `);
 
     const orderId = orderInsert.recordset[0].OrderID;
 
-    // ===============================
-    // 3️⃣ Insert Items ONLY (NO STOCK DEDUCT)
-    // ===============================
+    // ============================================================
+    // 5. INSERT ORDER ITEMS
+    // ============================================================
 
-    for (let item of Items) {
+    for (const item of Items) {
       const total = Number(item.Quantity) * Number(item.Rate);
 
-      await transaction
-        .request()
+      const itemRequest = new sql.Request(transaction);
+
+      await itemRequest
         .input("OrderID", sql.Int, orderId)
         .input("ProductName", sql.NVarChar, item.ProductName || null)
         .input("ProductType", sql.NVarChar, item.ProductType)
         .input("Weight", sql.NVarChar, item.Weight || null)
-        .input("Quantity", sql.Decimal(18, 2), item.Quantity) // ✅ FIX
+        .input("Quantity", sql.Decimal(18, 2), item.Quantity)
         .input("Rate", sql.Decimal(18, 2), item.Rate)
         .input("Total", sql.Decimal(18, 2), total).query(`
           INSERT INTO OrderItems
-          (OrderID, ProductName, ProductType, Weight, Quantity, Rate, Total)
+          (
+            OrderID,
+            ProductName,
+            ProductType,
+            Weight,
+            Quantity,
+            Rate,
+            Total
+          )
           VALUES
-          (@OrderID, @ProductName, @ProductType, @Weight, @Quantity, @Rate, @Total)
+          (
+            @OrderID,
+            @ProductName,
+            @ProductType,
+            @Weight,
+            @Quantity,
+            @Rate,
+            @Total
+          );
         `);
     }
 
-    await transaction.commit();
+    // ============================================================
+    // COMPLETE TRANSACTION
+    // ============================================================
 
-    res.status(200).json({
+    await transaction.commit();
+    transactionStarted = false;
+
+    return res.status(200).json({
       success: true,
       message: "Order Added Successfully!",
       invoiceNo,
+      orderId,
     });
   } catch (err) {
-    if (transaction._aborted !== true) {
-      await transaction.rollback();
+    try {
+      if (transactionStarted) {
+        await transaction.rollback();
+      }
+    } catch (rollbackError) {
+      console.error("Rollback Error:", rollbackError);
     }
 
-    res.status(500).json({
+    console.error("Add Order Error:", err);
+
+    return res.status(500).json({
       success: false,
-      message: err.message,
+      message: err.message || "Failed to add order.",
     });
   }
 };
@@ -133,7 +282,7 @@ exports.getAllorder = async (req, res) => {
         O.Po_No,
         O.Po_Date,
         O.InvoiceDate,
-        O.CreatedAt,
+       CONVERT(VARCHAR(23), O.CreatedAt, 126) AS CreatedAt,
 
         A.AssignID,
         A.DeliveryDate,
@@ -1119,6 +1268,46 @@ AND OrderID = @OrderID
     res.status(500).json({
       success: false,
       message: err.message || "Failed to remove item",
+    });
+  }
+};
+
+exports.getAllowedOrderDateRange = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const result = await pool.request().query(`
+      DECLARE @Today DATE =
+        CAST(
+          SYSDATETIMEOFFSET() AT TIME ZONE 'India Standard Time'
+          AS DATE
+        );
+
+      SELECT
+        CONVERT(
+          VARCHAR(10),
+          DATEADD(DAY, -3, @Today),
+          23
+        ) AS MinDate,
+
+        CONVERT(
+          VARCHAR(10),
+          @Today,
+          23
+        ) AS MaxDate;
+    `);
+
+    return res.status(200).json({
+      success: true,
+      minDate: result.recordset[0].MinDate,
+      maxDate: result.recordset[0].MaxDate,
+    });
+  } catch (err) {
+    console.error("Order Date Range Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to get order date range.",
     });
   }
 };

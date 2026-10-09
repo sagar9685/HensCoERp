@@ -75,29 +75,62 @@ const whatsapp = require("../whatsapp/client"); // Jo client humne banaya tha
 // };
 
 exports.assignOrder = async (req, res) => {
-  const {
-    orderId,
-    deliveryManId,
-    otherDeliveryManName,
-    deliveryDate,
-    remark,
-    username,
-  } = req.body;
+  const { orderId, deliveryManId, otherDeliveryManName, remark, username } =
+    req.body;
+
   const pool = await poolPromise;
   const transaction = new sql.Transaction(pool);
 
+  let transactionStarted = false;
+
   try {
     await transaction.begin();
+    transactionStarted = true;
 
-    console.log("AssignOrder Start:", { orderId, deliveryManId, deliveryDate });
+    // ============================================================
+    // 1. GET ORDER DATE FROM DATABASE
+    // DeliveryDate will ALWAYS be same as OrderDate
+    // ============================================================
 
-    // 1️⃣ Check if order already assigned
-    const check = await new sql.Request(transaction)
-      .input("OrderID", sql.Int, orderId)
-      .query("SELECT AssignID FROM AssignedOrders WHERE OrderID = @OrderID");
+    const orderDateResult = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      orderId,
+    ).query(`
+        SELECT OrderDate
+        FROM OrdersTemp
+        WHERE OrderID = @OrderID
+      `);
+
+    if (orderDateResult.recordset.length === 0) {
+      throw new Error("Order not found.");
+    }
+
+    const deliveryDate = orderDateResult.recordset[0].OrderDate;
+
+    console.log("AssignOrder Start:", {
+      orderId,
+      deliveryManId,
+      deliveryDate,
+    });
+
+    // ============================================================
+    // 2. CHECK IF ALREADY ASSIGNED
+    // ============================================================
+
+    const check = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      orderId,
+    ).query(`
+        SELECT AssignID
+        FROM AssignedOrders
+        WHERE OrderID = @OrderID
+      `);
 
     if (check.recordset.length > 0) {
       console.log("Order already assigned. Reassigning...");
+
       await new sql.Request(transaction)
         .input("OrderID", sql.Int, orderId)
         .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -110,57 +143,135 @@ exports.assignOrder = async (req, res) => {
         .input("Remark", sql.NVarChar, remark || null)
         .input("ReassignedBy", sql.NVarChar, username).query(`
           UPDATE AssignedOrders
-          SET DeliveryManID=@DeliveryManID,
-              OtherDeliveryManName=@OtherDeliveryManName,
-              DeliveryDate=@DeliveryDate,
-              Remark=@Remark,
-              ReassignedBy=@ReassignedBy
-          WHERE OrderID=@OrderID
+          SET
+            DeliveryManID = @DeliveryManID,
+            OtherDeliveryManName = @OtherDeliveryManName,
+
+            -- Always same as OrderDate
+            DeliveryDate = @DeliveryDate,
+
+            Remark = @Remark,
+            ReassignedBy = @ReassignedBy
+          WHERE OrderID = @OrderID
         `);
 
       await transaction.commit();
-      return res.json({ message: "Order reassigned successfully" });
+      transactionStarted = false;
+
+      return res.json({
+        success: true,
+        message: "Order reassigned successfully",
+      });
     }
 
-    // 2️⃣ Get items of order
-    const itemsRes = await new sql.Request(transaction)
-      .input("OrderID", sql.Int, orderId)
-      .query(
-        `SELECT ProductType, Quantity FROM OrderItems WHERE OrderID = @OrderID`,
-      );
+    // ============================================================
+    // 3. GET ITEMS
+    // ============================================================
 
-    if (itemsRes.recordset.length === 0)
+    const itemsRes = await new sql.Request(transaction).input(
+      "OrderID",
+      sql.Int,
+      orderId,
+    ).query(`
+        SELECT
+          ProductType,
+          Quantity
+        FROM OrderItems
+        WHERE OrderID = @OrderID
+      `);
+
+    if (itemsRes.recordset.length === 0) {
       throw new Error("No items found for this order.");
+    }
 
-    // 3️⃣ CHECK STOCK USING LOGIC (Opening + Inwards - Sold - Reject)
-    for (let item of itemsRes.recordset) {
+    // ============================================================
+    // 4. STOCK CHECK
+    // ============================================================
+
+    for (const item of itemsRes.recordset) {
       const qtyNeeded = parseFloat(item.Quantity || 0);
+
       const product = item.ProductType ? item.ProductType.trim() : "";
 
-      if (!product || qtyNeeded <= 0) continue;
+      if (!product || qtyNeeded <= 0) {
+        continue;
+      }
 
-      // Get available stock from logical calculation
       const stockRes = await new sql.Request(transaction).input(
         "Product",
         sql.NVarChar,
         product,
       ).query(`
-          DECLARE @FixedOpeningDate DATE = '2026-04-01';
+            DECLARE @FixedOpeningDate DATE =
+              '2026-04-01';
 
-          SELECT 
-            (ISNULL((SELECT opening_quantity FROM OpeningStock WHERE item_name = @Product), 0) +
-             ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = @Product AND type IN ('IN','RTV') AND CAST(date AS DATE) >= @FixedOpeningDate),0) -
-             ISNULL((SELECT SUM(OI.Quantity) 
-                     FROM OrderItems OI
-                     JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID
-                     INNER JOIN AssignedOrders AO ON AO.OrderID = OT.OrderID
-                     WHERE OI.ProductType=@Product AND ISNULL(AO.deliveryStatus,'')<>'CANCEL' 
-                     AND CAST(OT.OrderDate AS DATE) >= @FixedOpeningDate),0) -
-             ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name=@Product AND type='REJECT' AND CAST(date AS DATE) >= @FixedOpeningDate),0)
-            ) AS AvailableStock
-        `);
+            SELECT
+              (
+                ISNULL(
+                  (
+                    SELECT opening_quantity
+                    FROM OpeningStock
+                    WHERE item_name = @Product
+                  ),
+                  0
+                )
+
+                +
+
+                ISNULL(
+                  (
+                    SELECT SUM(quantity)
+                    FROM StockHistory
+                    WHERE item_name = @Product
+                      AND type IN ('IN', 'RTV')
+                      AND CAST(date AS DATE)
+                          >= @FixedOpeningDate
+                  ),
+                  0
+                )
+
+                -
+
+                ISNULL(
+                  (
+                    SELECT SUM(OI.Quantity)
+                    FROM OrderItems OI
+                    JOIN OrdersTemp OT
+                      ON OT.OrderID = OI.OrderID
+                    INNER JOIN AssignedOrders AO
+                      ON AO.OrderID = OT.OrderID
+                    WHERE
+                      OI.ProductType = @Product
+                      AND ISNULL(
+                        AO.DeliveryStatus,
+                        ''
+                      ) <> 'CANCEL'
+                      AND CAST(
+                        OT.OrderDate AS DATE
+                      ) >= @FixedOpeningDate
+                  ),
+                  0
+                )
+
+                -
+
+                ISNULL(
+                  (
+                    SELECT SUM(quantity)
+                    FROM StockHistory
+                    WHERE
+                      item_name = @Product
+                      AND type = 'REJECT'
+                      AND CAST(date AS DATE)
+                          >= @FixedOpeningDate
+                  ),
+                  0
+                )
+              ) AS AvailableStock
+          `);
 
       const available = parseFloat(stockRes.recordset[0].AvailableStock || 0);
+
       console.log(
         `Available stock for ${product}: ${available}, required: ${qtyNeeded}`,
       );
@@ -172,7 +283,10 @@ exports.assignOrder = async (req, res) => {
       }
     }
 
-    // 4️⃣ INSERT INTO AssignedOrders
+    // ============================================================
+    // 5. INSERT ASSIGNMENT
+    // ============================================================
+
     await new sql.Request(transaction)
       .input("OrderID", sql.Int, orderId)
       .input("DeliveryManID", sql.Int, deliveryManId || null)
@@ -181,20 +295,52 @@ exports.assignOrder = async (req, res) => {
       .input("Remark", sql.NVarChar, remark || null)
       .input("AssignedBy", sql.NVarChar, username).query(`
         INSERT INTO AssignedOrders
-        (OrderID, DeliveryManID, OtherDeliveryManName, DeliveryDate, Remark, DeliveryStatus, AssignedBy)
+        (
+          OrderID,
+          DeliveryManID,
+          OtherDeliveryManName,
+          DeliveryDate,
+          Remark,
+          DeliveryStatus,
+          AssignedBy
+        )
         VALUES
-        (@OrderID, @DeliveryManID, @OtherDeliveryManName, @DeliveryDate, @Remark, 'Pending', @AssignedBy)
+        (
+          @OrderID,
+          @DeliveryManID,
+          @OtherDeliveryManName,
+          @DeliveryDate,
+          @Remark,
+          'Pending',
+          @AssignedBy
+        )
       `);
 
     await transaction.commit();
-    console.log("Order assigned successfully");
-    res.status(201).json({ message: "Order assigned successfully" });
+    transactionStarted = false;
+
+    return res.status(201).json({
+      success: true,
+      message: "Order assigned successfully",
+    });
   } catch (err) {
-    if (transaction) await transaction.rollback();
+    try {
+      if (transactionStarted) {
+        await transaction.rollback();
+      }
+    } catch (rollbackError) {
+      console.error("Rollback error:", rollbackError);
+    }
+
     console.error("AssignOrder Error:", err);
-    res.status(500).json({ message: err.message });
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };
+
 // GET All Assigned Orders
 exports.getAssignedOrders = async (req, res) => {
   try {

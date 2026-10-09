@@ -92,6 +92,8 @@ const AdminDashboard = () => {
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [selectedNoteOrder, setSelectedNoteOrder] = useState(null);
 
+  const [jumpPage, setJumpPage] = useState("");
+
   const paymentModesList = useSelector(
     (state) => state.paymentMode?.list || [],
   );
@@ -869,6 +871,8 @@ const AdminDashboard = () => {
 
           "Customer Name": order.CustomerName || "-",
 
+          "Customer Group": order.CustomerGroupName || null,
+
           Address: order.Address || "-",
 
           Area: order.Area || "-",
@@ -954,6 +958,7 @@ const AdminDashboard = () => {
       { wch: 6 }, // Sl No
       { wch: 20 }, // Product Name
       { wch: 22 }, // Customer Name
+      { wch: 22 }, // Customer Group
       { wch: 35 }, // Address
       { wch: 18 }, // Area
       { wch: 15 }, // Contact No
@@ -1813,6 +1818,16 @@ const AdminDashboard = () => {
                   </span>
 
                   <div className={styles.footerPagination}>
+                    {/* FIRST PAGE */}
+                    <button
+                      className={styles.paginationBtn}
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(1)}
+                    >
+                      First
+                    </button>
+
+                    {/* PREVIOUS */}
                     <button
                       className={styles.paginationBtn}
                       disabled={currentPage === 1}
@@ -1823,10 +1838,55 @@ const AdminDashboard = () => {
                       Previous
                     </button>
 
+                    {/* PAGE INFO */}
                     <span className={styles.footerPageNumber}>
                       Page <strong>{currentPage}</strong> of {totalPages}
                     </span>
 
+                    {/* DIRECT PAGE JUMP */}
+                    <div className={styles.pageJump}>
+                      <span>Go to</span>
+
+                      <input
+                        type="number"
+                        min="1"
+                        max={totalPages}
+                        value={jumpPage}
+                        placeholder={currentPage.toString()}
+                        onChange={(e) => setJumpPage(e.target.value)}
+                        className={styles.pageJumpInput}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const page = Number(jumpPage);
+
+                            if (page >= 1 && page <= totalPages) {
+                              setCurrentPage(page);
+                              setJumpPage("");
+                            }
+                          }
+                        }}
+                      />
+
+                      <button
+                        className={styles.paginationBtn}
+                        onClick={() => {
+                          const page = Number(jumpPage);
+
+                          if (page >= 1 && page <= totalPages) {
+                            setCurrentPage(page);
+                            setJumpPage("");
+                          } else {
+                            toast.error(
+                              `Enter page between 1 and ${totalPages}`,
+                            );
+                          }
+                        }}
+                      >
+                        Go
+                      </button>
+                    </div>
+
+                    {/* NEXT */}
                     <button
                       className={styles.paginationBtn}
                       disabled={currentPage === totalPages}
@@ -1835,6 +1895,15 @@ const AdminDashboard = () => {
                       }
                     >
                       Next
+                    </button>
+
+                    {/* LAST PAGE */}
+                    <button
+                      className={styles.paginationBtn}
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(totalPages)}
+                    >
+                      Last
                     </button>
                   </div>
                 </div>

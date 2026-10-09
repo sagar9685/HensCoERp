@@ -7,6 +7,7 @@ import {
   FaEdit,
   FaShoppingCart,
 } from "react-icons/fa";
+import axios from "axios";
 import { useDispatch, useSelector } from "react-redux";
 import styles from "../AddOrderModal.module.css";
 import {
@@ -67,6 +68,12 @@ const OrderForm = ({ onClose }) => {
   const takenByList = useSelector((state) => state.order.takenByList);
   console.log(takenByList, "taken order list name");
   const [category, setCategory] = useState("Chicken");
+  const [allowedDateRange, setAllowedDateRange] = useState({
+    minDate: "",
+    maxDate: "",
+  });
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   useEffect(() => {
     dispatch(fetchOrderTakenBy());
@@ -75,12 +82,37 @@ const OrderForm = ({ onClose }) => {
   // Fetch product types on component mount
   useEffect(() => {
     dispatch(fetchProductTypes());
-    const today = getTodayDate();
-    setFormData((prev) => ({
-      ...prev,
-      orderDate: today,
-      invoiceDate: today,
-    }));
+
+    const fetchAllowedDateRange = async () => {
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL}/api/orders/allowed-date-range`,
+        );
+
+        const { minDate, maxDate } = response.data;
+
+        setAllowedDateRange({
+          minDate,
+          maxDate,
+        });
+
+        setFormData((prev) => ({
+          ...prev,
+
+          // Actual SQL Server today
+          orderDate: maxDate,
+
+          // Agar invoice date bhi today chahiye
+          invoiceDate: maxDate,
+        }));
+      } catch (error) {
+        console.error("Date range fetch error:", error);
+
+        toast.error("Unable to get server date.");
+      }
+    };
+
+    fetchAllowedDateRange();
   }, [dispatch]);
 
   // --- Item Modal Functions ---
@@ -361,7 +393,7 @@ const OrderForm = ({ onClose }) => {
       area: "",
       contactNo: "",
       deliveryCharge: "",
-      orderDate: getTodayDate(),
+      orderDate: "",
       Po_No: "",
       Po_Date: "",
     });
@@ -370,9 +402,9 @@ const OrderForm = ({ onClose }) => {
     onClose();
   };
 
-  const getTodayDate = () => {
-    return new Date().toISOString().split("T")[0];
-  };
+  // const getTodayDate = () => {
+  //   return new Date().toISOString().split("T")[0];
+  // };
 
   const getTotalAmount = () => {
     const itemsTotal = orderItems.reduce((total, item) => {
@@ -475,13 +507,17 @@ const OrderForm = ({ onClose }) => {
               <label className={styles.inputLabel}>
                 Order Date <span className={styles.required}>*</span>
               </label>
+
               <input
                 type="date"
                 name="orderDate"
                 value={formData.orderDate}
                 onChange={handleChange}
+                min={allowedDateRange.minDate}
+                max={allowedDateRange.maxDate}
                 className={styles.inputField}
               />
+
               {errors.orderDate && (
                 <span className={styles.error}>{errors.orderDate}</span>
               )}

@@ -20,4 +20,6 @@ router.post("/add-item", orderController.updateOrder);
 
 router.post("/rtv", orderController.addRTV);
 
+router.get("/allowed-date-range", orderController.getAllowedOrderDateRange);
+
 module.exports = router;
