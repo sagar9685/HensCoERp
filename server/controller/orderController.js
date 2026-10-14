@@ -53,14 +53,14 @@ exports.addOrder = async (req, res) => {
         );
 
       DECLARE @MinAllowedDate DATE =
-        DATEADD(DAY, -3, @Today);
+        DATEADD(Month, -1, @Today);
 
       SELECT
         CONVERT(VARCHAR(10), @Today, 23) AS Today,
         CONVERT(VARCHAR(10), @MinAllowedDate, 23) AS MinAllowedDate,
         CASE
           WHEN @OrderDate >= @MinAllowedDate
-           AND @OrderDate <= @Today
+           AND @OrderDate <= @Today]
           THEN 1
           ELSE 0
         END AS IsAllowed;
@@ -1286,7 +1286,7 @@ exports.getAllowedOrderDateRange = async (req, res) => {
       SELECT
         CONVERT(
           VARCHAR(10),
-          DATEADD(DAY, -3, @Today),
+          DATEADD(Month, -1, @Today),
           23
         ) AS MinDate,
 
