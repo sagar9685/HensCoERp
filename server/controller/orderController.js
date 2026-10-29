@@ -60,7 +60,7 @@ exports.addOrder = async (req, res) => {
         CONVERT(VARCHAR(10), @MinAllowedDate, 23) AS MinAllowedDate,
         CASE
           WHEN @OrderDate >= @MinAllowedDate
-           AND @OrderDate <= @Today]
+           AND @OrderDate <= @Today
           THEN 1
           ELSE 0
         END AS IsAllowed;

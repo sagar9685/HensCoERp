@@ -23,8 +23,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     Gst_No: "",
     bulkCustomer: "no",
     creditLimit: "",
-    Vendor_Name : "",
-    PAN_No : ""
+    Vendor_Name: "",
+    PAN_No: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -79,7 +79,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
     if (
       formData.Gst_No &&
       !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(
-        formData.Gst_No
+        formData.Gst_No,
       )
     ) {
       newErrors.Gst_No = "Invalid GST Number";
@@ -103,8 +103,8 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
         GST_No: formData.Gst_No,
         Bulk_Mode: formData.bulkCustomer === "yes" ? 1 : 0,
         Credit_Limit: formData.creditLimit,
-        Vendor_Name : formData.Vendor_Name,
-        PAN_No : formData.PAN_No
+        Vendor_Name: formData.Vendor_Name,
+        PAN_No: formData.PAN_No,
       };
 
       try {
@@ -133,7 +133,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
       bulkCustomer: "no",
       creditLimit: "",
       PAN_No: "",
-      Vendor_Name: ""
+      Vendor_Name: "",
     });
     setErrors({});
     onClose();
@@ -302,7 +302,7 @@ const AddCustomerModal = ({ isOpen, onClose }) => {
                 />
               </div>
 
-               <div className={styles.inputGroup}>
+              <div className={styles.inputGroup}>
                 <label className={styles.inputLabel}>PAN_No</label>
                 <input
                   type="text"

@@ -3,32 +3,124 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 exports.signup = async (req, res) => {
-  const { username, password, role } = req.body;
-  if (!username || !password)
-    return res.status(400).json({ message: "Required fields missing" });
+  const { username, password, role, areaIds = [] } = req.body;
 
-  const pool = await poolPromise;
+  if (!username?.trim() || !password || !Array.isArray(areaIds)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid signup details",
+    });
+  }
 
-  const existingUser = await pool
-    .request()
-    .input("Username", sql.NVarChar, username)
-    .query("SELECT * FROM Users WHERE Username=@Username");
+  const ids = [...new Set(areaIds.map(Number))];
 
-  if (existingUser.recordset.length > 0)
-    return res.status(400).json({ message: "Username already exists!" });
+  if (ids.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid area IDs",
+    });
+  }
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  let transaction;
+  let started = false;
 
-  await pool
-    .request()
-    .input("Username", sql.NVarChar, username)
-    .input("Password", sql.NVarChar, hashedPassword)
-    .input("Role", sql.NVarChar, role || "customer")
-    .query(
-      "INSERT INTO Users (Username, Password, Role) VALUES (@Username, @Password, @Role)",
-    );
+  try {
+    const pool = await poolPromise;
 
-  res.status(201).json({ message: "User created successfully!" });
+    const existingUser = await pool
+      .request()
+      .input("Username", sql.NVarChar, username.trim()).query(`
+        SELECT UserID
+        FROM Users
+        WHERE Username = @Username
+      `);
+
+    if (existingUser.recordset.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Username already exists!",
+      });
+    }
+
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
+    started = true;
+
+    // Verify that every supplied area actually exists.
+    if (ids.length) {
+      const areaRequest = new sql.Request(transaction);
+
+      const placeholders = ids.map((id, index) => {
+        const name = `area${index}`;
+        areaRequest.input(name, sql.Int, id);
+        return `@${name}`;
+      });
+
+      const validAreas = await areaRequest.query(`
+        SELECT areaId
+        FROM dbo.area
+        WHERE areaId IN (${placeholders.join(",")})
+      `);
+
+      if (validAreas.recordset.length !== ids.length) {
+        await transaction.rollback();
+        started = false;
+
+        return res.status(400).json({
+          success: false,
+          message: "One or more selected areas do not exist",
+        });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const userResult = await new sql.Request(transaction)
+      .input("Username", sql.NVarChar, username.trim())
+      .input("Password", sql.NVarChar, hashedPassword)
+      .input("Role", sql.NVarChar, role || "customer").query(`
+        INSERT INTO Users (Username, Password, Role)
+        OUTPUT INSERTED.UserID
+        VALUES (@Username, @Password, @Role)
+      `);
+
+    const userId = userResult.recordset[0].UserID;
+
+    for (const areaId of ids) {
+      await new sql.Request(transaction)
+        .input("UserID", sql.Int, userId)
+        .input("areaId", sql.Int, areaId).query(`
+          INSERT INTO dbo.UserAreas (UserID, areaId)
+          VALUES (@UserID, @areaId)
+        `);
+    }
+
+    await transaction.commit();
+    started = false;
+
+    return res.status(201).json({
+      success: true,
+      message: "User created successfully!",
+      userId,
+      areaIds: ids,
+      allAreasAccess: ids.length === 0,
+    });
+  } catch (error) {
+    if (started) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error("Rollback Error:", rollbackError);
+      }
+    }
+
+    console.error("Signup Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to create user",
+    });
+  }
 };
 
 exports.login = async (req, res) => {
@@ -36,9 +128,9 @@ exports.login = async (req, res) => {
     const { username, password } = req.body;
 
     // =====================================================
-    // BASIC VALIDATION
+    // 1. BASIC VALIDATION
     // =====================================================
-    if (!username || !password) {
+    if (!username?.trim() || !password) {
       return res.status(400).json({
         success: false,
         message: "Username and password are required",
@@ -48,7 +140,7 @@ exports.login = async (req, res) => {
     const pool = await poolPromise;
 
     // =====================================================
-    // GET USER
+    // 2. GET USER
     // =====================================================
     const result = await pool
       .request()
@@ -60,7 +152,7 @@ exports.login = async (req, res) => {
           Role,
           IsActive,
           ISNULL(tokenVersion, 0) AS tokenVersion
-        FROM Users
+        FROM dbo.Users
         WHERE Username = @Username
       `);
 
@@ -75,7 +167,7 @@ exports.login = async (req, res) => {
     const user = result.recordset[0];
 
     // =====================================================
-    // ACCOUNT ACTIVE CHECK
+    // 3. ACCOUNT ACTIVE CHECK
     // =====================================================
     if (
       user.IsActive === false ||
@@ -91,7 +183,7 @@ exports.login = async (req, res) => {
     }
 
     // =====================================================
-    // PASSWORD CHECK
+    // 4. PASSWORD CHECK
     // =====================================================
     const isMatch = await bcrypt.compare(password, user.Password);
 
@@ -104,12 +196,37 @@ exports.login = async (req, res) => {
     }
 
     // =====================================================
-    // TOKEN VERSION
+    // 5. FETCH USER ASSIGNED AREAS
+    // =====================================================
+    const areaResult = await pool
+      .request()
+      .input("UserID", sql.Int, user.UserID).query(`
+        SELECT
+          A.areaId,
+          A.areaName
+        FROM dbo.UserAreas UA
+        INNER JOIN dbo.Area A
+          ON UA.areaId = A.areaId
+        WHERE UA.UserID = @UserID
+        ORDER BY A.areaName
+      `);
+
+    const assignedAreas = areaResult.recordset;
+
+    const areaIds = assignedAreas.map((area) => area.areaId);
+
+    const areaNames = assignedAreas.map((area) => area.areaName.trim());
+
+    // No area assigned = All areas access
+    const allAreasAccess = assignedAreas.length === 0;
+
+    // =====================================================
+    // 6. TOKEN VERSION
     // =====================================================
     const tokenVersion = Number(user.tokenVersion || 0);
 
     // =====================================================
-    // GENERATE JWT
+    // 7. GENERATE JWT
     // =====================================================
     const token = jwt.sign(
       {
@@ -124,7 +241,7 @@ exports.login = async (req, res) => {
     );
 
     // =====================================================
-    // LOGIN SUCCESS
+    // 8. LOGIN SUCCESS
     // =====================================================
     return res.status(200).json({
       success: true,
@@ -135,6 +252,12 @@ exports.login = async (req, res) => {
       name: user.Username,
       userId: user.UserID,
       tokenVersion,
+
+      // AREA ACCESS DETAILS
+      assignedAreas,
+      areaIds,
+      areaNames,
+      allAreasAccess,
     });
   } catch (err) {
     console.error("Login error:", err);

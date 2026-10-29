@@ -331,7 +331,7 @@ export default function UserDataTable() {
 
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
-    const SECRET_PASSWORD = "Sagar@9685"; // Apna password yahan rakhein
+    const SECRET_PASSWORD = "Sagar@9303"; // Apna password yahan rakhein
 
     if (passwordInput === SECRET_PASSWORD) {
       sessionStorage.setItem("isDataTableAuthorized", "true");

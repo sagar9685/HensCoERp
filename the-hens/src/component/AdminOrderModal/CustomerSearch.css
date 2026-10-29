@@ -1,0 +1,520 @@
+/* =========================================================
+   CUSTOMER SEARCH - PROFESSIONAL ERP UI
+   Compact layout | Area Highlight | Scrollable Results
+========================================================= */
+
+.customer-search-wrapper {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+/* ================= SEARCH INPUT ================= */
+
+.customer-search-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.customer-search-input-container input {
+  width: 100%;
+  padding-left: 40px !important;
+  padding-right: 38px !important;
+  box-sizing: border-box;
+}
+
+.customer-input-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #8b92a5;
+  font-size: 14px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.customer-clear-button {
+  position: absolute;
+  right: 10px;
+  border: none;
+  background: #f1f2f6;
+  color: #64748b;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.customer-clear-button:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.customer-selected input {
+  border-color: #16a34a !important;
+}
+
+/* ================= DROPDOWN ================= */
+
+.customer-dropdown {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+
+  width: 650px;
+  max-width: calc(100vw - 32px);
+
+  display: flex;
+  flex-direction: column;
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  box-shadow:
+    0 12px 30px rgba(15, 23, 42, 0.12),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+
+  z-index: 9999;
+  overflow: hidden;
+
+  animation: customerDropdownOpen 0.18s ease-out;
+}
+
+@keyframes customerDropdownOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= DROPDOWN HEADER ================= */
+
+.customer-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+  padding: 11px 15px;
+
+  background: #f8f7ff;
+  border-bottom: 1px solid #e9e5ff;
+
+  flex-shrink: 0;
+}
+
+.customer-dropdown-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  font-size: 12px;
+  font-weight: 700;
+  color: #27233f;
+}
+
+.customer-dropdown-heading svg {
+  color: #7544df;
+  font-size: 13px;
+}
+
+.customer-results-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  background: #eee7ff;
+  color: #6d36d5;
+
+  padding: 5px 10px;
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* ================= SCROLLABLE RESULTS ================= */
+
+/*
+   Target: approximately 5 compact records visible.
+   Remaining records accessible through scrolling.
+*/
+
+.customer-results-list {
+  height: 560px;
+  max-height: 560px;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  overscroll-behavior: contain;
+  padding: 6px;
+
+  scrollbar-width: thin;
+  scrollbar-color: #b9a8eb #f8fafc;
+}
+
+.customer-results-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.customer-results-list::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.customer-results-list::-webkit-scrollbar-thumb {
+  background: #b9a8eb;
+  border-radius: 10px;
+}
+
+.customer-results-list::-webkit-scrollbar-thumb:hover {
+  background: #956ee2;
+}
+
+/* ================= CUSTOMER CARD ================= */
+
+.customer-result-card {
+  position: relative;
+
+  padding: 10px 12px;
+  margin-bottom: 4px;
+
+  border: 1px solid transparent;
+  border-bottom-color: #edf0f5;
+  border-radius: 9px;
+
+  background: #ffffff;
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.customer-result-card:last-child {
+  margin-bottom: 0;
+}
+
+.customer-result-card:hover,
+.customer-result-active {
+  background: #f5f1ff;
+  border-color: #ded0ff;
+  box-shadow: 0 2px 6px rgba(117, 68, 223, 0.05);
+}
+
+/* ================= CUSTOMER TOP SECTION ================= */
+
+.customer-result-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.customer-result-avatar {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+
+  background: #eee7ff;
+  color: #7544df;
+
+  border-radius: 8px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 13px;
+}
+
+.customer-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ================= CUSTOMER NAME ================= */
+
+.customer-result-name {
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 700;
+
+  color: #1e293b;
+  overflow-wrap: anywhere;
+}
+
+/* ================= AREA HIGHLIGHT ================= */
+
+/*
+   Area is visually prominent because customers
+   can have multiple branches or locations.
+*/
+
+.customer-result-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  max-width: 100%;
+  margin-top: 5px;
+  padding: 4px 9px;
+
+  border-radius: 6px;
+
+  background: #ede5ff;
+  color: #6627cb;
+
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+
+  border: 1px solid #d9c8ff;
+}
+
+.customer-result-area span {
+  overflow-wrap: anywhere;
+}
+
+.customer-result-area svg {
+  flex-shrink: 0;
+  font-size: 10px;
+  color: #7544df;
+}
+
+/* ================= RECORD NUMBER ================= */
+
+.customer-result-number {
+  font-size: 10px;
+  font-weight: 600;
+
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+/* ================= ADDRESS ================= */
+
+.customer-result-address {
+  margin: 6px 0 0 40px;
+  min-width: 0;
+}
+
+.customer-detail-label {
+  display: block;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.customer-result-address p {
+  margin: 2px 0 0;
+
+  font-size: 10.5px;
+  line-height: 1.4;
+
+  color: #64748b;
+
+  overflow-wrap: anywhere;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+
+  overflow: hidden;
+}
+
+/* ================= CONTACT NUMBER ================= */
+
+.customer-result-contact {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  margin: 5px 0 0 40px;
+
+  font-size: 10px;
+  color: #64748b;
+}
+
+.customer-result-contact svg {
+  font-size: 10px;
+  color: #8b5cf6;
+}
+
+/* ================= SEARCH TEXT HIGHLIGHT ================= */
+
+.customer-search-highlight {
+  background: #fef08a;
+  color: #713f12;
+
+  padding: 0 2px;
+  border-radius: 3px;
+  font-weight: 800;
+}
+
+/* ================= SELECTED CUSTOMER ================= */
+
+.customer-selection-confirmation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+
+  gap: 7px;
+  margin-top: 8px;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  color: #16a34a;
+}
+
+.customer-selected-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  background: #ede5ff;
+  color: #6627cb;
+
+  padding: 4px 9px;
+  border-radius: 6px;
+
+  font-weight: 700;
+}
+
+/* ================= EMPTY STATE ================= */
+
+.customer-empty-state {
+  text-align: center;
+  padding: 30px 16px;
+
+  color: #94a3b8;
+}
+
+.customer-empty-state svg {
+  font-size: 23px;
+  margin-bottom: 9px;
+}
+
+.customer-empty-state p {
+  margin: 0 0 5px;
+
+  font-size: 13px;
+  color: #334155;
+
+  font-weight: 600;
+}
+
+.customer-empty-state span {
+  font-size: 11px;
+}
+
+/* ================= DROPDOWN FOOTER ================= */
+
+.customer-dropdown-footer {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+
+  gap: 7px;
+  padding: 9px 14px;
+
+  background: #fafbff;
+  border-top: 1px solid #edf0f5;
+
+  color: #94a3b8;
+  font-size: 10px;
+
+  flex-shrink: 0;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 768px) {
+  .customer-dropdown {
+    width: min(600px, calc(100vw - 32px));
+  }
+
+  .customer-results-list {
+    height: 480px;
+    max-height: 480px;
+  }
+}
+
+@media (max-width: 650px) {
+  .customer-dropdown {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  .customer-results-list {
+    height: min(440px, 60vh);
+    max-height: 60vh;
+  }
+
+  .customer-result-card {
+    padding: 9px;
+  }
+
+  .customer-result-top {
+    gap: 8px;
+  }
+
+  .customer-result-avatar {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  .customer-result-name {
+    font-size: 11.5px;
+  }
+
+  .customer-result-area {
+    font-size: 10px;
+    padding: 4px 7px;
+  }
+
+  .customer-result-address,
+  .customer-result-contact {
+    margin-left: 0;
+  }
+
+  .customer-dropdown-footer {
+    font-size: 9px;
+  }
+
+  .customer-dropdown-header {
+    padding: 10px;
+  }
+}
+
+/* ================= REDUCED MOTION ================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-dropdown {
+    animation: none;
+  }
+
+  .customer-result-card,
+  .customer-clear-button {
+    transition: none;
+  }
+}

@@ -119,9 +119,44 @@ export const cancelOrderBeforeAssign = createAsyncThunk(
 
 export const fetchAssignOrder = createAsyncThunk(
   "fetchAssignOrder",
-  async () => {
-    const res = await axios.get(`${API_BASE_URL}/api/users/assigned-orders`);
-    return res.data;
+  async (_, { rejectWithValue }) => {
+    try {
+      const authData = JSON.parse(localStorage.getItem("authData") || "{}");
+
+      const token = authData?.token;
+
+      console.log("LOGGED IN USER:", authData?.name);
+      console.log("TOKEN AVAILABLE:", !!token);
+
+      if (!token) {
+        return rejectWithValue(
+          "Authentication token missing. Please login again.",
+        );
+      }
+
+      const response = await axios.get(
+        `${API_BASE_URL}/api/users/assigned-orders`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      console.log("FETCHED ORDERS:", response.data.length);
+
+      return response.data;
+    } catch (error) {
+      console.error("GET ORDERS ERROR:", {
+        status: error.response?.status,
+        code: error.response?.data?.code,
+        message: error.response?.data?.message,
+      });
+
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch assigned orders",
+      );
+    }
   },
 );
 

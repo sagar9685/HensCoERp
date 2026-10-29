@@ -342,12 +342,30 @@ exports.assignOrder = async (req, res) => {
 };
 
 // GET All Assigned Orders
+
 exports.getAssignedOrders = async (req, res) => {
   try {
+    // UserID verified JWT middleware se aani chahiye.
+    const userId = Number(req.user?.userId);
+
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized user",
+      });
+    }
+
     const pool = await poolPromise;
 
+    // =====================================================
+    // GET ASSIGNED ORDERS - USER AREA WISE
+    //
+    // UserAreas empty = All Areas
+    // UserAreas assigned = Only assigned areas
+    // =====================================================
+
     const query = `
-    SELECT 
+      SELECT
         O.OrderID,
         O.CustomerName,
         O.ContactNo,
@@ -355,11 +373,10 @@ exports.getAssignedOrders = async (req, res) => {
         O.Area,
         O.DeliveryCharge,
         O.OrderDate,
-         O.InvoiceNo,
-    O.InvoiceDate,
+        O.InvoiceNo,
+        O.InvoiceDate,
 
-
-        -- Assignment
+        -- ASSIGNMENT
         A.AssignID,
         A.DeliveryDate,
         A.DeliveryManID,
@@ -382,76 +399,159 @@ exports.getAssignedOrders = async (req, res) => {
         Items.GrandItemTotal,
 
         -- PAYMENT
-       Payments.PaymentSummary,
-Payments.TotalPaid,
-Payments.PaymentVerifyStatus
+        Payments.PaymentSummary,
+        Payments.TotalPaid,
+        Payments.PaymentVerifyStatus
 
-    FROM OrdersTemp O
-    LEFT JOIN AssignedOrders A ON O.OrderID = A.OrderID
-    LEFT JOIN DeliveryMen DM ON A.DeliveryManID = DM.DeliveryManID
+      FROM OrdersTemp O
 
-    -- ITEMS SUBQUERY
-    OUTER APPLY (
-        SELECT 
-            STRING_AGG(CAST(OI.ItemID AS VARCHAR(20)), ', ') AS ItemIDs,
-            STRING_AGG(OI.ProductName, ', ') AS ProductNames,
-            STRING_AGG(OI.ProductType, ', ') AS ProductTypes,
-            STRING_AGG(CAST(OI.Weight AS VARCHAR(10)), ', ') AS Weights,
-            STRING_AGG(CAST(OI.Quantity AS VARCHAR(10)), ', ') AS Quantities,
-            STRING_AGG(CAST(OI.Rate AS VARCHAR(10)), ', ') AS Rates,
+      LEFT JOIN AssignedOrders A
+        ON O.OrderID = A.OrderID
 
-            -- ✅ SAFE MAP & UPC
-    STRING_AGG(CAST(ISNULL(PT.MRP, 0) AS VARCHAR(20)), ', ') AS MRP,
-        STRING_AGG(CAST(ISNULL(PT.ProductUPC, '') AS VARCHAR(50)), ', ') AS ProductUPC,
+      LEFT JOIN DeliveryMen DM
+        ON A.DeliveryManID = DM.DeliveryManID
 
-            STRING_AGG(CAST(OI.Total AS VARCHAR(10)), ', ') AS ItemTotals,
-            SUM(OI.Total) AS GrandItemTotal
+      -- ITEMS SUBQUERY
+      OUTER APPLY (
+        SELECT
+          STRING_AGG(
+            CAST(OI.ItemID AS VARCHAR(20)), ', '
+          ) AS ItemIDs,
+
+          STRING_AGG(OI.ProductName, ', ') AS ProductNames,
+
+          STRING_AGG(OI.ProductType, ', ') AS ProductTypes,
+
+          STRING_AGG(
+            CAST(OI.Weight AS VARCHAR(10)), ', '
+          ) AS Weights,
+
+          STRING_AGG(
+            CAST(OI.Quantity AS VARCHAR(10)), ', '
+          ) AS Quantities,
+
+          STRING_AGG(
+            CAST(OI.Rate AS VARCHAR(10)), ', '
+          ) AS Rates,
+
+          STRING_AGG(
+            CAST(ISNULL(PT.MRP, 0) AS VARCHAR(20)), ', '
+          ) AS MRP,
+
+          STRING_AGG(
+            CAST(ISNULL(PT.ProductUPC, '') AS VARCHAR(50)), ', '
+          ) AS ProductUPC,
+
+          STRING_AGG(
+            CAST(OI.Total AS VARCHAR(10)), ', '
+          ) AS ItemTotals,
+
+          SUM(OI.Total) AS GrandItemTotal
 
         FROM OrderItems OI
 
-        -- ✅ IMPORTANT: JOIN FIX (TRY BOTH IF NEEDED)
-        LEFT JOIN ProductTypes PT 
-            ON OI.ProductType = PT.ProductType
-            -- अगर ये match nahi kare to neeche wala try karo:
-            -- ON OI.ProductTypeID = PT.ProductTypeID
+        LEFT JOIN ProductTypes PT
+          ON OI.ProductType = PT.ProductType
 
         WHERE OI.OrderID = O.OrderID
-    ) Items
+      ) Items
 
-    -- PAYMENT SUBQUERY
-    OUTER APPLY (
-        SELECT 
-            'Cash: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Cash' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-            ' | GPay: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'GPay' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-            ' | Paytm: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Paytm' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-            ' | FOC: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'FOC' THEN OP.Amount END), 0) AS VARCHAR(20)) +
-            ' | Bank Transfer: ' + CAST(ISNULL(SUM(CASE WHEN PM.ModeName = 'Bank Transfer' THEN OP.Amount END), 0) AS VARCHAR(20))
-            AS PaymentSummary,
+      -- PAYMENT SUBQUERY
+      OUTER APPLY (
+        SELECT
+          'Cash: ' +
+            CAST(ISNULL(SUM(
+              CASE WHEN PM.ModeName = 'Cash'
+              THEN OP.Amount END
+            ), 0) AS VARCHAR(20))
 
-            ISNULL(SUM(OP.Amount), 0) AS TotalPaid,
+          + ' | GPay: ' +
+            CAST(ISNULL(SUM(
+              CASE WHEN PM.ModeName = 'GPay'
+              THEN OP.Amount END
+            ), 0) AS VARCHAR(20))
 
-            CASE
-  WHEN COUNT(CASE WHEN OP.PaymentVerifyStatus = 'Verified' THEN 1 END) > 0
-  THEN 'Verified'
-  ELSE 'Pending'
-END AS PaymentVerifyStatus
+          + ' | Paytm: ' +
+            CAST(ISNULL(SUM(
+              CASE WHEN PM.ModeName = 'Paytm'
+              THEN OP.Amount END
+            ), 0) AS VARCHAR(20))
+
+          + ' | FOC: ' +
+            CAST(ISNULL(SUM(
+              CASE WHEN PM.ModeName = 'FOC'
+              THEN OP.Amount END
+            ), 0) AS VARCHAR(20))
+
+          + ' | Bank Transfer: ' +
+            CAST(ISNULL(SUM(
+              CASE WHEN PM.ModeName = 'Bank Transfer'
+              THEN OP.Amount END
+            ), 0) AS VARCHAR(20))
+
+          AS PaymentSummary,
+
+          ISNULL(SUM(OP.Amount), 0) AS TotalPaid,
+
+          CASE
+            WHEN COUNT(
+              CASE
+                WHEN OP.PaymentVerifyStatus = 'Verified'
+                THEN 1
+              END
+            ) > 0
+            THEN 'Verified'
+            ELSE 'Pending'
+          END AS PaymentVerifyStatus
 
         FROM OrderPayments OP
-        LEFT JOIN PaymentModes PM ON OP.PaymentModeID = PM.PaymentModeID
-     WHERE OP.OrderID = O.OrderID
-    ) Payments
 
-    ORDER BY O.OrderID DESC;
+        LEFT JOIN PaymentModes PM
+          ON OP.PaymentModeID = PM.PaymentModeID
+
+        WHERE OP.OrderID = O.OrderID
+      ) Payments
+
+      -- =====================================================
+      -- AREA ACCESS FILTER
+      -- =====================================================
+      WHERE (
+        -- No assigned area = All orders
+        NOT EXISTS (
+          SELECT 1
+          FROM UserAreas UA
+          WHERE UA.UserID = @UserID
+        )
+
+        OR
+
+        -- Only matching assigned areas
+        EXISTS (
+          SELECT 1
+          FROM UserAreas UA
+          INNER JOIN Area AR
+            ON UA.areaId = AR.areaId
+
+          WHERE UA.UserID = @UserID
+            AND LOWER(LTRIM(RTRIM(AR.areaName))) =
+                LOWER(LTRIM(RTRIM(O.Area)))
+        )
+      )
+
+      ORDER BY O.OrderID DESC;
     `;
 
-    const result = await pool.request().query(query);
+    const result = await pool
+      .request()
+      .input("UserID", sql.Int, userId)
+      .query(query);
 
-    res.status(200).json(result.recordset);
+    return res.status(200).json(result.recordset);
   } catch (err) {
-    // 🔴 FULL DEBUG
-    console.error("❌ SQL ERROR:", err);
+    console.error("Get Assigned Orders Error:", err);
 
-    res.status(500).json({
+    return res.status(500).json({
+      success: false,
       message: "Internal Server Error",
       error: err.message,
     });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   FaTimes,
   FaPaperPlane,
@@ -63,6 +63,8 @@ const OrderForm = ({ onClose }) => {
   const productTypes = useSelector((state) => state.product.types || []);
 
   const [fetchedData, setFetchedData] = useState({});
+  const [productDetails, setProductDetails] = useState({});
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const takenByList = useSelector((state) => state.order.takenByList);
@@ -145,6 +147,121 @@ const OrderForm = ({ onClose }) => {
 
     setCurrentItem((prev) => ({ ...prev, [name]: value }));
   };
+
+  const fetchProductDetails = useCallback(
+    async (productType) => {
+      console.log("Fetching product details:", productType);
+
+      const [weightResult, rateResult] = await Promise.all([
+        dispatch(fetchWeightByType(productType)).unwrap(),
+        dispatch(fetchRateByProductType(productType)).unwrap(),
+      ]);
+
+      const weight = Array.isArray(weightResult)
+        ? weightResult[0]
+        : weightResult;
+
+      const rate = Number(rateResult);
+
+      if (
+        rateResult === null ||
+        rateResult === undefined ||
+        rateResult === "" ||
+        !Number.isFinite(rate) ||
+        rate < 0
+      ) {
+        throw new Error(`Invalid rate for ${productType}`);
+      }
+
+      console.log("Fetched product:", {
+        productType,
+        weight,
+        rate,
+      });
+
+      return {
+        weight: weight ?? "",
+        rate,
+        status: "success",
+      };
+    },
+    [dispatch],
+  );
+
+  // ================================================
+  // AUTO FETCH ALL PRODUCTS WHEN ADD ITEM OPENS
+  // ================================================
+
+  useEffect(() => {
+    if (
+      !isItemModalOpen ||
+      editingIndex !== null ||
+      productTypes.length === 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProducts = async () => {
+      setIsLoadingProducts(true);
+
+      try {
+        const uniqueTypes = [
+          ...new Set(
+            productTypes.map((product) => product.ProductType).filter(Boolean),
+          ),
+        ];
+
+        const results = await Promise.allSettled(
+          uniqueTypes.map(async (type) => ({
+            type,
+            details: await fetchProductDetails(type),
+          })),
+        );
+
+        if (cancelled) return;
+
+        const detailsMap = {};
+
+        results.forEach((result, index) => {
+          const type = uniqueTypes[index];
+
+          if (result.status === "fulfilled") {
+            detailsMap[type] = result.value.details;
+          } else {
+            console.error(`Failed to fetch ${type}:`, result.reason);
+
+            detailsMap[type] = {
+              weight: "",
+              rate: "",
+              status: "error",
+            };
+          }
+        });
+
+        setProductDetails((prev) => ({
+          ...prev,
+          ...detailsMap,
+        }));
+
+        console.log("All Product Details:", detailsMap);
+      } catch (error) {
+        console.error("Product loading error:", error);
+        toast.error("Unable to load product details");
+      } finally {
+        if (!cancelled) {
+          setIsLoadingProducts(false);
+        }
+      }
+    };
+
+    loadProducts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isItemModalOpen, editingIndex, productTypes, fetchProductDetails]);
 
   const handleProductTypeChange = async (e) => {
     const value = e.target.value;
@@ -288,6 +405,28 @@ const OrderForm = ({ onClose }) => {
     } else {
       setOrderItems((prev) => [...prev, { ...currentItem }]);
     }
+
+    closeItemModal();
+  };
+
+  const handleBulkAddItems = (newItems) => {
+    if (!Array.isArray(newItems) || newItems.length === 0) {
+      toast.error("Please select at least one item");
+      return;
+    }
+
+    setOrderItems((prev) => [
+      ...prev,
+      ...newItems.map((item) => ({
+        productName: item.productName,
+        productType: item.productType,
+        weight: item.weight,
+        quantity: Number(item.quantity),
+        rate: Number(item.rate),
+      })),
+    ]);
+
+    toast.success(`${newItems.length} items added successfully`);
 
     closeItemModal();
   };
@@ -668,8 +807,11 @@ const OrderForm = ({ onClose }) => {
         handleItemChange={handleItemChange}
         handleProductTypeChange={handleProductTypeChange}
         productTypes={productTypes}
+        productDetails={productDetails}
+        isLoadingProducts={isLoadingProducts}
         errors={errors}
         saveItem={saveItem}
+        onSaveItems={handleBulkAddItems}
       />
     </>
   );

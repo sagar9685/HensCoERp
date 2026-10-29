@@ -182,6 +182,53 @@ export const fetchHandoverReport = createAsyncThunk(
   },
 );
 
+// =====================================================
+// CUSTOMER OUTSTANDING REPORT
+// =====================================================
+
+export const fetchCustomerOutstanding = createAsyncThunk(
+  "report/fetchCustomerOutstanding",
+
+  async (
+    { from = "", to = "", customerName = "", area = "" } = {},
+    { rejectWithValue },
+  ) => {
+    try {
+      const params = {};
+
+      if (from && to) {
+        params.from = from;
+        params.to = to;
+      }
+
+      if (customerName.trim()) {
+        params.customerName = customerName.trim();
+      }
+
+      if (area.trim()) {
+        params.area = area.trim();
+      }
+
+      const response = await axios.get(
+        `${API_BASE_URL}/api/reports/customer-outstanding`,
+        { params },
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Customer Outstanding API Error:",
+        error.response?.data || error.message,
+      );
+
+      return rejectWithValue(
+        error.response?.data?.message ||
+          "Failed to fetch customer outstanding report",
+      );
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -232,6 +279,22 @@ const reportSlice = createSlice({
     },
     customerDateRange: {
       data: [],
+    },
+    customerOutstanding: {
+      customers: [],
+      summary: {
+        TotalSales: 0,
+        TotalReceived: 0,
+        VerifiedAmount: 0,
+        PendingVerification: 0,
+        OtherVerification: 0,
+        TotalOutstanding: 0,
+        PendingOrders: 0,
+      },
+      totalCustomers: 0,
+      filters: {},
+      loading: false,
+      error: null,
     },
 
     customerDateRangeLoading: false,
@@ -478,6 +541,58 @@ const reportSlice = createSlice({
           reportName: "",
           fromDate: "",
           toDate: "",
+        };
+      })
+      // =====================================================
+      // CUSTOMER OUTSTANDING
+      // =====================================================
+
+      .addCase(fetchCustomerOutstanding.pending, (state) => {
+        state.customerOutstanding.loading = true;
+        state.customerOutstanding.error = null;
+      })
+
+      .addCase(fetchCustomerOutstanding.fulfilled, (state, action) => {
+        state.customerOutstanding.loading = false;
+        state.customerOutstanding.error = null;
+
+        state.customerOutstanding.customers = action.payload?.Customers || [];
+
+        state.customerOutstanding.summary = action.payload?.Summary || {
+          TotalSales: 0,
+          TotalReceived: 0,
+          VerifiedAmount: 0,
+          PendingVerification: 0,
+          OtherVerification: 0,
+          TotalOutstanding: 0,
+          PendingOrders: 0,
+        };
+
+        state.customerOutstanding.totalCustomers =
+          action.payload?.TotalCustomers || 0;
+
+        state.customerOutstanding.filters = action.payload?.Filters || {};
+      })
+
+      .addCase(fetchCustomerOutstanding.rejected, (state, action) => {
+        state.customerOutstanding.loading = false;
+
+        state.customerOutstanding.error =
+          action.payload ||
+          action.error?.message ||
+          "Unable to fetch customer outstanding";
+
+        state.customerOutstanding.customers = [];
+        state.customerOutstanding.totalCustomers = 0;
+
+        state.customerOutstanding.summary = {
+          TotalSales: 0,
+          TotalReceived: 0,
+          VerifiedAmount: 0,
+          PendingVerification: 0,
+          OtherVerification: 0,
+          TotalOutstanding: 0,
+          PendingOrders: 0,
         };
       });
   },

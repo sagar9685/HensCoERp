@@ -9,6 +9,7 @@ import CustomerLedger from "./Reports/CustomerLedger";
 import MonthlyCompareReport from "./Reports/MonthlyCompareReport";
 import WeeklyCompare from "./Reports/WeeklyCompare";
 import CustomerDateRangeReport from "./Reports/CustomerDateRangeReport";
+import CustomerOutstanding from "./Reports/CustomerOutstanding";
 
 const ReportPage = () => {
   const [activeTab, setActiveTab] = useState("monthly");
@@ -69,6 +70,13 @@ const ReportPage = () => {
           >
             Customer Analytics
           </button>
+
+          <button
+            className={activeTab === "outstanding" ? styles.active : ""}
+            onClick={() => setActiveTab("outstanding")}
+          >
+            Customer Outstanding
+          </button>
         </div>
 
         {/* CONTENT */}
@@ -81,6 +89,7 @@ const ReportPage = () => {
           {activeTab == "monthlycompare" && <MonthlyCompareReport />}
           {activeTab == "weeklycompare" && <WeeklyCompare />}
           {activeTab == "customerreport" && <CustomerDateRangeReport />}
+          {activeTab === "outstanding" && <CustomerOutstanding />}
         </div>
       </div>
     </>

@@ -92,26 +92,26 @@ const UserForm = () => {
     dispatch(fetchAssignOrder());
   }, [dispatch]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      dispatch(fetchOrder()).then((res) => {
-        res.payload.forEach((order) => {
-          const items = order.ProductTypes?.split(",") || [];
-          const quantities = order.Quantities?.split(",") || [];
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     dispatch(fetchOrder()).then((res) => {
+  //       res.payload.forEach((order) => {
+  //         const items = order.ProductTypes?.split(",") || [];
+  //         const quantities = order.Quantities?.split(",") || [];
 
-          items.forEach((item, i) => {
-            if (Number(quantities[i]) === 0) {
-              toast.warn(
-                `Item "${item.trim()}" in Order #${order.OrderID} is out of stock!`,
-              );
-            }
-          });
-        });
-      });
-    }, 60000); // har 60 second me check
+  //         items.forEach((item, i) => {
+  //           if (Number(quantities[i]) === 0) {
+  //             toast.warn(
+  //               `Item "${item.trim()}" in Order #${order.OrderID} is out of stock!`,
+  //             );
+  //           }
+  //         });
+  //       });
+  //     });
+  //   }, 60000); // har 60 second me check
 
-    return () => clearInterval(interval);
-  }, [dispatch]);
+  //   return () => clearInterval(interval);
+  // }, [dispatch]);
 
   //   const handleStatusChange = (row, newStatus) => {
   //   if (newStatus === "Cancel") {

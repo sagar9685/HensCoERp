@@ -3565,3 +3565,373 @@ exports.getCustomerLedgerByDate = async (req, res) => {
     });
   }
 };
+
+exports.getCustomerOutstanding = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const { from, to, customerName, area } = req.query;
+
+    // =====================================================
+    // 1. DATE VALIDATION
+    // =====================================================
+
+    if ((from && !to) || (!from && to)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide both from and to dates",
+      });
+    }
+
+    const request = pool.request();
+
+    let filters = "";
+
+    // =====================================================
+    // 2. DATE FILTER
+    // =====================================================
+
+    if (from && to) {
+      filters += `
+        AND O.OrderDate >= @from
+        AND O.OrderDate < DATEADD(DAY, 1, @to)
+      `;
+
+      request.input("from", sql.Date, from);
+      request.input("to", sql.Date, to);
+    }
+
+    // =====================================================
+    // 3. CUSTOMER NAME SEARCH
+    // =====================================================
+
+    if (customerName && customerName.trim()) {
+      filters += `
+        AND O.CustomerName LIKE @customerName
+      `;
+
+      request.input(
+        "customerName",
+        sql.NVarChar(255),
+        `%${customerName.trim()}%`,
+      );
+    }
+
+    // =====================================================
+    // 4. AREA SEARCH
+    // =====================================================
+
+    if (area && area.trim()) {
+      filters += `
+        AND O.Area LIKE @area
+      `;
+
+      request.input("area", sql.NVarChar(255), `%${area.trim()}%`);
+    }
+
+    // =====================================================
+    // 5. MAIN QUERY
+    // =====================================================
+
+    const query = `
+      WITH OrderReport AS (
+        SELECT
+          O.OrderID,
+          O.CustomerName,
+          O.ContactNo,
+          O.Area,
+
+          -- TOTAL SALES
+          (
+            ISNULL(OI.OrderTotal, 0)
+            + ISNULL(O.DeliveryCharge, 0)
+          ) AS TotalSales,
+
+          -- TOTAL PAYMENT RECEIVED
+          ISNULL(P.TotalReceived, 0) AS TotalReceived,
+
+          -- VERIFIED PAYMENT
+          ISNULL(P.VerifiedAmount, 0) AS VerifiedAmount,
+
+          -- PENDING PAYMENT VERIFICATION
+          ISNULL(P.PendingVerification, 0)
+            AS PendingVerification,
+
+          -- OTHER PAYMENT STATUS
+          ISNULL(P.OtherVerification, 0)
+            AS OtherVerification,
+
+          -- PENDING ORDER
+          CASE
+            WHEN A.HasPendingAssignment = 1
+            THEN 1
+            ELSE 0
+          END AS IsPendingOrder
+
+        FROM OrdersTemp O
+
+        -- ================================================
+        -- ORDER ITEMS TOTAL
+        -- ================================================
+
+        OUTER APPLY (
+          SELECT
+            SUM(ISNULL(OI.total, 0)) AS OrderTotal
+
+          FROM OrderItems OI
+
+          WHERE OI.OrderID = O.OrderID
+        ) OI
+
+        -- ================================================
+        -- PAYMENT DETAILS
+        -- ================================================
+
+        OUTER APPLY (
+          SELECT
+
+            SUM(
+              ISNULL(OP.Amount, 0)
+            ) AS TotalReceived,
+
+            SUM(
+              CASE
+                WHEN OP.PaymentVerifyStatus = 'Verified'
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            ) AS VerifiedAmount,
+
+            SUM(
+              CASE
+                WHEN OP.PaymentVerifyStatus = 'Pending'
+                  OR OP.PaymentVerifyStatus IS NULL
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            ) AS PendingVerification,
+
+            SUM(
+              CASE
+                WHEN OP.PaymentVerifyStatus IS NOT NULL
+                  AND OP.PaymentVerifyStatus
+                    NOT IN ('Pending', 'Verified')
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            ) AS OtherVerification
+
+          FROM OrderPayments OP
+
+          WHERE OP.OrderID = O.OrderID
+        ) P
+
+        -- ================================================
+        -- ASSIGNMENT STATUS
+        -- ================================================
+
+        OUTER APPLY (
+          SELECT
+            MAX(
+              CASE
+                WHEN LOWER(
+                  LTRIM(RTRIM(AO.DeliveryStatus))
+                ) = 'pending'
+                THEN 1
+                ELSE 0
+              END
+            ) AS HasPendingAssignment
+
+          FROM AssignedOrders AO
+
+          WHERE AO.OrderID = O.OrderID
+        ) A
+
+        -- ================================================
+        -- EXCLUDE CANCELLED ORDERS
+        -- ================================================
+
+        WHERE NOT EXISTS (
+          SELECT 1
+
+          FROM AssignedOrders AO_CANCEL
+
+          WHERE AO_CANCEL.OrderID = O.OrderID
+
+            AND LOWER(
+              LTRIM(RTRIM(AO_CANCEL.DeliveryStatus))
+            ) IN ('cancel', 'cancelled', 'canceled')
+        )
+
+        -- CUSTOMER / AREA / DATE FILTERS
+        ${filters}
+      ),
+
+      -- =================================================
+      -- CUSTOMER-WISE REPORT
+      -- =================================================
+
+      CustomerReport AS (
+        SELECT
+          CustomerName,
+          ContactNo,
+          MAX(Area) AS Area,
+
+          COUNT(DISTINCT OrderID) AS TotalOrders,
+
+          SUM(IsPendingOrder) AS PendingOrders,
+
+          CAST(
+            SUM(TotalSales)
+            AS DECIMAL(18, 2)
+          ) AS TotalSales,
+
+          CAST(
+            SUM(TotalReceived)
+            AS DECIMAL(18, 2)
+          ) AS TotalReceived,
+
+          CAST(
+            SUM(VerifiedAmount)
+            AS DECIMAL(18, 2)
+          ) AS VerifiedAmount,
+
+          CAST(
+            SUM(PendingVerification)
+            AS DECIMAL(18, 2)
+          ) AS PendingVerification,
+
+          CAST(
+            SUM(OtherVerification)
+            AS DECIMAL(18, 2)
+          ) AS OtherVerification,
+
+          CAST(
+            SUM(TotalSales - TotalReceived)
+            AS DECIMAL(18, 2)
+          ) AS Outstanding
+
+        FROM OrderReport
+
+        GROUP BY
+          CustomerName,
+          ContactNo
+      )
+
+      -- =================================================
+      -- FINAL CUSTOMER REPORT
+      -- =================================================
+
+      SELECT
+        CustomerName,
+        ContactNo,
+        Area,
+        TotalOrders,
+        PendingOrders,
+        TotalSales,
+        TotalReceived,
+        VerifiedAmount,
+        PendingVerification,
+        OtherVerification,
+        Outstanding
+
+      FROM CustomerReport
+
+      WHERE
+        Outstanding > 0
+        OR PendingVerification > 0
+
+      ORDER BY
+        Outstanding DESC,
+        PendingVerification DESC;
+    `;
+
+    // =====================================================
+    // 6. EXECUTE QUERY
+    // =====================================================
+
+    const result = await request.query(query);
+
+    const customers = result.recordset;
+
+    // =====================================================
+    // 7. SUMMARY
+    // =====================================================
+
+    const summary = customers.reduce(
+      (acc, customer) => {
+        acc.TotalSales += Number(customer.TotalSales || 0);
+
+        acc.TotalReceived += Number(customer.TotalReceived || 0);
+
+        acc.VerifiedAmount += Number(customer.VerifiedAmount || 0);
+
+        acc.PendingVerification += Number(customer.PendingVerification || 0);
+
+        acc.OtherVerification += Number(customer.OtherVerification || 0);
+
+        acc.Outstanding += Number(customer.Outstanding || 0);
+
+        acc.PendingOrders += Number(customer.PendingOrders || 0);
+
+        return acc;
+      },
+      {
+        TotalSales: 0,
+        TotalReceived: 0,
+        VerifiedAmount: 0,
+        PendingVerification: 0,
+        OtherVerification: 0,
+        Outstanding: 0,
+        PendingOrders: 0,
+      },
+    );
+
+    const round = (value) => Number(value.toFixed(2));
+
+    // =====================================================
+    // 8. RESPONSE
+    // =====================================================
+
+    return res.status(200).json({
+      success: true,
+
+      message: "Customer outstanding report fetched successfully",
+
+      Filters: {
+        from: from || null,
+        to: to || null,
+        customerName: customerName || null,
+        area: area || null,
+      },
+
+      TotalCustomers: customers.length,
+
+      Summary: {
+        TotalSales: round(summary.TotalSales),
+
+        TotalReceived: round(summary.TotalReceived),
+
+        VerifiedAmount: round(summary.VerifiedAmount),
+
+        PendingVerification: round(summary.PendingVerification),
+
+        OtherVerification: round(summary.OtherVerification),
+
+        TotalOutstanding: round(summary.Outstanding),
+
+        PendingOrders: summary.PendingOrders,
+      },
+
+      Customers: customers,
+    });
+  } catch (error) {
+    console.error("CUSTOMER OUTSTANDING ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch customer outstanding report",
+      error: error.message,
+    });
+  }
+};

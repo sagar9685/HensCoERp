@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   updateOrderQuantity,
@@ -49,6 +49,10 @@ export default function EditOrderModal({ order, onClose }) {
   );
 
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
+
+  const [productDetails, setProductDetails] = useState({});
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isAddingItems, setIsAddingItems] = useState(false);
 
   const [currentItem, setCurrentItem] = useState({
     productName: "",
@@ -200,6 +204,149 @@ export default function EditOrderModal({ order, onClose }) {
     dispatch(fetchProductTypes());
   }, [dispatch]);
 
+  const fetchProductDetails = useCallback(
+    async (productType) => {
+      const [weightResult, rateResult] = await Promise.all([
+        dispatch(fetchWeightByType(productType)).unwrap(),
+        dispatch(fetchRateByProductType(productType)).unwrap(),
+      ]);
+
+      const weight = Array.isArray(weightResult)
+        ? weightResult[0]
+        : weightResult;
+
+      const rate = Number(rateResult);
+
+      if (
+        rateResult === null ||
+        rateResult === undefined ||
+        rateResult === "" ||
+        !Number.isFinite(rate) ||
+        rate < 0
+      ) {
+        throw new Error(`Invalid rate for ${productType}`);
+      }
+
+      return {
+        weight: weight ?? "",
+        rate,
+        status: "success",
+      };
+    },
+    [dispatch],
+  );
+
+  // Fetch all product weights and rates when Add New Item opens
+  useEffect(() => {
+    if (
+      !isItemModalOpen ||
+      editingIndex !== null ||
+      productTypes.length === 0
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProductDetails = async () => {
+      setIsLoadingProducts(true);
+
+      const uniqueTypes = [
+        ...new Set(
+          productTypes.map((product) => product.ProductType).filter(Boolean),
+        ),
+      ];
+
+      const results = await Promise.allSettled(
+        uniqueTypes.map(async (type) => ({
+          type,
+          details: await fetchProductDetails(type),
+        })),
+      );
+
+      if (cancelled) return;
+
+      const detailsMap = {};
+
+      results.forEach((result, index) => {
+        const type = uniqueTypes[index];
+
+        if (result.status === "fulfilled") {
+          detailsMap[type] = result.value.details;
+        } else {
+          console.error(`Failed to load ${type}:`, result.reason);
+
+          detailsMap[type] = {
+            weight: "",
+            rate: "",
+            status: "error",
+          };
+        }
+      });
+
+      setProductDetails(detailsMap);
+      setIsLoadingProducts(false);
+    };
+
+    loadProductDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isItemModalOpen, editingIndex, productTypes, fetchProductDetails]);
+
+  const handleBulkAddItems = async (newItems) => {
+    if (isAddingItems) return;
+
+    if (!reason.trim()) {
+      toast.error("Please enter a reason for adding items");
+      return;
+    }
+
+    if (!Array.isArray(newItems) || newItems.length === 0) {
+      toast.error("Please select at least one product");
+      return;
+    }
+
+    setIsAddingItems(true);
+
+    let addedCount = 0;
+
+    try {
+      for (const item of newItems) {
+        await dispatch(
+          addItemToOrder({
+            OrderID: order.OrderID,
+            ProductName: item.productName,
+            ProductType: item.productType,
+            Weight: Array.isArray(item.weight) ? item.weight[0] : item.weight,
+            Quantity: Number(item.quantity),
+            Rate: Number(item.rate),
+          }),
+        ).unwrap();
+
+        addedCount++;
+      }
+
+      toast.success(`${addedCount} item(s) added successfully`);
+
+      await dispatch(fetchOrder());
+
+      setIsItemModalOpen(false);
+      onClose();
+    } catch (error) {
+      console.error("Bulk add item error:", error);
+
+      toast.error(
+        `${addedCount} item(s) added. Remaining items could not be added. Please check the order before retrying.`,
+      );
+
+      await dispatch(fetchOrder());
+    } finally {
+      setIsAddingItems(false);
+    }
+  };
+
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContainer}>
@@ -338,36 +485,68 @@ export default function EditOrderModal({ order, onClose }) {
 
       <OrderFormModal
         isItemModalOpen={isItemModalOpen}
-        closeItemModal={() => setIsItemModalOpen(false)}
+        closeItemModal={() => {
+          if (!isAddingItems) {
+            setIsItemModalOpen(false);
+          }
+        }}
         currentItem={currentItem}
         editingIndex={editingIndex}
-        handleItemChange={(e) =>
-          setCurrentItem({ ...currentItem, [e.target.name]: e.target.value })
-        }
-        handleProductTypeChange={(e) => {
+        handleItemChange={(e) => {
+          const { name, value } = e.target;
+
+          setCurrentItem((prev) => ({
+            ...prev,
+            [name]: value,
+          }));
+        }}
+        handleProductTypeChange={async (e) => {
           const value = e.target.value;
-          setCurrentItem((prev) => ({ ...prev, productType: value }));
+
+          setCurrentItem((prev) => ({
+            ...prev,
+            productType: value,
+            weight: "",
+            rate: "",
+          }));
+
           if (!value) return;
-          dispatch(fetchWeightByType(value))
-            .unwrap()
-            .then((weight) => {
-              const fetchedWeight = Array.isArray(weight) ? weight[0] : weight;
-              setCurrentItem((prev) => ({ ...prev, weight: fetchedWeight }));
+
+          try {
+            const details = await fetchProductDetails(value);
+
+            setCurrentItem((prev) => {
+              if (prev.productType !== value) return prev;
+
+              return {
+                ...prev,
+                weight: details.weight,
+                rate: details.rate,
+              };
             });
-          dispatch(fetchRateByProductType(value))
-            .unwrap()
-            .then((rate) => setCurrentItem((prev) => ({ ...prev, rate })));
+          } catch (error) {
+            console.error("Product details error:", error);
+            toast.error("Unable to fetch Weight and Rate");
+          }
         }}
         productTypes={productTypes}
+        productDetails={productDetails}
+        isLoadingProducts={isLoadingProducts}
         errors={{}}
+        onSaveItems={handleBulkAddItems}
         saveItem={async () => {
+          if (!currentItem.productName || !currentItem.productType) {
+            toast.error("Please select a product");
+            return;
+          }
+
           if (
-            !currentItem.productName ||
-            !currentItem.productType ||
-            !currentItem.quantity ||
-            !currentItem.rate
+            !Number.isInteger(Number(currentItem.quantity)) ||
+            Number(currentItem.quantity) <= 0 ||
+            currentItem.rate === "" ||
+            !Number.isFinite(Number(currentItem.rate))
           ) {
-            toast.error("Please fill all fields");
+            toast.error("Invalid quantity or rate");
             return;
           }
 
@@ -385,10 +564,11 @@ export default function EditOrderModal({ order, onClose }) {
 
             toast.success("Item added successfully");
             dispatch(fetchOrder());
+
             setIsItemModalOpen(false);
             onClose();
-          } catch (err) {
-            toast.error(err?.message || "Failed to add item");
+          } catch (error) {
+            toast.error(error?.message || "Failed to add item");
           }
         }}
       />

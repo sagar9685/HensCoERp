@@ -1,8 +1,14 @@
-import React from 'react';
-import { FaPlus, FaTrashAlt, FaEdit, FaShoppingCart } from 'react-icons/fa';
-import styles from '../AddOrderModal.module.css';
+import React from "react";
+import { FaPlus, FaTrashAlt, FaEdit, FaShoppingCart } from "react-icons/fa";
+import styles from "../AddOrderModal.module.css";
 
-const OrderItemsSection = ({ orderItems, errors, openItemModal, removeItem, getTotalAmount }) => {
+const OrderItemsSection = ({
+  orderItems,
+  errors,
+  openItemModal,
+  removeItem,
+  getTotalAmount,
+}) => {
   return (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
@@ -10,8 +16,8 @@ const OrderItemsSection = ({ orderItems, errors, openItemModal, removeItem, getT
           <FaShoppingCart />
           Order Items
         </h3>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={() => openItemModal()}
           className={styles.addItemButton}
         >
@@ -21,9 +27,7 @@ const OrderItemsSection = ({ orderItems, errors, openItemModal, removeItem, getT
       </div>
 
       {errors.orderItems && (
-        <div className={styles.errorBanner}>
-          {errors.orderItems}
-        </div>
+        <div className={styles.errorBanner}>{errors.orderItems}</div>
       )}
 
       {orderItems.length === 0 ? (
@@ -55,9 +59,14 @@ const OrderItemsSection = ({ orderItems, errors, openItemModal, removeItem, getT
                   <td className={styles.typeCell}>{item.productType}</td>
                   <td className={styles.weightCell}>{item.weight}</td>
                   <td className={styles.quantityCell}>{item.quantity}</td>
-                  <td className={styles.rateCell}>₹{Number(item.rate || 0).toFixed(2)}</td>
+                  <td className={styles.rateCell}>
+                    ₹{Number(item.rate || 0).toFixed(2)}
+                  </td>
                   <td className={styles.totalCell}>
-                    ₹{(Number(item.rate || 0) * Number(item.quantity || 1)).toFixed(2)}
+                    ₹
+                    {(
+                      Number(item.rate || 0) * Number(item.quantity || 1)
+                    ).toFixed(2)}
                   </td>
                   <td className={styles.actionsCell}>
                     <button
@@ -84,7 +93,9 @@ const OrderItemsSection = ({ orderItems, errors, openItemModal, removeItem, getT
               <tr className={styles.summaryRow}>
                 <td colSpan="5"></td>
                 <td className={styles.totalLabel}>Grand Total:</td>
-                <td className={styles.grandTotal}>₹{getTotalAmount().toFixed(2)}</td>
+                <td className={styles.grandTotal}>
+                  ₹{getTotalAmount().toFixed(2)}
+                </td>
                 <td></td>
               </tr>
             </tfoot>
