@@ -705,3 +705,54 @@
   font-size: 12px;
   color: #64748b;
 }
+
+.clickableCard {
+  cursor: pointer;
+  border: none;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.clickableCard:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.13);
+}
+
+.clickableCard:focus-visible,
+.amountLink:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+
+.viewDetails {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.amountLink {
+  border: none;
+  background: transparent;
+  padding: 5px 2px;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+.amountLink:hover {
+  color: #2563eb;
+  text-decoration-style: solid;
+}
+
+.amountLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

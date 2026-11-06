@@ -53,3 +53,35 @@ auth_info_baileys/
 baileys_auth_info/
 whatsapp-session/
 wwebjs_auth/
+
+# ==========================================
+# ELECTRON DESKTOP APPLICATION
+# ==========================================
+
+# Dependencies
+desktop/node_modules/
+
+# Generated Windows EXE and installer
+desktop/release/
+desktop/dist/
+desktop/out/
+
+# Electron cache and temporary files
+desktop/.cache/
+desktop/.electron/
+desktop/*.log
+
+# Generated installers
+*.exe
+*.exe.blockmap
+*.msi
+*.appx
+
+# Electron builder temporary files
+builder-debug.yml
+builder-effective-config.yaml
+
+# IMPORTANT:
+# Keep desktop/build/icon.ico tracked
+!desktop/build/
+!desktop/build/icon.ico

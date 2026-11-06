@@ -1,64 +1,105 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
-const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL}`;
+
+const API_BASE_URL = (
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+).replace(/\/$/, "");
 
 export const askAiAction = createAsyncThunk(
   "ai/ask",
-  async (question, { rejectWithValue }) => {
+  async (question, { getState, rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/api/ask`, {
-        question,
-      });
+      const history = getState()
+        .ai.chatHistory.filter(
+          (chat) =>
+            chat.status !== "error" &&
+            !chat.data?.length &&
+            ["user", "ai"].includes(chat.sender),
+        )
+        .slice(-10)
+        .map((chat) => ({
+          role: chat.sender === "user" ? "user" : "assistant",
+          content: chat.message || chat.text || "",
+        }));
+
+      // The reducer already added the current user message.
+      // Remove it from history because it is sent as question.
+      if (history.length && history.at(-1).role === "user") {
+        history.pop();
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/api/ask`,
+        { question, history },
+        { timeout: 60000 },
+      );
+
       return response.data;
-    } catch (err) {
-      return rejectWithValue(err.response?.data || "Server Error");
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to connect to AI.",
+      );
     }
   },
 );
 
+const initialState = {
+  chatHistory: [],
+  loading: false,
+  error: null,
+};
+
 const aiSlice = createSlice({
   name: "ai",
-  initialState: {
-    chatHistory: [],
-    loading: false,
-    error: null,
-  },
+  initialState,
   reducers: {
     clearChat: (state) => {
       state.chatHistory = [];
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(askAiAction.pending, (state) => {
+      .addCase(askAiAction.pending, (state, action) => {
         state.loading = true;
+        state.error = null;
+
+        state.chatHistory.push({
+          sender: "user",
+          text: action.meta.arg,
+          timestamp: Date.now(),
+        });
       })
+
       .addCase(askAiAction.fulfilled, (state, action) => {
         state.loading = false;
-        const userQuestion = action.meta.arg.toLowerCase();
 
-        // Identity Check Logic
-        const isIdentity =
-          userQuestion.includes("who made you") ||
-          userQuestion.includes("kisne banaya");
-        const aiMessage = isIdentity
-          ? "HensCo AI Identity:"
-          : "Yes Sagar, here is the data I found for you:";
-
-        state.chatHistory.push({ sender: "user", text: action.meta.arg });
+        const payload = action.payload || {};
 
         state.chatHistory.push({
           sender: "ai",
-          message: aiMessage,
-          data: isIdentity
-            ? "I was developed and created by Sagar Gupta for The Hens Co. ERP system."
-            : action.payload.answer,
-          query: action.payload.queryUsed,
+          message: payload.message || "No response received.",
+          data: Array.isArray(payload.data) ? payload.data : [],
+          query: payload.queryUsed || null,
+          mode: payload.mode || "chat",
+          rowCount: payload.rowCount || 0,
+          timestamp: Date.now(),
         });
       })
+
       .addCase(askAiAction.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload?.message || "Something went wrong";
+        state.error = action.payload || "Something went wrong.";
+
+        state.chatHistory.push({
+          sender: "ai",
+          message: state.error,
+          status: "error",
+          data: [],
+          timestamp: Date.now(),
+        });
       });
   },
 });

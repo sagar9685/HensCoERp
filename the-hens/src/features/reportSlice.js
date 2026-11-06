@@ -229,6 +229,29 @@ export const fetchCustomerOutstanding = createAsyncThunk(
   },
 );
 
+export const fetchCustomerOutstandingDetails = createAsyncThunk(
+  "report/fetchCustomerOutstandingDetails",
+  async (params, { rejectWithValue, signal }) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/reports/customer-outstanding/details`,
+        {
+          params,
+          signal,
+        },
+      );
+
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message ||
+          error.message ||
+          "Failed to fetch customer outstanding details",
+      );
+    }
+  },
+);
+
 const reportSlice = createSlice({
   name: "report",
   initialState: {
@@ -295,6 +318,18 @@ const reportSlice = createSlice({
       filters: {},
       loading: false,
       error: null,
+    },
+
+    customerOutstandingDetails: {
+      orders: [],
+      totalRecords: 0,
+      grandTotal: 0,
+      page: 1,
+      limit: 15,
+      type: null,
+      loading: false,
+      error: null,
+      currentRequestId: null,
     },
 
     customerDateRangeLoading: false,
@@ -594,6 +629,57 @@ const reportSlice = createSlice({
           TotalOutstanding: 0,
           PendingOrders: 0,
         };
+      })
+
+      // =========================================
+      // CUSTOMER OUTSTANDING DETAILS
+      // =========================================
+
+      .addCase(fetchCustomerOutstandingDetails.pending, (state, action) => {
+        const details = state.customerOutstandingDetails;
+
+        details.loading = true;
+        details.error = null;
+        details.orders = [];
+        details.totalRecords = 0;
+        details.grandTotal = 0;
+        details.currentRequestId = action.meta.requestId;
+      })
+
+      .addCase(fetchCustomerOutstandingDetails.fulfilled, (state, action) => {
+        const details = state.customerOutstandingDetails;
+
+        if (details.currentRequestId !== action.meta.requestId) return;
+
+        details.loading = false;
+        details.error = null;
+        details.orders = action.payload?.orders || [];
+        details.totalRecords = action.payload?.totalRecords || 0;
+        details.grandTotal = action.payload?.grandTotal || 0;
+        details.page = action.payload?.page || 1;
+        details.limit = action.payload?.limit || 15;
+        details.type = action.payload?.type || null;
+        details.currentRequestId = null;
+      })
+
+      .addCase(fetchCustomerOutstandingDetails.rejected, (state, action) => {
+        const details = state.customerOutstandingDetails;
+
+        if (details.currentRequestId !== action.meta.requestId) return;
+
+        details.loading = false;
+        details.currentRequestId = null;
+
+        if (action.meta.aborted) return;
+
+        details.error =
+          action.payload ||
+          action.error?.message ||
+          "Failed to fetch order details";
+
+        details.orders = [];
+        details.totalRecords = 0;
+        details.grandTotal = 0;
       });
   },
 });

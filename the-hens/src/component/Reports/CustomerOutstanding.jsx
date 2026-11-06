@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   FaSearch,
@@ -14,8 +14,10 @@ import {
   FaFilter,
   FaMapMarkerAlt,
 } from "react-icons/fa";
+
 import { fetchCustomerName } from "../../features/cutomerSlice";
 import { fetchCustomerOutstanding } from "../../features/reportSlice";
+import CustomerOutstandingModal from "./CustomerOutstandingModal";
 import styles from "./CustomerOutstanding.module.css";
 
 const initialFilters = {
@@ -25,17 +27,17 @@ const initialFilters = {
   to: "",
 };
 
-const currency = (value) => {
-  return new Intl.NumberFormat("en-IN", {
+const currency = (value) =>
+  new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Number(value) || 0);
-};
 
 const CustomerOutstanding = () => {
   const dispatch = useDispatch();
+  const dropdownRef = useRef(null);
 
   const {
     customers = [],
@@ -45,33 +47,41 @@ const CustomerOutstanding = () => {
     error = null,
   } = useSelector((state) => state.report.customerOutstanding);
 
-  //   const customerState = useSelector((state) => state.customer);
-
   const customerNames = useSelector(
     (state) => state.customer.customerName || [],
   );
-  const customerLoading = useSelector((state) => state.customer.isLoading);
 
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const customerLoading = useSelector((state) => state.customer.isLoading);
 
   const [filters, setFilters] = useState(initialFilters);
   const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  const [modalConfig, setModalConfig] = useState({
+    open: false,
+    type: "sales",
+    customer: null,
+  });
 
   const pageSize = 15;
-
-  // =============================================
-  // INITIAL DATA FETCH
-  // =============================================
 
   useEffect(() => {
     dispatch(fetchCustomerOutstanding({}));
     dispatch(fetchCustomerName());
   }, [dispatch]);
 
-  // =============================================
-  // HANDLE FILTER INPUTS
-  // =============================================
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowCustomerDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -81,10 +91,6 @@ const CustomerOutstanding = () => {
       [name]: value,
     }));
   };
-
-  // =============================================
-  // APPLY FILTERS
-  // =============================================
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -108,33 +114,23 @@ const CustomerOutstanding = () => {
 
     setAppliedFilters(cleanFilters);
     setCurrentPage(1);
+    setShowCustomerDropdown(false);
 
     dispatch(fetchCustomerOutstanding(cleanFilters));
   };
-
-  // =============================================
-  // RESET FILTERS
-  // =============================================
 
   const handleReset = () => {
     setFilters({ ...initialFilters });
     setAppliedFilters({ ...initialFilters });
     setCurrentPage(1);
+    setShowCustomerDropdown(false);
 
     dispatch(fetchCustomerOutstanding({}));
   };
 
-  // =============================================
-  // REFRESH DATA
-  // =============================================
-
   const handleRefresh = () => {
     dispatch(fetchCustomerOutstanding(appliedFilters));
   };
-
-  // =============================================
-  // CSV EXPORT
-  // =============================================
 
   const handleExport = () => {
     if (!customers.length) return;
@@ -167,8 +163,6 @@ const CustomerOutstanding = () => {
       customer.Outstanding,
     ]);
 
-    // Prevent spreadsheet formula injection when CSV
-    // is opened in Excel or similar applications.
     const escapeCsv = (value) => {
       let text = String(value ?? "");
 
@@ -183,11 +177,13 @@ const CustomerOutstanding = () => {
       .map((row) => row.map(escapeCsv).join(","))
       .join("\r\n");
 
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob(["\uFEFF", csv], {
+      type: "text/csv;charset=utf-8;",
+    });
 
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
+
     link.href = url;
     link.download = `Customer_Outstanding_${new Date()
       .toISOString()
@@ -195,9 +191,9 @@ const CustomerOutstanding = () => {
 
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
 
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const normalizedCustomers = customerNames
@@ -225,9 +221,21 @@ const CustomerOutstanding = () => {
 
     setShowCustomerDropdown(false);
   };
-  // =============================================
-  // PAGINATION
-  // =============================================
+
+  const openDetails = (type, customer = null) => {
+    setModalConfig({
+      open: true,
+      type,
+      customer,
+    });
+  };
+
+  const closeDetails = () => {
+    setModalConfig((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  };
 
   const totalPages = Math.max(1, Math.ceil(customers.length / pageSize));
 
@@ -236,55 +244,65 @@ const CustomerOutstanding = () => {
 
   const visibleCustomers = customers.slice(startIndex, endIndex);
 
-  // =============================================
-  // SUMMARY CARDS
-  // =============================================
-
   const cards = [
     {
       title: "Total Sales",
+      type: "sales",
       value: currency(summary.TotalSales),
       icon: FaShoppingCart,
       color: "blue",
     },
     {
       title: "Payment Received",
+      type: "received",
       value: currency(summary.TotalReceived),
       icon: FaMoneyBillWave,
       color: "green",
     },
     {
       title: "Outstanding",
+      type: "outstanding",
       value: currency(summary.TotalOutstanding),
       icon: FaWallet,
       color: "red",
     },
     {
       title: "Pending Verification",
+      type: "pending",
       value: currency(summary.PendingVerification),
       icon: FaClock,
       color: "orange",
     },
     {
       title: "Verified Payment",
+      type: "verified",
       value: currency(summary.VerifiedAmount),
       icon: FaCheckCircle,
       color: "purple",
     },
     {
       title: "Total Customers",
+      type: null,
       value: totalCustomers,
       icon: FaUsers,
       color: "teal",
     },
   ];
 
+  const amountButton = (type, value, customer, className = "") => (
+    <button
+      type="button"
+      className={`${styles.amountLink || ""} ${className}`}
+      onClick={() => openDetails(type, customer)}
+      title={`View ${type} order details`}
+      disabled={loading}
+    >
+      {currency(value)}
+    </button>
+  );
+
   return (
     <div className={styles.container}>
-      {/* ===========================================
-          HEADER
-      =========================================== */}
-
       <div className={styles.header}>
         <div>
           <h2 className={styles.heading}>Customer Outstanding Report</h2>
@@ -318,10 +336,6 @@ const CustomerOutstanding = () => {
         </div>
       </div>
 
-      {/* ===========================================
-          SEARCH FILTERS
-      =========================================== */}
-
       <form className={styles.filterSection} onSubmit={handleSearch}>
         <div className={styles.sectionHeading}>
           <FaFilter />
@@ -332,7 +346,7 @@ const CustomerOutstanding = () => {
           <div className={styles.formGroup}>
             <label htmlFor="outstandingCustomer">Customer Name</label>
 
-            <div className={styles.customerDropdownWrapper}>
+            <div ref={dropdownRef} className={styles.customerDropdownWrapper}>
               <div className={styles.inputWrapper}>
                 <FaSearch className={styles.inputIcon} />
 
@@ -348,12 +362,6 @@ const CustomerOutstanding = () => {
                     setShowCustomerDropdown(true);
                   }}
                   onFocus={() => setShowCustomerDropdown(true)}
-                  onBlur={() => {
-                    // Allow dropdown selection to complete
-                    setTimeout(() => {
-                      setShowCustomerDropdown(false);
-                    }, 150);
-                  }}
                 />
               </div>
 
@@ -364,12 +372,11 @@ const CustomerOutstanding = () => {
                       Loading customers...
                     </div>
                   ) : filteredCustomers.length > 0 ? (
-                    filteredCustomers.map((customer) => (
+                    filteredCustomers.map((customer, index) => (
                       <button
-                        key={customer.id}
+                        key={`${customer.id || customer.name}-${index}`}
                         type="button"
                         className={styles.customerOption}
-                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleCustomerSelect(customer)}
                       >
                         <FaUsers />
@@ -436,8 +443,8 @@ const CustomerOutstanding = () => {
               id="outstandingTo"
               type="date"
               name="to"
-              value={filters.to}
               min={filters.from || undefined}
+              value={filters.to}
               onChange={handleChange}
             />
           </div>
@@ -461,18 +468,22 @@ const CustomerOutstanding = () => {
         </div>
       </form>
 
-      {/* ===========================================
-          SUMMARY CARDS
-      =========================================== */}
-
       <div className={styles.summaryGrid}>
         {cards.map((card) => {
           const Icon = card.icon;
 
           return (
-            <div
+            <button
               key={card.title}
-              className={`${styles.summaryCard} ${styles[card.color]}`}
+              type="button"
+              className={`${styles.summaryCard} ${styles[card.color]} ${
+                card.type ? styles.clickableCard || "" : ""
+              }`}
+              onClick={() => {
+                if (card.type) openDetails(card.type);
+              }}
+              disabled={loading || !card.type}
+              style={{ textAlign: "left", width: "100%" }}
             >
               <div className={styles.cardContent}>
                 <span className={styles.cardLabel}>{card.title}</span>
@@ -480,25 +491,26 @@ const CustomerOutstanding = () => {
                 <h3 className={styles.cardValue}>
                   {loading ? "..." : card.value}
                 </h3>
+
+                {card.type && (
+                  <small className={styles.viewDetails || ""}>
+                    Click to view orders
+                  </small>
+                )}
               </div>
 
               <div className={styles.cardIcon}>
                 <Icon />
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
-
-      {/* ===========================================
-          CUSTOMER OUTSTANDING TABLE
-      =========================================== */}
 
       <div className={styles.tableSection}>
         <div className={styles.tableHeader}>
           <div>
             <h3>Customer Outstanding Details</h3>
-
             <p>
               {loading
                 ? "Loading customer records..."
@@ -509,7 +521,6 @@ const CustomerOutstanding = () => {
           <span className={styles.recordBadge}>{totalCustomers} Customers</span>
         </div>
 
-        {/* ERROR */}
         {error && (
           <div className={styles.errorBox} role="alert">
             {typeof error === "string"
@@ -518,7 +529,6 @@ const CustomerOutstanding = () => {
           </div>
         )}
 
-        {/* LOADING */}
         {loading ? (
           <div className={styles.loadingBox}>
             <div className={styles.spinner} />
@@ -552,9 +562,7 @@ const CustomerOutstanding = () => {
                 <tbody>
                   {visibleCustomers.map((customer, index) => (
                     <tr
-                      key={`${customer.CustomerName}-${
-                        customer.ContactNo
-                      }-${startIndex + index}`}
+                      key={`${customer.CustomerName}-${customer.ContactNo}-${startIndex + index}`}
                     >
                       <td className={styles.serial}>
                         {startIndex + index + 1}
@@ -565,7 +573,6 @@ const CustomerOutstanding = () => {
                           <span className={styles.customerName}>
                             {customer.CustomerName || "-"}
                           </span>
-
                           <span className={styles.contact}>
                             {customer.ContactNo || "-"}
                           </span>
@@ -593,39 +600,39 @@ const CustomerOutstanding = () => {
                       </td>
 
                       <td className={styles.amount}>
-                        {currency(customer.TotalSales)}
+                        {amountButton("sales", customer.TotalSales, customer)}
                       </td>
 
                       <td className={styles.receivedAmount}>
-                        {currency(customer.TotalReceived)}
+                        {amountButton(
+                          "received",
+                          customer.TotalReceived,
+                          customer,
+                        )}
                       </td>
 
                       <td className={styles.verifiedAmount}>
-                        {currency(customer.VerifiedAmount)}
+                        {amountButton(
+                          "verified",
+                          customer.VerifiedAmount,
+                          customer,
+                        )}
                       </td>
 
                       <td>
-                        <span
-                          className={
-                            Number(customer.PendingVerification) > 0
-                              ? styles.pendingAmount
-                              : styles.zeroAmount
-                          }
-                        >
-                          {currency(customer.PendingVerification)}
-                        </span>
+                        {amountButton(
+                          "pending",
+                          customer.PendingVerification,
+                          customer,
+                        )}
                       </td>
 
                       <td>
-                        <span
-                          className={
-                            Number(customer.Outstanding) > 0
-                              ? styles.outstandingAmount
-                              : styles.zeroAmount
-                          }
-                        >
-                          {currency(customer.Outstanding)}
-                        </span>
+                        {amountButton(
+                          "outstanding",
+                          customer.Outstanding,
+                          customer,
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -636,24 +643,15 @@ const CustomerOutstanding = () => {
                     <td colSpan={5}>
                       <strong>Grand Total</strong>
                     </td>
-
                     <td>{currency(summary.TotalSales)}</td>
-
                     <td>{currency(summary.TotalReceived)}</td>
-
                     <td>{currency(summary.VerifiedAmount)}</td>
-
                     <td>{currency(summary.PendingVerification)}</td>
-
                     <td>{currency(summary.TotalOutstanding)}</td>
                   </tr>
                 </tfoot>
               </table>
             </div>
-
-            {/* ======================================
-                PAGINATION
-            ====================================== */}
 
             <div className={styles.pagination}>
               <p>
@@ -665,7 +663,9 @@ const CustomerOutstanding = () => {
                 <button
                   type="button"
                   disabled={currentPage === 1}
-                  onClick={() => setCurrentPage((prev) => prev - 1)}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(1, prev - 1))
+                  }
                 >
                   Previous
                 </button>
@@ -677,7 +677,9 @@ const CustomerOutstanding = () => {
                 <button
                   type="button"
                   disabled={currentPage === totalPages}
-                  onClick={() => setCurrentPage((prev) => prev + 1)}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  }
                 >
                   Next
                 </button>
@@ -692,6 +694,17 @@ const CustomerOutstanding = () => {
         shown separately and is already included in received payments. Cancelled
         orders are excluded by the backend.
       </p>
+
+      {modalConfig.open && (
+        <CustomerOutstandingModal
+          key={`${modalConfig.type}-${modalConfig.customer?.CustomerName || "all"}-${modalConfig.customer?.ContactNo || ""}`}
+          open={true}
+          onClose={closeDetails}
+          type={modalConfig.type}
+          customer={modalConfig.customer}
+          filters={appliedFilters}
+        />
+      )}
     </div>
   );
 };

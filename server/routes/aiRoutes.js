@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const askAiController = require("../controller/askAiController");
 
-router.post("/ask", askAiController.askAi);
+const ai = require("../controller/askAiController");
+const { protect } = require("../middleware/authMiddleware");
+
+router.post("/ask", protect, ai.askAi);
 
 module.exports = router;

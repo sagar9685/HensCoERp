@@ -1024,6 +1024,62 @@ ${boyFilter}
 `);
 
     // =====================================================
+    // CREDIT NOTE / SALE RETURN - ITEM WISE DETAILS
+    // Based on Credit Note Date
+    // =====================================================
+    // =====================================================
+    // CREDIT NOTE / SALE RETURN - ITEM WISE DETAILS
+    // =====================================================
+
+    const creditNoteItemsResult = await request.query(`
+  SELECT
+    n.note_id AS NoteID,
+    n.note_no AS NoteNumber,
+    n.note_date AS NoteDate,
+    n.order_id AS OrderID,
+    n.invoice_no AS InvoiceNumber,
+    n.customer_name AS CustomerName,
+
+    n.product_name AS ProductName,
+    n.product_type AS ProductType,
+
+    n.reason AS Reason,
+    n.remarks AS Remarks,
+
+    TRY_CAST(n.original_qty AS DECIMAL(18,2)) AS OriginalQty,
+    TRY_CAST(n.note_qty AS DECIMAL(18,2)) AS Qty,
+    TRY_CAST(n.rate AS DECIMAL(18,2)) AS Rate,
+
+    TRY_CAST(n.amount AS DECIMAL(18,2)) AS Amount,
+    TRY_CAST(ISNULL(n.freight, 0) AS DECIMAL(18,2)) AS Freight
+
+  FROM credit_debit_notes n
+
+  WHERE n.note_date = @targetDate
+    AND n.note_type = 'Credit'
+    AND ISNULL(n.status, '') = 'Active'
+
+    ${
+      dbid
+        ? `AND EXISTS (
+            SELECT 1
+            FROM AssignedOrders ao
+            WHERE ao.OrderID = n.order_id
+              AND ao.DeliveryManID = @dbid
+              AND ISNULL(ao.DeliveryStatus, '') != 'Cancel'
+          )`
+        : `AND NOT EXISTS (
+            SELECT 1
+            FROM AssignedOrders ao
+            WHERE ao.OrderID = n.order_id
+              AND ao.DeliveryStatus = 'Cancel'
+          )`
+    }
+
+  ORDER BY n.note_date, n.note_id
+`);
+
+    // =====================================================
     // 4️⃣ PAYMENT COLLECTED (Based on Order Date, matching Customer Report logic)
     // =====================================================
     const paymentCollectedResult = await request.query(`
@@ -1186,8 +1242,11 @@ ${boyFilter}
       0,
       grossSales - rtvAmount - creditAmount - freightAmount + debitAmount,
     );
-    const totalReceived =
+
+    const actualPaymentCollected =
       paymentCollectedResult.recordset[0]?.PaymentCollected || 0;
+    const totalReceived = Math.max(0, actualPaymentCollected - creditAmount);
+
     const totalFOC = focAmountResult.recordset[0]?.FOCAmount || 0;
 
     const totalOutstanding = Math.max(0, totalSaleAmount - totalReceived);
@@ -1202,6 +1261,50 @@ ${boyFilter}
     const totalEggPCS = categorySummary.TotalEggPCS || 0;
 
     const pendingAmount = totalSaleAmount - totalReceived;
+
+    // =====================================================
+    // CREDIT NOTE PRODUCT BREAKDOWN
+    // =====================================================
+
+    // =====================================================
+    // CREDIT NOTE PRODUCT BREAKDOWN
+    // =====================================================
+
+    const creditNoteItems = (creditNoteItemsResult.recordset || []).map(
+      (item) => ({
+        NoteID: item.NoteID,
+        NoteNumber: item.NoteNumber,
+        NoteDate: item.NoteDate,
+        OrderID: item.OrderID,
+
+        InvoiceNumber: item.InvoiceNumber,
+        CustomerName: item.CustomerName,
+
+        ProductType: "Sale Return / Credit Note",
+
+        ProductName: item.ProductName,
+
+        ItemDescription: [item.ProductName, item.Reason, item.Remarks]
+          .filter(Boolean)
+          .join(" - "),
+
+        Weight: item.ProductName || "",
+
+        Qty: Number(item.Qty) || 0,
+        OriginalQty: Number(item.OriginalQty) || 0,
+
+        Rate: Number(item.Rate) || 0,
+
+        Amount: -(Number(item.Amount) || 0),
+
+        Freight: Number(item.Freight) || 0,
+
+        EntryType: "CREDIT_NOTE",
+      }),
+    );
+
+    // Add Credit Note items to existing product breakdown
+    const finalProductData = [...productData, ...creditNoteItems];
 
     // =====================================================
     // RESPONSE
@@ -1225,7 +1328,8 @@ ${boyFilter}
         totalChickenKG: totalChickenKG,
         totalEggPCS: totalEggPCS,
       },
-      products: productData,
+      products: finalProductData,
+      creditNoteItems,
       payments: paymentData,
     });
   } catch (err) {
@@ -3573,7 +3677,7 @@ exports.getCustomerOutstanding = async (req, res) => {
     const { from, to, customerName, area } = req.query;
 
     // =====================================================
-    // 1. DATE VALIDATION
+    // 1. VALIDATION
     // =====================================================
 
     if ((from && !to) || (!from && to)) {
@@ -3583,30 +3687,29 @@ exports.getCustomerOutstanding = async (req, res) => {
       });
     }
 
-    const request = pool.request();
-
-    let filters = "";
-
-    // =====================================================
-    // 2. DATE FILTER
-    // =====================================================
-
-    if (from && to) {
-      filters += `
-        AND O.OrderDate >= @from
-        AND O.OrderDate < DATEADD(DAY, 1, @to)
-      `;
-
-      request.input("from", sql.Date, from);
-      request.input("to", sql.Date, to);
+    if (from && to && from > to) {
+      return res.status(400).json({
+        success: false,
+        message: "From date cannot be greater than To date",
+      });
     }
 
+    const request = pool.request();
+
+    const fromDate = from || null;
+    const toDate = to || null;
+
+    request.input("from", sql.Date, fromDate);
+    request.input("to", sql.Date, toDate);
+
     // =====================================================
-    // 3. CUSTOMER NAME SEARCH
+    // 2. CUSTOMER AND AREA FILTERS
     // =====================================================
 
-    if (customerName && customerName.trim()) {
-      filters += `
+    let customerFilters = "";
+
+    if (customerName?.trim()) {
+      customerFilters += `
         AND O.CustomerName LIKE @customerName
       `;
 
@@ -3617,12 +3720,8 @@ exports.getCustomerOutstanding = async (req, res) => {
       );
     }
 
-    // =====================================================
-    // 4. AREA SEARCH
-    // =====================================================
-
-    if (area && area.trim()) {
-      filters += `
+    if (area?.trim()) {
+      customerFilters += `
         AND O.Area LIKE @area
       `;
 
@@ -3630,145 +3729,462 @@ exports.getCustomerOutstanding = async (req, res) => {
     }
 
     // =====================================================
-    // 5. MAIN QUERY
+    // 3. MAIN QUERY
     // =====================================================
 
     const query = `
-      WITH OrderReport AS (
+      WITH BaseOrders AS (
         SELECT
           O.OrderID,
           O.CustomerName,
           O.ContactNo,
           O.Area,
+          O.OrderDate,
 
-          -- TOTAL SALES
-          (
-            ISNULL(OI.OrderTotal, 0)
-            + ISNULL(O.DeliveryCharge, 0)
-          ) AS TotalSales,
-
-          -- TOTAL PAYMENT RECEIVED
-          ISNULL(P.TotalReceived, 0) AS TotalReceived,
-
-          -- VERIFIED PAYMENT
-          ISNULL(P.VerifiedAmount, 0) AS VerifiedAmount,
-
-          -- PENDING PAYMENT VERIFICATION
-          ISNULL(P.PendingVerification, 0)
-            AS PendingVerification,
-
-          -- OTHER PAYMENT STATUS
-          ISNULL(P.OtherVerification, 0)
-            AS OtherVerification,
-
-          -- PENDING ORDER
-          CASE
-            WHEN A.HasPendingAssignment = 1
-            THEN 1
-            ELSE 0
-          END AS IsPendingOrder
+          CAST(
+            ISNULL(O.DeliveryCharge, 0)
+            AS DECIMAL(18,2)
+          ) AS DeliveryCharge
 
         FROM OrdersTemp O
 
-        -- ================================================
-        -- ORDER ITEMS TOTAL
-        -- ================================================
-
-        OUTER APPLY (
-          SELECT
-            SUM(ISNULL(OI.total, 0)) AS OrderTotal
-
-          FROM OrderItems OI
-
-          WHERE OI.OrderID = O.OrderID
-        ) OI
-
-        -- ================================================
-        -- PAYMENT DETAILS
-        -- ================================================
-
-        OUTER APPLY (
-          SELECT
-
-            SUM(
-              ISNULL(OP.Amount, 0)
-            ) AS TotalReceived,
-
-            SUM(
-              CASE
-                WHEN OP.PaymentVerifyStatus = 'Verified'
-                THEN ISNULL(OP.Amount, 0)
-                ELSE 0
-              END
-            ) AS VerifiedAmount,
-
-            SUM(
-              CASE
-                WHEN OP.PaymentVerifyStatus = 'Pending'
-                  OR OP.PaymentVerifyStatus IS NULL
-                THEN ISNULL(OP.Amount, 0)
-                ELSE 0
-              END
-            ) AS PendingVerification,
-
-            SUM(
-              CASE
-                WHEN OP.PaymentVerifyStatus IS NOT NULL
-                  AND OP.PaymentVerifyStatus
-                    NOT IN ('Pending', 'Verified')
-                THEN ISNULL(OP.Amount, 0)
-                ELSE 0
-              END
-            ) AS OtherVerification
-
-          FROM OrderPayments OP
-
-          WHERE OP.OrderID = O.OrderID
-        ) P
-
-        -- ================================================
-        -- ASSIGNMENT STATUS
-        -- ================================================
-
-        OUTER APPLY (
-          SELECT
-            MAX(
-              CASE
-                WHEN LOWER(
-                  LTRIM(RTRIM(AO.DeliveryStatus))
-                ) = 'pending'
-                THEN 1
-                ELSE 0
-              END
-            ) AS HasPendingAssignment
-
-          FROM AssignedOrders AO
-
-          WHERE AO.OrderID = O.OrderID
-        ) A
-
-        -- ================================================
-        -- EXCLUDE CANCELLED ORDERS
-        -- ================================================
-
         WHERE NOT EXISTS (
           SELECT 1
-
-          FROM AssignedOrders AO_CANCEL
-
-          WHERE AO_CANCEL.OrderID = O.OrderID
-
+          FROM AssignedOrders AO
+          WHERE AO.OrderID = O.OrderID
             AND LOWER(
-              LTRIM(RTRIM(AO_CANCEL.DeliveryStatus))
+              LTRIM(RTRIM(ISNULL(AO.DeliveryStatus, '')))
             ) IN ('cancel', 'cancelled', 'canceled')
         )
 
-        -- CUSTOMER / AREA / DATE FILTERS
-        ${filters}
+        ${customerFilters}
       ),
 
       -- =================================================
-      -- CUSTOMER-WISE REPORT
+      -- 4. ORDER ITEM TOTAL
+      -- =================================================
+
+      ItemTotals AS (
+        SELECT
+          OI.OrderID,
+
+          CAST(
+            SUM(
+              TRY_CAST(
+                ISNULL(OI.Total, 0)
+                AS DECIMAL(18,2)
+              )
+            )
+            AS DECIMAL(18,2)
+          ) AS ItemTotal,
+
+          COUNT(*) AS ItemCount
+
+        FROM OrderItems OI
+
+        GROUP BY OI.OrderID
+      ),
+
+      -- =================================================
+      -- 5. PAYMENT SUMMARY
+      -- Monthly: all non-FOC payment amounts are received
+      -- =================================================
+
+      PaymentTotals AS (
+        SELECT
+          OP.OrderID,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) <> 'FOC'
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS TotalReceived,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) = 'FOC'
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS FOCAmount,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) <> 'FOC'
+                AND LOWER(
+                  LTRIM(RTRIM(ISNULL(OP.PaymentVerifyStatus, '')))
+                ) = 'verified'
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS VerifiedAmount,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) <> 'FOC'
+                AND (
+                  LOWER(
+                    LTRIM(RTRIM(ISNULL(OP.PaymentVerifyStatus, '')))
+                  ) = 'pending'
+                  OR OP.PaymentVerifyStatus IS NULL
+                )
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS PendingVerification,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) <> 'FOC'
+                AND OP.PaymentVerifyStatus IS NOT NULL
+                AND LOWER(
+                  LTRIM(RTRIM(OP.PaymentVerifyStatus))
+                ) NOT IN ('verified', 'pending')
+                THEN ISNULL(OP.Amount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS OtherVerification,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN UPPER(
+                  LTRIM(RTRIM(ISNULL(PM.ModeName, '')))
+                ) <> 'FOC'
+                AND LOWER(
+                  LTRIM(RTRIM(ISNULL(OP.PaymentVerifyStatus, '')))
+                ) = 'short'
+                THEN ISNULL(OP.ShortAmount, 0)
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS ShortAmount
+
+        FROM OrderPayments OP
+
+        INNER JOIN PaymentModes PM
+          ON PM.PaymentModeID = OP.PaymentModeID
+
+        GROUP BY OP.OrderID
+      ),
+
+      -- =================================================
+      -- 6. ORDER SALES
+      -- =================================================
+
+      OrderEvents AS (
+        SELECT
+          B.CustomerName,
+          B.ContactNo,
+          B.Area,
+
+          CAST(
+            CASE
+              WHEN ISNULL(I.ItemCount, 0) > 0
+              THEN
+                ISNULL(I.ItemTotal, 0)
+                + ISNULL(B.DeliveryCharge, 0)
+                - ISNULL(P.FOCAmount, 0)
+              ELSE
+                ISNULL(B.DeliveryCharge, 0)
+                - ISNULL(P.FOCAmount, 0)
+            END
+            AS DECIMAL(18,2)
+          ) AS TotalSales,
+
+          CAST(
+            ISNULL(P.TotalReceived, 0)
+            AS DECIMAL(18,2)
+          ) AS TotalReceived,
+
+          CAST(
+            ISNULL(P.VerifiedAmount, 0)
+            AS DECIMAL(18,2)
+          ) AS VerifiedAmount,
+
+          CAST(
+            ISNULL(P.PendingVerification, 0)
+            AS DECIMAL(18,2)
+          ) AS PendingVerification,
+
+          CAST(
+            ISNULL(P.OtherVerification, 0)
+            AS DECIMAL(18,2)
+          ) AS OtherVerification,
+
+          CAST(
+            ISNULL(P.FOCAmount, 0)
+            AS DECIMAL(18,2)
+          ) AS FOCAmount,
+
+          CAST(
+            ISNULL(P.ShortAmount, 0)
+            AS DECIMAL(18,2)
+          ) AS ShortAmount,
+
+          CAST(0 AS DECIMAL(18,2)) AS CreditAmount,
+          CAST(0 AS DECIMAL(18,2)) AS DebitAmount,
+          CAST(0 AS DECIMAL(18,2)) AS FreightAmount,
+          CAST(0 AS DECIMAL(18,2)) AS RTVAmount,
+
+          1 AS TotalOrders,
+
+          CASE
+            WHEN EXISTS (
+              SELECT 1
+              FROM AssignedOrders AO
+              WHERE AO.OrderID = B.OrderID
+                AND LOWER(
+                  LTRIM(RTRIM(ISNULL(AO.DeliveryStatus, '')))
+                ) = 'pending'
+            )
+            THEN 1
+            ELSE 0
+          END AS PendingOrders
+
+        FROM BaseOrders B
+
+        LEFT JOIN ItemTotals I
+          ON I.OrderID = B.OrderID
+
+        LEFT JOIN PaymentTotals P
+          ON P.OrderID = B.OrderID
+
+        WHERE (
+          @from IS NULL
+          OR (
+            B.OrderDate >= @from
+            AND B.OrderDate < DATEADD(DAY, 1, @to)
+          )
+        )
+      ),
+
+      -- =================================================
+      -- 7. CREDIT AND DEBIT NOTES
+      -- Monthly Report uses original OrderDate
+      -- =================================================
+
+      NoteEvents AS (
+        SELECT
+          B.CustomerName,
+          B.ContactNo,
+          B.Area,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN LOWER(
+                  LTRIM(RTRIM(N.note_type))
+                ) = 'credit'
+                THEN
+                  -ISNULL(
+                    TRY_CAST(N.amount AS DECIMAL(18,2)), 0
+                  )
+
+                WHEN LOWER(
+                  LTRIM(RTRIM(N.note_type))
+                ) = 'debit'
+                THEN
+                  ISNULL(
+                    TRY_CAST(N.amount AS DECIMAL(18,2)), 0
+                  )
+                  - 2 * ISNULL(
+                    TRY_CAST(N.freight AS DECIMAL(18,2)), 0
+                  )
+
+                ELSE
+                  -ISNULL(
+                    TRY_CAST(N.freight AS DECIMAL(18,2)), 0
+                  )
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS TotalSales,
+
+          CAST(0 AS DECIMAL(18,2)) AS TotalReceived,
+          CAST(0 AS DECIMAL(18,2)) AS VerifiedAmount,
+          CAST(0 AS DECIMAL(18,2)) AS PendingVerification,
+          CAST(0 AS DECIMAL(18,2)) AS OtherVerification,
+          CAST(0 AS DECIMAL(18,2)) AS FOCAmount,
+          CAST(0 AS DECIMAL(18,2)) AS ShortAmount,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN LOWER(LTRIM(RTRIM(N.note_type))) = 'credit'
+                THEN
+                  ISNULL(
+                    TRY_CAST(N.amount AS DECIMAL(18,2)), 0
+                  )
+                  - ISNULL(
+                    TRY_CAST(N.freight AS DECIMAL(18,2)), 0
+                  )
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS CreditAmount,
+
+          CAST(
+            SUM(
+              CASE
+                WHEN LOWER(LTRIM(RTRIM(N.note_type))) = 'debit'
+                THEN
+                  ISNULL(
+                    TRY_CAST(N.amount AS DECIMAL(18,2)), 0
+                  )
+                  - ISNULL(
+                    TRY_CAST(N.freight AS DECIMAL(18,2)), 0
+                  )
+                ELSE 0
+              END
+            )
+            AS DECIMAL(18,2)
+          ) AS DebitAmount,
+
+          CAST(
+            SUM(
+              ISNULL(
+                TRY_CAST(N.freight AS DECIMAL(18,2)), 0
+              )
+            )
+            AS DECIMAL(18,2)
+          ) AS FreightAmount,
+
+          CAST(0 AS DECIMAL(18,2)) AS RTVAmount,
+          0 AS TotalOrders,
+          0 AS PendingOrders
+
+        FROM credit_debit_notes N
+
+        INNER JOIN BaseOrders B
+          ON B.OrderID = N.order_id
+
+        WHERE LOWER(
+          LTRIM(RTRIM(ISNULL(N.status, 'active')))
+        ) <> 'cancelled'
+
+        AND (
+          @from IS NULL
+          OR (
+            B.OrderDate >= @from
+            AND B.OrderDate < DATEADD(DAY, 1, @to)
+          )
+        )
+
+        GROUP BY
+          B.CustomerName,
+          B.ContactNo,
+          B.Area
+      ),
+
+      -- =================================================
+      -- 8. RTV
+      -- RTVDate used as in Monthly Report
+      -- =================================================
+
+      RTVEvents AS (
+        SELECT
+          B.CustomerName,
+          B.ContactNo,
+          B.Area,
+
+          CAST(
+            -SUM(
+              ISNULL(
+                TRY_CAST(R.Total AS DECIMAL(18,2)), 0
+              )
+            )
+            AS DECIMAL(18,2)
+          ) AS TotalSales,
+
+          CAST(0 AS DECIMAL(18,2)) AS TotalReceived,
+          CAST(0 AS DECIMAL(18,2)) AS VerifiedAmount,
+          CAST(0 AS DECIMAL(18,2)) AS PendingVerification,
+          CAST(0 AS DECIMAL(18,2)) AS OtherVerification,
+          CAST(0 AS DECIMAL(18,2)) AS FOCAmount,
+          CAST(0 AS DECIMAL(18,2)) AS ShortAmount,
+          CAST(0 AS DECIMAL(18,2)) AS CreditAmount,
+          CAST(0 AS DECIMAL(18,2)) AS DebitAmount,
+          CAST(0 AS DECIMAL(18,2)) AS FreightAmount,
+
+          CAST(
+            SUM(
+              ISNULL(
+                TRY_CAST(R.Total AS DECIMAL(18,2)), 0
+              )
+            )
+            AS DECIMAL(18,2)
+          ) AS RTVAmount,
+
+          0 AS TotalOrders,
+          0 AS PendingOrders
+
+        FROM RTVEntries R
+
+        INNER JOIN BaseOrders B
+          ON B.OrderID = R.OrderID
+
+        WHERE (
+          @from IS NULL
+          OR (
+            R.RTVDate >= @from
+            AND R.RTVDate < DATEADD(DAY, 1, @to)
+          )
+        )
+
+        GROUP BY
+          B.CustomerName,
+          B.ContactNo,
+          B.Area
+      ),
+
+      -- =================================================
+      -- 9. COMBINE ALL EVENTS
+      -- =================================================
+
+      AllEvents AS (
+        SELECT * FROM OrderEvents
+
+        UNION ALL
+
+        SELECT * FROM NoteEvents
+
+        UNION ALL
+
+        SELECT * FROM RTVEvents
+      ),
+
+      -- =================================================
+      -- 10. CUSTOMER-WISE TOTALS
       -- =================================================
 
       CustomerReport AS (
@@ -3777,41 +4193,65 @@ exports.getCustomerOutstanding = async (req, res) => {
           ContactNo,
           MAX(Area) AS Area,
 
-          COUNT(DISTINCT OrderID) AS TotalOrders,
-
-          SUM(IsPendingOrder) AS PendingOrders,
+          SUM(TotalOrders) AS TotalOrders,
+          SUM(PendingOrders) AS PendingOrders,
 
           CAST(
             SUM(TotalSales)
-            AS DECIMAL(18, 2)
+            AS DECIMAL(18,2)
           ) AS TotalSales,
 
           CAST(
             SUM(TotalReceived)
-            AS DECIMAL(18, 2)
+            AS DECIMAL(18,2)
           ) AS TotalReceived,
 
           CAST(
             SUM(VerifiedAmount)
-            AS DECIMAL(18, 2)
+            AS DECIMAL(18,2)
           ) AS VerifiedAmount,
 
           CAST(
             SUM(PendingVerification)
-            AS DECIMAL(18, 2)
+            AS DECIMAL(18,2)
           ) AS PendingVerification,
 
           CAST(
             SUM(OtherVerification)
-            AS DECIMAL(18, 2)
+            AS DECIMAL(18,2)
           ) AS OtherVerification,
 
           CAST(
-            SUM(TotalSales - TotalReceived)
-            AS DECIMAL(18, 2)
-          ) AS Outstanding
+            SUM(FOCAmount)
+            AS DECIMAL(18,2)
+          ) AS FOCAmount,
 
-        FROM OrderReport
+          CAST(
+            SUM(ShortAmount)
+            AS DECIMAL(18,2)
+          ) AS ShortAmount,
+
+          CAST(
+            SUM(CreditAmount)
+            AS DECIMAL(18,2)
+          ) AS CreditAmount,
+
+          CAST(
+            SUM(DebitAmount)
+            AS DECIMAL(18,2)
+          ) AS DebitAmount,
+
+          CAST(
+            SUM(FreightAmount)
+            AS DECIMAL(18,2)
+          ) AS FreightAmount,
+
+          CAST(
+            SUM(RTVAmount)
+            AS DECIMAL(18,2)
+          ) AS RTVAmount
+
+        FROM AllEvents
 
         GROUP BY
           CustomerName,
@@ -3819,7 +4259,7 @@ exports.getCustomerOutstanding = async (req, res) => {
       )
 
       -- =================================================
-      -- FINAL CUSTOMER REPORT
+      -- 11. FINAL CUSTOMER REPORT
       -- =================================================
 
       SELECT
@@ -3828,51 +4268,63 @@ exports.getCustomerOutstanding = async (req, res) => {
         Area,
         TotalOrders,
         PendingOrders,
+
         TotalSales,
         TotalReceived,
         VerifiedAmount,
         PendingVerification,
         OtherVerification,
-        Outstanding
+
+        FOCAmount,
+        ShortAmount,
+        CreditAmount,
+        DebitAmount,
+        FreightAmount,
+        RTVAmount,
+
+        CAST(
+          TotalSales - TotalReceived
+          AS DECIMAL(18,2)
+        ) AS Outstanding
 
       FROM CustomerReport
 
-      WHERE
-        Outstanding > 0
-        OR PendingVerification > 0
-
       ORDER BY
         Outstanding DESC,
-        PendingVerification DESC;
+        CustomerName ASC;
     `;
 
     // =====================================================
-    // 6. EXECUTE QUERY
+    // 12. EXECUTE
     // =====================================================
 
     const result = await request.query(query);
-
     const customers = result.recordset;
 
     // =====================================================
-    // 7. SUMMARY
+    // 13. GRAND SUMMARY
     // =====================================================
 
     const summary = customers.reduce(
       (acc, customer) => {
-        acc.TotalSales += Number(customer.TotalSales || 0);
+        const keys = [
+          "TotalSales",
+          "TotalReceived",
+          "VerifiedAmount",
+          "PendingVerification",
+          "OtherVerification",
+          "FOCAmount",
+          "ShortAmount",
+          "CreditAmount",
+          "DebitAmount",
+          "FreightAmount",
+          "RTVAmount",
+          "PendingOrders",
+        ];
 
-        acc.TotalReceived += Number(customer.TotalReceived || 0);
-
-        acc.VerifiedAmount += Number(customer.VerifiedAmount || 0);
-
-        acc.PendingVerification += Number(customer.PendingVerification || 0);
-
-        acc.OtherVerification += Number(customer.OtherVerification || 0);
-
-        acc.Outstanding += Number(customer.Outstanding || 0);
-
-        acc.PendingOrders += Number(customer.PendingOrders || 0);
+        for (const key of keys) {
+          acc[key] += Number(customer[key] || 0);
+        }
 
         return acc;
       },
@@ -3882,15 +4334,25 @@ exports.getCustomerOutstanding = async (req, res) => {
         VerifiedAmount: 0,
         PendingVerification: 0,
         OtherVerification: 0,
-        Outstanding: 0,
+        FOCAmount: 0,
+        ShortAmount: 0,
+        CreditAmount: 0,
+        DebitAmount: 0,
+        FreightAmount: 0,
+        RTVAmount: 0,
         PendingOrders: 0,
       },
     );
 
-    const round = (value) => Number(value.toFixed(2));
+    const round = (value) => Number(Number(value || 0).toFixed(2));
+
+    const totalSales = round(summary.TotalSales);
+    const totalReceived = round(summary.TotalReceived);
+
+    const totalOutstanding = round(totalSales - totalReceived);
 
     // =====================================================
-    // 8. RESPONSE
+    // 14. RESPONSE
     // =====================================================
 
     return res.status(200).json({
@@ -3908,9 +4370,9 @@ exports.getCustomerOutstanding = async (req, res) => {
       TotalCustomers: customers.length,
 
       Summary: {
-        TotalSales: round(summary.TotalSales),
-
-        TotalReceived: round(summary.TotalReceived),
+        TotalSales: totalSales,
+        TotalReceived: totalReceived,
+        TotalOutstanding: totalOutstanding,
 
         VerifiedAmount: round(summary.VerifiedAmount),
 
@@ -3918,7 +4380,14 @@ exports.getCustomerOutstanding = async (req, res) => {
 
         OtherVerification: round(summary.OtherVerification),
 
-        TotalOutstanding: round(summary.Outstanding),
+        FOCAmount: round(summary.FOCAmount),
+        ShortAmount: round(summary.ShortAmount),
+
+        CreditAmount: round(summary.CreditAmount),
+        DebitAmount: round(summary.DebitAmount),
+
+        FreightAmount: round(summary.FreightAmount),
+        RTVAmount: round(summary.RTVAmount),
 
         PendingOrders: summary.PendingOrders,
       },
@@ -3931,6 +4400,291 @@ exports.getCustomerOutstanding = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to fetch customer outstanding report",
+      error: error.message,
+    });
+  }
+};
+
+exports.getCustomerOutstandingDetails = async (req, res) => {
+  try {
+    const pool = await poolPromise;
+
+    const {
+      type,
+      customerName,
+      contactNo,
+      area,
+      from,
+      to,
+      page = 1,
+      limit = 15,
+    } = req.query;
+
+    const allowedTypes = [
+      "sales",
+      "received",
+      "outstanding",
+      "pending",
+      "verified",
+    ];
+
+    if (!allowedTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid report type",
+      });
+    }
+
+    if ((from && !to) || (!from && to)) {
+      return res.status(400).json({
+        success: false,
+        message: "Both dates are required",
+      });
+    }
+
+    if (from && to && from > to) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date range",
+      });
+    }
+
+    const currentPage = Math.max(1, Number(page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(limit) || 15));
+    const offset = (currentPage - 1) * pageSize;
+
+    const request = pool.request();
+
+    request.input("offset", sql.Int, offset);
+    request.input("limit", sql.Int, pageSize);
+
+    let filters = "";
+
+    if (from && to) {
+      filters += `
+        AND O.OrderDate >= @from
+        AND O.OrderDate < DATEADD(DAY, 1, @to)
+      `;
+      request.input("from", sql.Date, from);
+      request.input("to", sql.Date, to);
+    }
+
+    if (customerName?.trim()) {
+      filters += " AND O.CustomerName LIKE @customerName";
+      request.input(
+        "customerName",
+        sql.NVarChar(255),
+        `%${customerName.trim()}%`,
+      );
+    }
+
+    if (contactNo?.trim()) {
+      filters += " AND O.ContactNo = @contactNo";
+      request.input("contactNo", sql.NVarChar(50), contactNo.trim());
+    }
+
+    if (area?.trim()) {
+      filters += " AND O.Area LIKE @area";
+      request.input("area", sql.NVarChar(255), `%${area.trim()}%`);
+    }
+
+    const amountColumns = {
+      sales: "TotalSales",
+      received: "TotalReceived",
+      outstanding: "Outstanding",
+      pending: "PendingVerification",
+      verified: "VerifiedAmount",
+    };
+
+    const amountColumn = amountColumns[type];
+
+    const query = `
+      WITH OrderReport AS (
+        SELECT
+          O.OrderID,
+          O.InvoiceNo,
+          O.OrderDate,
+          O.CustomerName,
+          O.ContactNo,
+          O.Area,
+
+        A.AssignID,
+A.DeliveryManName,
+A.DeliveryStatus,
+A.DeliveryDate,
+A.ActualDeliveryDate,
+A.PaymentReceivedDate,
+
+          CAST(
+            ISNULL(OI.OrderTotal, 0) +
+            ISNULL(O.DeliveryCharge, 0)
+            AS DECIMAL(18, 2)
+          ) AS TotalSales,
+
+          CAST(ISNULL(P.TotalReceived, 0) AS DECIMAL(18, 2))
+            AS TotalReceived,
+
+          CAST(ISNULL(P.VerifiedAmount, 0) AS DECIMAL(18, 2))
+            AS VerifiedAmount,
+
+          CAST(ISNULL(P.PendingVerification, 0) AS DECIMAL(18, 2))
+            AS PendingVerification,
+
+          CAST(ISNULL(P.OtherVerification, 0) AS DECIMAL(18, 2))
+            AS OtherVerification,
+
+          CAST(
+            ISNULL(OI.OrderTotal, 0) +
+            ISNULL(O.DeliveryCharge, 0) -
+            ISNULL(P.TotalReceived, 0)
+            AS DECIMAL(18, 2)
+          ) AS Outstanding,
+
+          CASE WHEN A.DeliveryStatus = 'pending'
+            THEN 1 ELSE 0 END AS IsPendingOrder
+
+        FROM OrdersTemp O
+
+        OUTER APPLY (
+          SELECT SUM(ISNULL(OI.total, 0)) AS OrderTotal
+          FROM OrderItems OI
+          WHERE OI.OrderID = O.OrderID
+        ) OI
+
+        OUTER APPLY (
+          SELECT
+            SUM(ISNULL(OP.Amount, 0)) AS TotalReceived,
+
+            SUM(CASE
+              WHEN OP.PaymentVerifyStatus = 'Verified'
+              THEN ISNULL(OP.Amount, 0) ELSE 0
+            END) AS VerifiedAmount,
+
+            SUM(CASE
+              WHEN OP.PaymentVerifyStatus = 'Pending'
+                OR OP.PaymentVerifyStatus IS NULL
+              THEN ISNULL(OP.Amount, 0) ELSE 0
+            END) AS PendingVerification,
+
+            SUM(CASE
+              WHEN OP.PaymentVerifyStatus IS NOT NULL
+                AND OP.PaymentVerifyStatus NOT IN ('Pending', 'Verified')
+              THEN ISNULL(OP.Amount, 0) ELSE 0
+            END) AS OtherVerification
+
+          FROM OrderPayments OP
+          WHERE OP.OrderID = O.OrderID
+        ) P
+
+      
+OUTER APPLY (
+  SELECT TOP 1
+    AO.AssignID,
+    COALESCE(
+      NULLIF(LTRIM(RTRIM(DM.Name)), ''),
+      NULLIF(LTRIM(RTRIM(AO.OtherDeliveryManName)), ''),
+      'Not Assigned'
+    ) AS DeliveryManName,
+    AO.DeliveryStatus,
+    AO.DeliveryDate,
+    AO.ActualDeliveryDate,
+    AO.PaymentReceivedDate
+
+  FROM AssignedOrders AO
+
+  LEFT JOIN DeliveryMen DM
+    ON DM.DeliveryManID = AO.DeliveryManID
+
+  WHERE AO.OrderID = O.OrderID
+
+  ORDER BY AO.AssignID DESC
+) A
+
+
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM AssignedOrders AC
+          WHERE AC.OrderID = O.OrderID
+            AND LOWER(LTRIM(RTRIM(AC.DeliveryStatus)))
+              IN ('cancel', 'cancelled', 'canceled')
+        )
+
+        ${filters}
+      ),
+
+      EligibleCustomers AS (
+        SELECT CustomerName, ContactNo
+        FROM OrderReport
+        GROUP BY CustomerName, ContactNo
+        HAVING
+          SUM(Outstanding) > 0
+          OR SUM(PendingVerification) > 0
+      ),
+
+      DetailReport AS (
+        SELECT R.*
+        FROM OrderReport R
+        WHERE EXISTS (
+          SELECT 1
+          FROM EligibleCustomers E
+          WHERE E.CustomerName = R.CustomerName
+            AND (
+              E.ContactNo = R.ContactNo
+              OR (E.ContactNo IS NULL AND R.ContactNo IS NULL)
+            )
+        )
+      )
+
+      SELECT
+        OrderID,
+        InvoiceNo,
+        OrderDate,
+        CustomerName,
+        ContactNo,
+        Area,
+        AssignID,
+        DeliveryManName,
+        DeliveryStatus,
+        ActualDeliveryDate,
+        PaymentReceivedDate,
+        TotalSales,
+        TotalReceived,
+        VerifiedAmount,
+        PendingVerification,
+        OtherVerification,
+        Outstanding,
+        ${amountColumn} AS SelectedAmount,
+        COUNT(*) OVER() AS TotalRecords,
+        SUM(${amountColumn}) OVER() AS GrandTotal
+
+      FROM DetailReport
+      WHERE ${amountColumn} > 0
+
+      ORDER BY OrderDate DESC, OrderID DESC
+      OFFSET @offset ROWS
+      FETCH NEXT @limit ROWS ONLY;
+    `;
+
+    const result = await request.query(query);
+    const orders = result.recordset;
+
+    // Window totals are unavailable on empty pages.
+    // Return an empty result when no matching page rows exist.
+    return res.status(200).json({
+      success: true,
+      type,
+      page: currentPage,
+      limit: pageSize,
+      totalRecords: Number(orders[0]?.TotalRecords || 0),
+      grandTotal: Number(orders[0]?.GrandTotal || 0),
+      orders: orders.map(({ TotalRecords, GrandTotal, ...order }) => order),
+    });
+  } catch (error) {
+    console.error("OUTSTANDING DETAILS ERROR:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Unable to fetch outstanding details",
       error: error.message,
     });
   }

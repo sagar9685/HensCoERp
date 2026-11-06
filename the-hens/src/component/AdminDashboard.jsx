@@ -64,7 +64,7 @@ const AdminDashboard = () => {
           ProductName: "",
           ProductType: "",
           invoice: "", // ✅ add
-          area: "", // ✅ new
+          area: [],
           bulkCustomer: "", // ✅ new
           paymentModes: [], // ✅ VERY IMPORTANT
           customerGroup: "",
@@ -74,6 +74,63 @@ const AdminDashboard = () => {
   const bulkLoading = useSelector((state) => state.customerAnalysis.loading);
 
   const areaData = useSelector((state) => state.customer.areaData || []);
+
+  const [isAreaOpen, setIsAreaOpen] = useState(false);
+  const [areaSearch, setAreaSearch] = useState("");
+
+  const selectedAreas = Array.isArray(filters.area)
+    ? filters.area
+    : filters.area
+      ? [filters.area]
+      : [];
+
+  const filteredAreas = areaData.filter((area) =>
+    (area.areaName || "")
+      .toLowerCase()
+      .includes(areaSearch.trim().toLowerCase()),
+  );
+
+  const handleAreaToggle = (areaName) => {
+    setFilters((prev) => {
+      const currentAreas = Array.isArray(prev.area)
+        ? prev.area
+        : prev.area
+          ? [prev.area]
+          : [];
+
+      const isSelected = currentAreas.includes(areaName);
+
+      return {
+        ...prev,
+        area: isSelected
+          ? currentAreas.filter((name) => name !== areaName)
+          : [...currentAreas, areaName],
+      };
+    });
+  };
+
+  const handleSelectAllAreas = () => {
+    setFilters((prev) => ({
+      ...prev,
+      area: [
+        ...new Set([
+          ...(Array.isArray(prev.area)
+            ? prev.area
+            : prev.area
+              ? [prev.area]
+              : []),
+          ...filteredAreas.map((area) => area.areaName),
+        ]),
+      ],
+    }));
+  };
+
+  const handleClearAreas = () => {
+    setFilters((prev) => ({
+      ...prev,
+      area: [],
+    }));
+  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -618,10 +675,20 @@ const AdminDashboard = () => {
     }
 
     // AREA FILTER
-    if (filters.area) {
-      filtered = filtered.filter(
-        (item) =>
-          item.Area?.trim().toLowerCase() === filters.area.trim().toLowerCase(),
+    // MULTIPLE AREA FILTER
+    const areasToFilter = Array.isArray(filters.area)
+      ? filters.area
+      : filters.area
+        ? [filters.area]
+        : [];
+
+    if (areasToFilter.length > 0) {
+      const normalizedAreas = new Set(
+        areasToFilter.map((area) => area.trim().toLowerCase()),
+      );
+
+      filtered = filtered.filter((item) =>
+        normalizedAreas.has((item.Area || "").trim().toLowerCase()),
       );
     }
 
@@ -1264,18 +1331,102 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* AREA */}
+          {/* SEARCHABLE MULTI-SELECT AREA FILTER */}
           <div className={styles.inputGroup}>
             <label>AREA</label>
-            <select name="area" value={filters.area} onChange={handleChange}>
-              <option value="">All</option>
 
-              {areaData.map((area) => (
-                <option key={area.AreaId || area.id} value={area.areaName}>
-                  {area.areaName}
-                </option>
-              ))}
-            </select>
+            <div className={styles.areaDropdownWrapper}>
+              <button
+                type="button"
+                className={styles.areaSelectInput}
+                onClick={() => setIsAreaOpen((prev) => !prev)}
+              >
+                <span>
+                  {selectedAreas.length === 0
+                    ? "All Areas"
+                    : `${selectedAreas.length} Area${selectedAreas.length > 1 ? "s" : ""} Selected`}
+                </span>
+
+                <span className={styles.areaDropdownArrow}>
+                  {isAreaOpen ? "▲" : "▼"}
+                </span>
+              </button>
+
+              {isAreaOpen && (
+                <>
+                  <div
+                    className={styles.areaDropdownOverlay}
+                    onClick={() => setIsAreaOpen(false)}
+                  />
+
+                  <div className={styles.areaDropdownMenu}>
+                    {/* SEARCH BOX */}
+                    <div className={styles.areaSearchBox}>
+                      <FaSearch />
+
+                      <input
+                        type="text"
+                        placeholder="Search area..."
+                        value={areaSearch}
+                        onChange={(e) => setAreaSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+
+                    {/* SELECT ALL / CLEAR ALL */}
+                    <div className={styles.areaDropdownActions}>
+                      <button type="button" onClick={handleSelectAllAreas}>
+                        Select All
+                      </button>
+
+                      <button type="button" onClick={handleClearAreas}>
+                        Clear All
+                      </button>
+                    </div>
+
+                    {/* AREA CHECKBOX LIST */}
+                    <div className={styles.areaCheckboxList}>
+                      {filteredAreas.length > 0 ? (
+                        filteredAreas.map((area) => {
+                          const areaName = area.areaName;
+
+                          return (
+                            <label
+                              key={area.AreaId || area.id || areaName}
+                              className={styles.areaCheckboxItem}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedAreas.includes(areaName)}
+                                onChange={() => handleAreaToggle(areaName)}
+                              />
+
+                              <span>{areaName}</span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <div className={styles.areaNoResults}>
+                          No areas found
+                        </div>
+                      )}
+                    </div>
+
+                    {/* FOOTER */}
+                    <div className={styles.areaDropdownFooter}>
+                      <span>{selectedAreas.length} selected</span>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsAreaOpen(false)}
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* BULK CUSTOMER */}
@@ -1408,7 +1559,10 @@ const AdminDashboard = () => {
               })
               .map((key) => (
                 <span key={key} className={styles.filterTag}>
-                  {key.replace(/([A-Z])/g, " $1")}: {filters[key]}
+                  {key.replace(/([A-Z])/g, " $1")}:{" "}
+                  {Array.isArray(filters[key])
+                    ? filters[key].join(", ")
+                    : filters[key]}
                   <button
                     onClick={() => {
                       // Special case: clearing ProductType should clear ProductName too
@@ -1419,7 +1573,10 @@ const AdminDashboard = () => {
                           ProductName: "",
                         });
                       } else {
-                        setFilters({ ...filters, [key]: "" });
+                        setFilters({
+                          ...filters,
+                          [key]: Array.isArray(filters[key]) ? [] : "",
+                        });
                       }
                     }}
                   >

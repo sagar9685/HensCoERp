@@ -11,6 +11,7 @@ const {
   getWeeklyCompareReport,
   getCustomerWiseDateRangeReport,
   getCustomerOutstanding,
+  getCustomerOutstandingDetails,
 } = require("../controller/reportController");
 
 router.get("/monthly", getMonthlyReport);
@@ -24,5 +25,7 @@ router.get("/customer-report", getCustomerWiseDateRangeReport);
 
 router.get("/customer-outstanding", getCustomerOutstanding);
 router.get("/customer-ledgers", getCustomerLedgerByDate);
+
+router.get("/customer-outstanding/details", getCustomerOutstandingDetails);
 
 module.exports = router;
