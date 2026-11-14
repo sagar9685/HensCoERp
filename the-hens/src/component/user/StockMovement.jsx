@@ -15,6 +15,8 @@ const StockMovementReport = () => {
   const today = new Date().toISOString().split("T")[0];
   const [dates, setDates] = useState({ fromDate: today, toDate: today });
 
+  const [exporting, setExporting] = useState(false);
+
   useEffect(() => {
     handleFetch();
   }, []);
@@ -24,57 +26,120 @@ const StockMovementReport = () => {
   };
 
   // --- Excel Export Logic ---
+
   const exportToExcel = async () => {
-    const workbook = XLSX.utils.book_new();
+    if (exporting) return;
 
-    let start = new Date(dates.fromDate);
-    let end = new Date(dates.toDate);
+    if (!dates.fromDate || !dates.toDate || dates.fromDate > dates.toDate) {
+      alert("Please select a valid date range.");
+      return;
+    }
 
-    while (start <= end) {
-      const currentDate = start.toISOString().split("T")[0];
+    setExporting(true);
 
-      try {
-        // 🔥 API call for each date
-        const res = await fetch(
-          `http://137.97.174.50:5005/api/stock/report?fromDate=${currentDate}&toDate=${currentDate}`,
-        );
+    try {
+      const workbook = XLSX.utils.book_new();
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+      const start = new Date(`${dates.fromDate}T00:00:00Z`);
+      const end = new Date(`${dates.toDate}T00:00:00Z`);
+
+      const dateList = [];
+
+      for (
+        let d = new Date(start);
+        d <= end;
+        d.setUTCDate(d.getUTCDate() + 1)
+      ) {
+        dateList.push(d.toISOString().slice(0, 10));
+      }
+
+      const fetchDay = async (currentDate) => {
+        const params = new URLSearchParams({
+          fromDate: currentDate,
+          toDate: currentDate,
+        });
+
+        const res = await fetch(`${API_BASE_URL}/api/stock/report?${params}`);
+
+        if (!res.ok) {
+          throw new Error(`Failed for ${currentDate}`);
+        }
+
         const data = await res.json();
 
-        if (data.length > 0) {
-          const headers = [
-            "Product Name",
-            "Opening",
-            "Total In",
-            "Total Sold",
-            "Closing",
+        if (!Array.isArray(data)) {
+          throw new Error(`Invalid response for ${currentDate}`);
+        }
+
+        return data;
+      };
+
+      let exportedSheets = 0;
+
+      // Maximum 5 requests at a time
+      for (let i = 0; i < dateList.length; i += 5) {
+        const batch = dateList.slice(i, i + 5);
+        const results = await Promise.all(batch.map(fetchDay));
+
+        results.forEach((data, index) => {
+          if (!data.length) return;
+
+          const currentDate = batch[index];
+
+          const sheetData = [
+            [`Stock Movement Report - ${currentDate}`],
+            [],
+            [
+              "Product Name",
+              "Opening",
+              "Total In",
+              "Total Sold",
+              "Rejected",
+              "Closing",
+            ],
+            ...data.map((item) => [
+              item.ProductType,
+              Number(item.Opening || 0),
+              Number(item.Total_In || 0),
+              Number(item.Total_Sell || 0),
+              Number(item.Total_Rejected || 0),
+              Number(item.Closing || 0),
+            ]),
           ];
-
-          const rows = data.map((item) => [
-            item.ProductType,
-            item.Opening,
-            item.Total_In,
-            item.Total_Sell,
-            item.Closing,
-          ]);
-
-          const sheetData = [[`Date: ${currentDate}`], [], headers, ...rows];
 
           const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
 
-          // 👇 Sheet name = date
+          worksheet["!cols"] = [
+            { wch: 25 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 15 },
+          ];
+
           XLSX.utils.book_append_sheet(workbook, worksheet, currentDate);
-        }
-      } catch (err) {
-        console.error("Error fetching for date:", currentDate);
+
+          exportedSheets++;
+        });
       }
 
-      start.setDate(start.getDate() + 1);
-    }
+      if (!exportedSheets) {
+        alert("No stock movement data found.");
+        return;
+      }
 
-    XLSX.writeFile(
-      workbook,
-      `Stock_Report_${dates.fromDate}_to_${dates.toDate}.xlsx`,
-    );
+      XLSX.writeFile(
+        workbook,
+        `Stock_Report_${dates.fromDate}_to_${dates.toDate}.xlsx`,
+      );
+    } catch (error) {
+      console.error("EXCEL EXPORT ERROR:", error);
+      alert("Excel export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -119,13 +184,15 @@ const StockMovementReport = () => {
                   </button>
 
                   {/* Export Button */}
+
                   <button
                     className="btn btn-success btn-icon-text"
                     onClick={exportToExcel}
+                    disabled={exporting || loading}
                     style={{ marginLeft: "10px" }}
                   >
                     <i className="mdi mdi-microsoft-excel btn-icon-prepend"></i>
-                    Export Excel
+                    {exporting ? "Exporting..." : "Export Excel"}
                   </button>
                 </div>
               </div>
@@ -138,9 +205,11 @@ const StockMovementReport = () => {
                       <th>Opening</th>
                       <th className={styles.inflow}>Total In (+)</th>
                       <th className={styles.outflow}>Total Sold (-)</th>
-                      <th>Closing (Dashboard)</th>
+                      <th>Rejected (-)</th>
+                      <th>Closing Stock</th>
                     </tr>
                   </thead>
+
                   <tbody>
                     {Array.isArray(movementReport) &&
                     movementReport.length > 0 ? (
@@ -149,11 +218,19 @@ const StockMovementReport = () => {
                           <td className={styles.productName}>
                             {item.ProductType}
                           </td>
+
                           <td>{item.Opening}</td>
+
                           <td className={styles.inflowText}>{item.Total_In}</td>
+
                           <td className={styles.outflowText}>
                             {item.Total_Sell}
                           </td>
+
+                          <td style={{ color: "#dc3545", fontWeight: 600 }}>
+                            {item.Total_Rejected ?? 0}
+                          </td>
+
                           <td className={styles.closingText}>
                             <span>{item.Closing}</span>
                           </td>
@@ -162,10 +239,15 @@ const StockMovementReport = () => {
                     ) : (
                       <tr>
                         <td
-                          colSpan="5"
-                          style={{ textAlign: "center", padding: "20px" }}
+                          colSpan={6}
+                          style={{
+                            textAlign: "center",
+                            padding: "20px",
+                          }}
                         >
-                          No data found for the selected dates.
+                          {loading
+                            ? "Loading stock movement..."
+                            : "No data found for the selected dates."}
                         </td>
                       </tr>
                     )}

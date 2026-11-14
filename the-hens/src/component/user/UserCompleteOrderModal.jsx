@@ -135,41 +135,60 @@ const UserCompleteOrderModal = ({ isOpen, onClose, order }) => {
   };
 
   const handlePaymentMethodToggle = (modeName) => {
-    setSelectedPaymentMethods((prev) => {
-      let updated;
-      if (prev.includes(modeName)) {
-        updated = prev.filter((m) => m !== modeName);
-      } else {
-        updated = [...prev, modeName];
-      }
+    const isSelected = selectedPaymentMethods.includes(modeName);
 
-      // recalc remaining using amount keys
-      const totalPaid = updated.reduce((sum, m) => {
-        const key = makeAmountKey(m);
-        return sum + Number(formData[key] || 0);
-      }, 0);
+    let updatedMethods;
 
-      setRemainingAmount(totalAmount - totalPaid);
-      return updated;
-    });
+    if (isSelected) {
+      updatedMethods = selectedPaymentMethods.filter((m) => m !== modeName);
+    } else {
+      updatedMethods = [...selectedPaymentMethods, modeName];
+    }
+
+    const updatedFormData = { ...formData };
+
+    // Unselect karne par amount 0
+    if (isSelected) {
+      updatedFormData[makeAmountKey(modeName)] = "0";
+    } else {
+      // Baaki selected payment methods ka total
+      const alreadyEnteredAmount = selectedPaymentMethods.reduce(
+        (sum, method) => {
+          return sum + Number(updatedFormData[makeAmountKey(method)] || 0);
+        },
+        0,
+      );
+
+      // Remaining amount automatically fill
+      const pendingAmount = Math.max(0, totalAmount - alreadyEnteredAmount);
+
+      updatedFormData[makeAmountKey(modeName)] = pendingAmount.toFixed(2);
+    }
+
+    const totalPaid = updatedMethods.reduce((sum, method) => {
+      return sum + Number(updatedFormData[makeAmountKey(method)] || 0);
+    }, 0);
+
+    setFormData(updatedFormData);
+    setSelectedPaymentMethods(updatedMethods);
+    setRemainingAmount(Number((totalAmount - totalPaid).toFixed(2)));
   };
 
   const handlePaymentAmountChange = (modeName, value) => {
     const amountKey = makeAmountKey(modeName);
 
-    // 1. State mein exact value set karein (taaki cut karne par empty string dikhe)
-    setFormData((prev) => ({ ...prev, [amountKey]: value }));
+    const updatedFormData = {
+      ...formData,
+      [amountKey]: value,
+    };
 
-    // 2. Calculation ke liye Number() ka use karein
-    const totalPaid = selectedPaymentMethods.reduce((sum, m) => {
-      const key = makeAmountKey(m);
-      // Agar current mode change ho raha hai toh uski numeric value lein, warna purani
-      const amt =
-        m === modeName ? Number(value || 0) : Number(formData[key] || 0);
-      return sum + amt;
+    const totalPaid = selectedPaymentMethods.reduce((sum, method) => {
+      return sum + Number(updatedFormData[makeAmountKey(method)] || 0);
     }, 0);
 
-    setRemainingAmount(totalAmount - totalPaid);
+    setFormData(updatedFormData);
+
+    setRemainingAmount(Number((totalAmount - totalPaid).toFixed(2)));
   };
 
   const distributeRemainingAmount = (modeName) => {

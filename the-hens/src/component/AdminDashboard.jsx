@@ -155,9 +155,9 @@ const AdminDashboard = () => {
     (state) => state.paymentMode?.list || [],
   );
 
-  const paymentDetailsLoading = useSelector(
-    (state) => state.paymentVerificationDetails?.loading || false,
-  );
+  // const paymentDetailsLoading = useSelector(
+  //   (state) => state.paymentVerificationDetails?.loading || false,
+  // );
 
   const handleOpenNote = (order) => {
     setSelectedNoteOrder(order);
@@ -562,11 +562,9 @@ const AdminDashboard = () => {
 
   const deliveryMenList = [
     ...new Set(
-      orders
-        ?.map((o) => o.DeliveryManName)
-        .filter((name) => name && name.trim() !== ""),
+      (orders || []).map((o) => o.DeliveryManName?.trim()).filter(Boolean),
     ),
-  ];
+  ].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
 
   const handleClear = () => {
     const resetFilters = {
@@ -611,18 +609,64 @@ const AdminDashboard = () => {
     }
 
     if (filters.orderStatus) {
-      filtered = filtered.filter(
-        (item) =>
-          (item.OrderStatus || "").toLowerCase().trim() ===
-          filters.orderStatus.toLowerCase().trim(),
-      );
+      const selectedStatus = String(filters.orderStatus).trim().toLowerCase();
+
+      filtered = filtered.filter((item) => {
+        const orderStatus = String(item.OrderStatus || "")
+          .trim()
+          .toLowerCase();
+
+        switch (selectedStatus) {
+          case "pending":
+            return ["pending", "n/a", ""].includes(orderStatus);
+
+          case "complete":
+            return ["complete", "completed"].includes(orderStatus);
+
+          case "cancel":
+            return ["cancel", "cancelled"].includes(orderStatus);
+
+          case "in progress":
+            return ["in progress", "inprogress"].includes(orderStatus);
+
+          default:
+            return orderStatus === selectedStatus;
+        }
+      });
     }
 
     if (filters.paymentStatus) {
-      filtered = filtered.filter(
-        (item) =>
-          (item.PaymentVerifyStatus || "Pending") === filters.paymentStatus,
+      const selectedPaymentStatus = String(filters.paymentStatus)
+        .trim()
+        .toLowerCase();
+
+      const selectedOrderStatus = String(filters.orderStatus || "")
+        .trim()
+        .toLowerCase();
+
+      const isExplicitCancelFilter = ["cancel", "cancelled"].includes(
+        selectedOrderStatus,
       );
+
+      filtered = filtered.filter((item) => {
+        const orderStatus = String(item.OrderStatus || "")
+          .trim()
+          .toLowerCase();
+
+        const paymentStatus = String(item.PaymentVerifyStatus || "Pending")
+          .trim()
+          .toLowerCase();
+
+        const isCancelled = ["cancel", "cancelled"].includes(orderStatus);
+
+        // Cancel orders must not appear in general payment results.
+        // Explicitly selected Cancel orders are allowed.
+        if (isCancelled && !isExplicitCancelFilter) {
+          return false;
+        }
+
+        return paymentStatus === selectedPaymentStatus;
+      });
     }
 
     if (filters.ProductId) {
@@ -1797,7 +1841,7 @@ const AdminDashboard = () => {
                               ["cancel", "cancelled"].includes(
                                 (row.OrderStatus || "").toLowerCase().trim(),
                               )
-                                ? "Verified"
+                                ? "Cancelled"
                                 : row.PaymentVerifyStatus || "Pending"
                             }
                             disabled={
