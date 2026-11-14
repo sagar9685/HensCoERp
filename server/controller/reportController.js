@@ -520,15 +520,25 @@ exports.getMonthlyReport = async (req, res) => {
           0
         ) AS TotalAmount,
 
-        ISNULL(
-          AVG(
-            TRY_CAST(
-              ISNULL(oi.Rate, 0)
-              AS DECIMAL(18,6)
-            )
-          ),
-          0
-        ) AS AvgRate
+       ISNULL(
+  SUM(
+    TRY_CAST(
+      ISNULL(oi.Total, 0)
+      AS DECIMAL(18,2)
+    )
+  )
+  /
+  NULLIF(
+    SUM(
+      TRY_CAST(
+        ISNULL(oi.Quantity, 0)
+        AS DECIMAL(18,3)
+      )
+    ),
+    0
+  ),
+  0
+) AS AvgRate
 
       FROM OrderItems oi
 

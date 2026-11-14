@@ -121,17 +121,19 @@ exports.getStock = async (req, res) => {
       ORDER BY P.item_name
     `);
     res.json(result.recordset);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.getStockMovement = async (req, res) => {
   const { fromDate, toDate } = req.query;
   try {
     const pool = await poolPromise;
-    const result = await pool.request()
+    const result = await pool
+      .request()
       .input("fromDate", sql.Date, fromDate)
-      .input("toDate", sql.Date, toDate)
-      .query(`
+      .input("toDate", sql.Date, toDate).query(`
       DECLARE @FixedOpeningDate DATE = '2026-04-01';
 
       ;WITH Products AS (
@@ -175,15 +177,18 @@ exports.getStockMovement = async (req, res) => {
       ORDER BY P.item_name
     `);
 
-    const finalData = result.recordset.map(item => ({
+    const finalData = result.recordset.map((item) => ({
       ProductType: item.ProductType,
       Opening: Number(item.Opening),
       Total_In: Number(item.Total_In),
       Total_Sell: Number(item.Total_Sell),
-      Closing: Number(item.Opening) + Number(item.Total_In) - Number(item.Total_Sell)
+      Closing:
+        Number(item.Opening) + Number(item.Total_In) - Number(item.Total_Sell),
     }));
     res.json(finalData);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 exports.rejectStock = async (req, res) => {
@@ -203,9 +208,9 @@ exports.rejectStock = async (req, res) => {
       const itemName = item.item_name;
 
       // FIFO stock minus from Physical Stock Table
-      const stockRes = await transaction.request()
-        .input("item_name", sql.NVarChar, itemName)
-        .query(`
+      const stockRes = await transaction
+        .request()
+        .input("item_name", sql.NVarChar, itemName).query(`
           SELECT ID, Quantity FROM Stock 
           WHERE UPPER(LTRIM(RTRIM(item_name))) = UPPER(LTRIM(RTRIM(@item_name))) AND Quantity > 0
           ORDER BY ID ASC
@@ -214,46 +219,50 @@ exports.rejectStock = async (req, res) => {
       for (let row of stockRes.recordset) {
         if (remainingQty <= 0) break;
         const deductQty = Math.min(row.Quantity, remainingQty);
-        await transaction.request()
+        await transaction
+          .request()
           .input("qty", sql.Decimal(18, 2), deductQty)
           .input("id", sql.Int, row.ID)
           .query(`UPDATE Stock SET Quantity = Quantity - @qty WHERE ID = @id`);
         remainingQty -= deductQty;
       }
 
-      if (remainingQty > 0) throw new Error(`Not enough physical stock for ${itemName}`);
+      if (remainingQty > 0)
+        throw new Error(`Not enough physical stock for ${itemName}`);
 
       // ⭐ INSERT INTO STOCK HISTORY (For Dashboard/Movement Sync)
-      await transaction.request()
+      await transaction
+        .request()
         .input("hItem", sql.NVarChar, itemName)
         .input("hQty", sql.Decimal(18, 2), item.quantity)
         .input("hDate", sql.Date, reject_date)
-        .input("hWeight", sql.NVarChar, item.weight || "")
-        .query(`
+        .input("hWeight", sql.NVarChar, item.weight || "").query(`
           INSERT INTO StockHistory (item_name, quantity, type, date, weight, ref_no)
           VALUES (@hItem, @hQty, 'REJECT', @hDate, @hWeight, 'STOCK-REJECT')
         `);
 
       // Log into RejectedStock table
-      await transaction.request()
+      await transaction
+        .request()
         .input("r_date", sql.Date, reject_date)
         .input("r_name", sql.NVarChar, itemName)
         .input("r_qty", sql.Decimal(18, 2), item.quantity)
-        .input("r_reason", sql.NVarChar, item.reason || "")
-        .query(`
+        .input("r_reason", sql.NVarChar, item.reason || "").query(`
           INSERT INTO RejectedStock (reject_date, item_name, quantity, reason)
           VALUES (@r_date, @r_name, @r_qty, @r_reason)
         `);
     }
 
     await transaction.commit();
-    res.json({ success: true, message: "Rejected stock processed successfully" });
+    res.json({
+      success: true,
+      message: "Rejected stock processed successfully",
+    });
   } catch (error) {
     if (transaction) await transaction.rollback();
     res.status(400).json({ message: error.message });
   }
 };
-
 
 exports.getAvailableStock = async (req, res) => {
   try {
@@ -292,9 +301,9 @@ exports.rejectStock = async (req, res) => {
       const itemName = item.item_name;
 
       // FIFO stock minus from Physical Stock Table
-      const stockRes = await transaction.request()
-        .input("item_name", sql.NVarChar, itemName)
-        .query(`
+      const stockRes = await transaction
+        .request()
+        .input("item_name", sql.NVarChar, itemName).query(`
           SELECT ID, Quantity FROM Stock 
           WHERE UPPER(LTRIM(RTRIM(item_name))) = UPPER(LTRIM(RTRIM(@item_name))) AND Quantity > 0
           ORDER BY ID ASC
@@ -303,40 +312,45 @@ exports.rejectStock = async (req, res) => {
       for (let row of stockRes.recordset) {
         if (remainingQty <= 0) break;
         const deductQty = Math.min(row.Quantity, remainingQty);
-        await transaction.request()
+        await transaction
+          .request()
           .input("qty", sql.Decimal(18, 2), deductQty)
           .input("id", sql.Int, row.ID)
           .query(`UPDATE Stock SET Quantity = Quantity - @qty WHERE ID = @id`);
         remainingQty -= deductQty;
       }
 
-      if (remainingQty > 0) throw new Error(`Not enough physical stock for ${itemName}`);
+      if (remainingQty > 0)
+        throw new Error(`Not enough physical stock for ${itemName}`);
 
       // ⭐ INSERT INTO STOCK HISTORY (For Dashboard/Movement Sync)
-      await transaction.request()
+      await transaction
+        .request()
         .input("hItem", sql.NVarChar, itemName)
         .input("hQty", sql.Decimal(18, 2), item.quantity)
         .input("hDate", sql.Date, reject_date)
-        .input("hWeight", sql.NVarChar, item.weight || "")
-        .query(`
+        .input("hWeight", sql.NVarChar, item.weight || "").query(`
           INSERT INTO StockHistory (item_name, quantity, type, date, weight, ref_no)
           VALUES (@hItem, @hQty, 'REJECT', @hDate, @hWeight, 'STOCK-REJECT')
         `);
 
       // Log into RejectedStock table
-      await transaction.request()
+      await transaction
+        .request()
         .input("r_date", sql.Date, reject_date)
         .input("r_name", sql.NVarChar, itemName)
         .input("r_qty", sql.Decimal(18, 2), item.quantity)
-        .input("r_reason", sql.NVarChar, item.reason || "")
-        .query(`
+        .input("r_reason", sql.NVarChar, item.reason || "").query(`
           INSERT INTO RejectedStock (reject_date, item_name, quantity, reason)
           VALUES (@r_date, @r_name, @r_qty, @r_reason)
         `);
     }
 
     await transaction.commit();
-    res.json({ success: true, message: "Rejected stock processed successfully" });
+    res.json({
+      success: true,
+      message: "Rejected stock processed successfully",
+    });
   } catch (error) {
     if (transaction) await transaction.rollback();
     res.status(400).json({ message: error.message });
@@ -364,64 +378,169 @@ exports.getrejectStock = async (req, res) => {
 
 exports.getStockMovement = async (req, res) => {
   const { fromDate, toDate } = req.query;
+
   try {
+    if (
+      !fromDate ||
+      !toDate ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(fromDate) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(toDate) ||
+      fromDate > toDate
+    ) {
+      return res.status(400).json({
+        message: "Please provide a valid date range.",
+      });
+    }
+
     const pool = await poolPromise;
-    const result = await pool.request()
+
+    const result = await pool
+      .request()
       .input("fromDate", sql.Date, fromDate)
-      .input("toDate", sql.Date, toDate)
-      .query(`
-      DECLARE @FixedOpeningDate DATE = '2026-04-01';
+      .input("toDate", sql.Date, toDate).query(`
+        DECLARE @FixedOpeningDate DATE = '2026-04-01';
 
-      ;WITH Products AS (
-          SELECT DISTINCT item_name FROM OpeningStock UNION SELECT DISTINCT item_name FROM StockHistory
-      ),
-      BaseOpening AS (
-          SELECT item_name, ISNULL(opening_quantity, 0) as InitialQty FROM OpeningStock
-      ),
-      HistoryBefore AS (
-          SELECT item_name, 
-                 SUM(CASE WHEN type IN ('IN', 'RTV') THEN quantity ELSE 0 END) as PrevIn,
-                 SUM(CASE WHEN type = 'REJECT' THEN quantity ELSE 0 END) as PrevReject
-          FROM StockHistory
-          WHERE CAST(date AS DATE) >= @FixedOpeningDate AND CAST(date AS DATE) < @fromDate
+        ;WITH Products AS (
+          SELECT item_name FROM OpeningStock
+          UNION
+          SELECT item_name FROM StockHistory
+          UNION
+          SELECT ProductType AS item_name FROM OrderItems
+        ),
+
+        BaseOpening AS (
+          SELECT
+            item_name,
+            SUM(ISNULL(opening_quantity, 0)) AS InitialQty
+          FROM OpeningStock
           GROUP BY item_name
-      ),
-      SalesBefore AS (
-          SELECT OI.ProductType, SUM(OI.Quantity) as PrevSold
-          FROM OrderItems OI
-          JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID
-          INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
-          WHERE CAST(OT.OrderDate AS DATE) >= @FixedOpeningDate AND CAST(OT.OrderDate AS DATE) < @fromDate
-            AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'
-          GROUP BY OI.ProductType
-      )
-      SELECT 
-          P.item_name AS ProductType,
-          (ISNULL(BO.InitialQty, 0) + ISNULL(HB.PrevIn, 0) - (ISNULL(SB.PrevSold, 0) + ISNULL(HB.PrevReject, 0))) AS Opening,
-          
-          ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = P.item_name AND type IN ('IN', 'RTV') AND CAST(date AS DATE) BETWEEN @fromDate AND @toDate), 0) AS Total_In,
-          
-          -- Total_Sell = Real Sell + Rejects
-          (ISNULL((SELECT SUM(OI.Quantity) FROM OrderItems OI JOIN OrdersTemp OT ON OT.OrderID = OI.OrderID INNER JOIN AssignedOrders AO ON OT.OrderID = AO.OrderID 
-                   WHERE OI.ProductType = P.item_name AND CAST(OT.OrderDate AS DATE) BETWEEN @fromDate AND @toDate AND ISNULL(AO.deliveryStatus, '') <> 'CANCEL'), 0) +
-           ISNULL((SELECT SUM(quantity) FROM StockHistory WHERE item_name = P.item_name AND type = 'REJECT' AND CAST(date AS DATE) BETWEEN @fromDate AND @toDate), 0)
-          ) AS Total_Sell
-      FROM Products P
-      LEFT JOIN BaseOpening BO ON P.item_name = BO.item_name
-      LEFT JOIN HistoryBefore HB ON P.item_name = HB.item_name
-      LEFT JOIN SalesBefore SB ON P.item_name = SB.ProductType
-      ORDER BY P.item_name
-    `);
+        ),
 
-    const finalData = result.recordset.map(item => ({
-      ProductType: item.ProductType,
-      Opening: Number(item.Opening),
-      Total_In: Number(item.Total_In),
-      Total_Sell: Number(item.Total_Sell),
-      Closing: Number(item.Opening) + Number(item.Total_In) - Number(item.Total_Sell)
-    }));
-    res.json(finalData);
-  } catch (err) { res.status(500).json({ message: err.message }); }
+        StockBefore AS (
+          SELECT
+            item_name,
+            SUM(CASE
+              WHEN type IN ('IN', 'RTV')
+              THEN quantity ELSE 0
+            END) AS PrevIn,
+
+            SUM(CASE
+              WHEN type = 'REJECT'
+              THEN quantity ELSE 0
+            END) AS PrevRejected
+          FROM StockHistory
+          WHERE [date] >= @FixedOpeningDate
+            AND [date] < @fromDate
+          GROUP BY item_name
+        ),
+
+        SoldBefore AS (
+          SELECT
+            OI.ProductType,
+            SUM(ISNULL(OI.Quantity, 0)) AS PrevSold
+          FROM OrderItems OI
+          INNER JOIN OrdersTemp OT
+            ON OT.OrderID = OI.OrderID
+          INNER JOIN AssignedOrders AO
+            ON AO.OrderID = OT.OrderID
+          WHERE OT.OrderDate >= @FixedOpeningDate
+            AND OT.OrderDate < @fromDate
+            AND UPPER(LTRIM(RTRIM(
+              ISNULL(AO.DeliveryStatus, '')
+            ))) <> 'CANCEL'
+          GROUP BY OI.ProductType
+        ),
+
+        StockInRange AS (
+          SELECT
+            item_name,
+            SUM(CASE
+              WHEN type IN ('IN', 'RTV')
+              THEN quantity ELSE 0
+            END) AS TotalIn,
+
+            SUM(CASE
+              WHEN type = 'REJECT'
+              THEN quantity ELSE 0
+            END) AS TotalRejected
+          FROM StockHistory
+          WHERE [date] >= @fromDate
+            AND [date] < DATEADD(DAY, 1, @toDate)
+          GROUP BY item_name
+        ),
+
+        SoldInRange AS (
+          SELECT
+            OI.ProductType,
+            SUM(ISNULL(OI.Quantity, 0)) AS TotalSold
+          FROM OrderItems OI
+          INNER JOIN OrdersTemp OT
+            ON OT.OrderID = OI.OrderID
+          INNER JOIN AssignedOrders AO
+            ON AO.OrderID = OT.OrderID
+          WHERE OT.OrderDate >= @fromDate
+            AND OT.OrderDate < DATEADD(DAY, 1, @toDate)
+            AND UPPER(LTRIM(RTRIM(
+              ISNULL(AO.DeliveryStatus, '')
+            ))) <> 'CANCEL'
+          GROUP BY OI.ProductType
+        )
+
+        SELECT
+          P.item_name AS ProductType,
+
+          (
+            ISNULL(BO.InitialQty, 0)
+            + ISNULL(SB.PrevIn, 0)
+            - ISNULL(SB.PrevRejected, 0)
+            - ISNULL(PS.PrevSold, 0)
+          ) AS Opening,
+
+          ISNULL(SR.TotalIn, 0) AS Total_In,
+
+          ISNULL(SO.TotalSold, 0) AS Total_Sell,
+
+          ISNULL(SR.TotalRejected, 0) AS Total_Rejected
+
+        FROM Products P
+        LEFT JOIN BaseOpening BO
+          ON BO.item_name = P.item_name
+        LEFT JOIN StockBefore SB
+          ON SB.item_name = P.item_name
+        LEFT JOIN SoldBefore PS
+          ON PS.ProductType = P.item_name
+        LEFT JOIN StockInRange SR
+          ON SR.item_name = P.item_name
+        LEFT JOIN SoldInRange SO
+          ON SO.ProductType = P.item_name
+
+        ORDER BY P.item_name
+      `);
+
+    const finalData = result.recordset.map((item) => {
+      const opening = Number(item.Opening || 0);
+      const totalIn = Number(item.Total_In || 0);
+      const totalSold = Number(item.Total_Sell || 0);
+      const totalRejected = Number(item.Total_Rejected || 0);
+
+      return {
+        ProductType: item.ProductType,
+        Opening: opening,
+        Total_In: totalIn,
+        Total_Sell: totalSold,
+        Total_Rejected: totalRejected,
+        Closing: opening + totalIn - totalSold - totalRejected,
+      };
+    });
+
+    return res.status(200).json(finalData);
+  } catch (err) {
+    console.error("STOCK MOVEMENT ERROR:", err);
+
+    return res.status(500).json({
+      message: err.message || "Unable to fetch stock movement",
+    });
+  }
 };
 
 exports.getProductionCurrentStock = async (req, res) => {
